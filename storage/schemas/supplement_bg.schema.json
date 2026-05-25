@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pha://schemas/supplement_bg.schema.json",
+  "schema_version": "1.0.0",
+  "contract": {
+    "name": "pha-evidence-asset",
+    "revision": "2026-05-23",
+    "notes": "Context 资产：会话/DB 补剂备忘录；非 L2 数仓；Catalog 条件挂载。"
+  },
+  "asset_id": "supplement_bg",
+  "legacy_ids": ["SUPPLEMENT_BG"],
+  "status": "active",
+  "category": "user_context",
+  "context_domain": "user_context.regimen",
+  "strategy": "supplement_bg",
+  "intent": {
+    "asset_class": "context",
+    "lane": "context_only",
+    "priority": 5,
+    "catalog_min_score": 2.0,
+    "trigger_keywords": [
+      {"token": "补剂", "weight": 3},
+      {"token": "补剂方案", "weight": 4},
+      {"token": "服用", "weight": 2},
+      {"token": "用药", "weight": 2},
+      {"token": "方案", "weight": 1.5},
+      {"token": "维生素", "weight": 2},
+      {"token": "鱼油", "weight": 2},
+      {"token": "肌酸", "weight": 2},
+      {"token": "他汀", "weight": 2},
+      {"token": "非布司他", "weight": 2},
+      {"token": "益生菌", "weight": 1.5},
+      {"token": "辅酶", "weight": 1.5}
+    ],
+    "negative_keywords": [
+      {"token": "分析", "weight": 3},
+      {"token": "是否正常", "weight": 3},
+      {"token": "正常吗", "weight": 3},
+      {"token": "血氧", "weight": 4},
+      {"token": "spo2", "weight": 4},
+      {"token": "HRV", "weight": 3},
+      {"token": "心率变异性", "weight": 3},
+      {"token": "最近90天", "weight": 2},
+      {"token": "90天", "weight": 2},
+      {"token": "90 天", "weight": 2},
+      {"token": "趋势", "weight": 2},
+      {"token": "均值", "weight": 2}
+    ],
+    "background_capture_keywords": [
+      {"token": "补剂"},
+      {"token": "服用"},
+      {"token": "用药"},
+      {"token": "药物"},
+      {"token": "肌酸"},
+      {"token": "维生素"},
+      {"token": "鱼油"},
+      {"token": "辅酶"},
+      {"token": "益生菌"},
+      {"token": "他汀"},
+      {"token": "非布司他"},
+      {"token": "方案"},
+      {"token": "草药"},
+      {"token": "茶饮"},
+      {"token": "mg"},
+      {"token": "毫克"},
+      {"token": "粒"},
+      {"token": "片"},
+      {"token": "每天"},
+      {"token": "每日"}
+    ]
+  },
+  "existence": {
+    "probe": "sqlite_notes",
+    "where": { "category_in": ["supplement", "medication", "general"] },
+    "min_rows": 1
+  },
+  "display": {
+    "title_zh": "用药/补剂/方案背景（摘要）",
+    "when_zh": "补剂调整、用药时间表、营养方案",
+    "est_chars": "≤800"
+  },
+  "catalog": {
+    "enabled": true,
+    "profiles": ["combined_review"],
+    "include_in_default_combined": false,
+    "conditional": true,
+    "max_instruction_chars": 120,
+    "llm_instruction_zh": "点单拉取补剂/用药背景摘要；无库内记录时明确说明。",
+    "core_hint_keywords": [{"zh": "补剂", "metric_id": "supplement"}],
+    "trigger_keywords": [
+      {"token": "补剂", "zh": "补剂"},
+      {"token": "补剂方案", "zh": "补剂"},
+      {"token": "用药", "zh": "用药"},
+      {"token": "他汀", "zh": "他汀"}
+    ]
+  },
+  "fetch": {
+    "mode": "adapter",
+    "adapter": {
+      "module": "pha.chat_background",
+      "callable": "build_user_background_block"
+    }
+  },
+  "manifest": {
+    "domain": null
+  }
+}

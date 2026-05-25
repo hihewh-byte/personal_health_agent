@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pha://schemas/wearable_bundle.schema.json",
+  "schema_version": "1.2.0",
+  "contract": {
+    "name": "pha-evidence-asset",
+    "revision": "2026-05-21",
+    "trust_level": "signed_directory_only",
+    "notes": "P1.6 DCH：Catalog 诱饵由 trigger_keywords 运行时生成；指标由同表驱动 Reduce。"
+  },
+  "asset_id": "wearable_bundle",
+  "legacy_ids": ["WEARABLE_90D"],
+  "status": "active",
+  "category": "high_frequency_time_series",
+  "strategy": "wearable_ts",
+  "intent": {
+    "asset_class": "data",
+    "lane": "wearable",
+    "priority": 20
+  },
+  "display": {
+    "title_zh": "穿戴时序包（近窗摘要 + 统计快照）",
+    "when_zh": "穿戴指标与血脂/恢复/运动相关问题",
+    "est_chars": "~300-900"
+  },
+  "catalog": {
+    "enabled": true,
+    "profiles": ["combined_review", "wearable_only", "lifestyle"],
+    "include_in_default_combined": true,
+    "default_combined_rank": 2,
+    "max_instruction_chars": 120,
+    "max_matched_keywords_in_catalog": 4,
+    "llm_instruction_zh": "点单拉取近窗穿戴摘要。数值须对应 Manifest wearable 域或本块；禁止索要原始导出。",
+    "core_hint_keywords": [
+      {"zh": "HRV", "metric_id": "hrv"},
+      {"zh": "活动消耗", "metric_id": "activity_kcal"},
+      {"zh": "睡眠", "metric_id": "sleep"}
+    ],
+    "trigger_keywords": [
+      {"token": "HRV", "metric_id": "hrv", "zh": "HRV"},
+      {"token": "心率变异性", "metric_id": "hrv", "zh": "HRV"},
+      {"token": "步数", "metric_id": "steps", "zh": "步数"},
+      {"token": "睡眠", "metric_id": "sleep", "zh": "睡眠"},
+      {"token": "静息心率", "metric_id": "rhr", "zh": "静息心率"},
+      {"token": "活动消耗", "metric_id": "activity_kcal", "zh": "活动消耗"},
+      {"token": "运动消耗", "metric_id": "activity_kcal", "zh": "活动消耗"},
+      {"token": "血氧", "metric_id": "spo2", "zh": "血氧"},
+      {"token": "spo2", "metric_id": "spo2", "zh": "血氧"},
+      {"token": "氧饱和", "metric_id": "spo2", "zh": "血氧"},
+      {"token": "呼吸率", "metric_id": "respiratory_rate", "zh": "呼吸率"},
+      {"token": "呼吸频率", "metric_id": "respiratory_rate", "zh": "呼吸率"},
+      {"token": "vo2max", "metric_id": "vo2max", "zh": "VO2max"},
+      {"token": "最大摄氧", "metric_id": "vo2max", "zh": "VO2max"},
+      {"token": "体温", "metric_id": "wrist_temp", "zh": "手腕体温"},
+      {"token": "手腕温度", "metric_id": "wrist_temp", "zh": "手腕体温"}
+    ]
+  },
+  "fetch": {
+    "mode": "adapter",
+    "adapter": {
+      "module": "pha.harness_plan",
+      "callable": "build_wearable_90d_summary_block",
+      "empty_message_zh": "【wearable_bundle】近窗无穿戴数据。"
+    },
+    "window": {"default_days": 90},
+    "forbidden": ["raw_sql", "per_sample_dump_in_tier0"]
+  },
+  "metrics": {
+    "canonical": [
+      "hrv",
+      "activity_kcal",
+      "steps",
+      "sleep",
+      "rhr",
+      "spo2",
+      "respiratory_rate",
+      "vo2max",
+      "wrist_temp"
+    ],
+    "core": ["hrv", "activity_kcal", "sleep", "steps", "rhr"]
+  },
+  "existence": {
+    "probe": "sqlite_metric"
+  },
+  "manifest": {
+    "domain": "wearable"
+  },
+  "dual_track": {
+    "enabled": true,
+    "resolve_map": {"WEARABLE_90D": "wearable_bundle"}
+  },
+  "extension_registry": {
+    "spo2": {"enabled": true, "storage_column": "spo2_pct"},
+    "respiratory_rate": {"enabled": true, "storage_column": "respiratory_rate_bpm"},
+    "vo2max": {"enabled": true, "storage_column": "vo2max_ml_kg_min"},
+    "wrist_temp": {"enabled": true, "storage_column": "wrist_temp_c"}
+  }
+}

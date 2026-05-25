@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pha://schemas/lab_lipid_panel.schema.json",
+  "schema_version": "1.1.0",
+  "contract": {
+    "name": "pha-evidence-asset",
+    "revision": "2026-05-21",
+    "trust_level": "signed_directory_only",
+    "notes": "P1 只读注册表。禁止裸 SQL；仅 adapter 符号反射。"
+  },
+  "asset_id": "lab_lipid_panel",
+  "legacy_ids": ["LDL_TABLE"],
+  "status": "active",
+  "category": "discrete_lab_report",
+  "strategy": "lab_panel",
+  "intent": {
+    "asset_class": "data",
+    "lane": "lab",
+    "priority": 10
+  },
+  "display": {
+    "title_zh": "血脂化验面板（TC/LDL/HDL/TG）",
+    "when_zh": "用户问血脂、LDL/HDL/TC/TG、历年化验对比、胆固醇",
+    "est_chars": "~400"
+  },
+  "catalog": {
+    "enabled": true,
+    "profiles": ["combined_review", "lab_cross_year", "lifestyle"],
+    "include_in_default_combined": true,
+    "default_combined_rank": 1,
+    "max_instruction_chars": 120,
+    "max_matched_keywords_in_catalog": 4,
+    "llm_instruction_zh": "点单拉取血脂化验权威表。数值须对应 Manifest lipid 域；禁止编造日期。",
+    "core_hint_keywords": [
+      {"zh": "血脂", "metric_id": "lipid"},
+      {"zh": "LDL", "metric_id": "LDL"}
+    ],
+    "trigger_keywords": [
+      {"token": "血脂", "zh": "血脂"},
+      {"token": "胆固醇", "zh": "胆固醇"},
+      {"token": "LDL", "zh": "LDL"},
+      {"token": "HDL", "zh": "HDL"},
+      {"token": "甘油三酯", "zh": "甘油三酯"},
+      {"token": "化验", "zh": "化验"}
+    ]
+  },
+  "fetch": {
+    "mode": "adapter",
+    "adapter": {
+      "module": "pha.chat_router",
+      "callable": "build_ldl_authority_system_block",
+      "empty_message_zh": "【lab_lipid_panel】库内无匹配年份的血脂报告。"
+    },
+    "temporal": {
+      "resolver": "intent_years",
+      "pipeline": [
+        {"module": "pha.temporal_router", "callable": "parse_temporal_intent"},
+        {"module": "pha.intent_gates", "callable": "resolve_ldl_authority_years"}
+      ]
+    },
+    "forbidden": ["raw_sql", "dynamic_table_name"]
+  },
+  "existence": {
+    "probe": "sqlite_metric"
+  },
+  "manifest": {
+    "domain": "lipid"
+  },
+  "dual_track": {
+    "enabled": true,
+    "resolve_map": {"LDL_TABLE": "lab_lipid_panel"}
+  }
+}

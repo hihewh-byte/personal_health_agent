@@ -1,0 +1,24 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.DS_Store
+.env
+.env.local
+
+# Local runtime / user data
+data/
+storage/users/
+storage/attachments/
+*.db
+*.sqlite
+*.sqlite3
+
+# PHA local snapshots (use git tags for releases)
+.pha-versions/
+
+# IDE / logs
+.cursor/
+*.log
+/tmp/

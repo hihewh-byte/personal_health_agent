@@ -1,0 +1,62 @@
+{
+  "version": "2026.05",
+  "role": "preset_templates_not_runtime_menu",
+  "description": "PHA 健康域预置模板 — CI/Discover 映射；运行时真源为 storage/schemas/*.schema.json",
+  "domains": {
+    "lab": {
+      "display": { "zh": "化验检查", "en": "Laboratory Tests" },
+      "priority": 90,
+      "templates": [
+        {
+          "template_id": "lipid_panel",
+          "maps_to_asset": "lab_lipid_panel",
+          "tags": ["data", "cardiovascular"]
+        }
+      ]
+    },
+    "wearable": {
+      "display": { "zh": "穿戴设备", "en": "Wearable" },
+      "priority": 85,
+      "templates": [
+        {
+          "template_id": "wearable_ts",
+          "maps_to_asset": "wearable_bundle",
+          "tags": ["time_series"]
+        }
+      ]
+    },
+    "user_context.regimen": {
+      "display": { "zh": "用药与营养方案", "en": "Regimen & Supplements" },
+      "priority": 70,
+      "templates": [
+        {
+          "template_id": "regimen_memo",
+          "maps_to_asset": "supplement_bg",
+          "tags": ["context"]
+        }
+      ]
+    },
+    "user_context.lifestyle": {
+      "display": { "zh": "生活方式", "en": "Lifestyle" },
+      "priority": 65,
+      "templates": []
+    },
+    "user_context.symptom": {
+      "display": { "zh": "症状与过敏", "en": "Symptoms" },
+      "priority": 55,
+      "templates": []
+    },
+    "genomics": {
+      "display": { "zh": "基因检测", "en": "Genetics" },
+      "priority": 60,
+      "templates": [],
+      "status": "P2"
+    },
+    "allergy": {
+      "display": { "zh": "过敏", "en": "Allergy" },
+      "priority": 55,
+      "templates": [],
+      "status": "P2"
+    }
+  }
+}

@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PHA · 个人健康 AI 中心</title>
+  <!-- Tailwind 可选：国内常无法解析 cdn.tailwindcss.com，布局由下方 pha-layout.css 保证 -->
+  <script src="https://cdn.tailwindcss.com" async onerror="window.__phaTailwindFailed=true"></script>
+  <script>
+    function phaApplyTailwindConfig() {
+      if (typeof tailwind !== 'undefined') {
+        tailwind.config = {
+          darkMode: 'class',
+          theme: {
+            extend: {
+              fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+              animation: { 'fade-in': 'fadeIn .45s ease-out' },
+              keyframes: {
+                fadeIn: { '0%': { opacity: '0', transform: 'translateY(6px)' }, '100%': { opacity: '1', transform: 'none' } }
+              }
+            }
+          }
+        };
+      }
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', phaApplyTailwindConfig);
+    } else {
+      phaApplyTailwindConfig();
+    }
+    window.addEventListener('load', phaApplyTailwindConfig);
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <style>
+    /* ========== PHA 布局：不依赖 Tailwind CDN ========== */
+    *, *::before, *::after { box-sizing: border-box; }
+    html {
+      height: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+      background: #000 !important;
+    }
+    body.pha-app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-width: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #000 !important;
+      color: #cbd5e1 !important;
+      font-family: Inter, system-ui, sans-serif;
+      font-size: 15px;
+    }
+    #data-drawer {
+      position: fixed;
+      opacity: 0;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      pointer-events: none;
+    }
+    .pha-shell {
+      display: flex;
+      flex: 1 1 auto;
+      flex-direction: row;
+      min-height: 0;
+      min-width: 0;
+      width: 100%;
+    }
+    .pha-sidebar {
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      width: 16rem;
+      background: #111827 !important;
+      border-right: 1px solid #374151;
+    }
+    .pha-sidebar-scroll {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      padding: 1.25rem;
+    }
+    .pha-sidebar-foot {
+      flex-shrink: 0;
+      padding: 1rem;
+      border-top: 1px solid #374151;
+    }
+    .pha-sidebar-logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #f1f5f9;
+    }
+    .pha-sidebar-tag {
+      margin-top: 0.25rem;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+    .pha-nav-label {
+      display: block;
+      padding: 0 0.5rem;
+      margin-top: 1rem;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+    }
+    .pha-nav-link {
+      display: block;
+      margin-top: 0.25rem;
+      padding: 0.625rem 0.75rem;
+      border-radius: 1rem;
+      color: #cbd5e1;
+      text-decoration: none;
+      font-size: 0.875rem;
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+    .pha-nav-link:hover { border-color: #374151; background: rgba(0, 0, 0, 0.25); }
+    #sidebar-deep-audit {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: none;
+      border-radius: 1rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #fff;
+      cursor: pointer;
+      background: linear-gradient(90deg, #7c3aed, #9333ea, #4f46e5);
+      box-shadow: 0 10px 25px rgba(88, 28, 135, 0.35);
+    }
+    #sidebar-deep-audit:hover:not(:disabled) { filter: brightness(1.08); }
+    #sidebar-deep-audit:disabled {
+      opacity: 0.72;
+      cursor: wait;
+      filter: saturate(0.85);
+    }
+    #sidebar-deep-audit.is-audit-loading::after {
+      content: ' · 审计中…';
+      font-weight: 500;
+    }
+    .pha-chat-sessions {
+      margin-top: 1rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid #334155;
+    }
+    .pha-chat-sessions-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+    .pha-chat-sessions-head span { font-size: 0.7rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; }
+    #chat-session-new {
+      font-size: 0.65rem;
+      padding: 0.2rem 0.45rem;
+      border-radius: 0.4rem;
+      border: 1px solid #4b5563;
+      background: transparent;
+      color: #a5b4fc;
+      cursor: pointer;
+    }
+    #chat-session-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      max-height: 220px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .pha-chat-session-item {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      border-radius: 0.5rem;
+      border: 1px solid transparent;
+    }
+    .pha-chat-session-item.active { border-color: rgba(99, 102, 241, 0.55); background: rgba(67, 56, 202, 0.15); }
+    .pha-chat-session-btn {
+      flex: 1;
+      text-align: left;
+      padding: 0.4rem 0.5rem;
+      font-size: 0.7rem;
+      color: #cbd5e1;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .pha-chat-session-del {
+      padding: 0.2rem 0.35rem;
+      font-size: 0.65rem;
+      color: #64748b;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+    }
+    .pha-chat-session-del:hover { color: #f87171; }
+    #active-model-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-bottom: 0.5rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 0.5rem;
+      border: 1px solid rgba(34, 211, 238, 0.45);
+      background: linear-gradient(90deg, rgba(6, 78, 59, 0.35), rgba(15, 23, 42, 0.8));
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.6875rem;
+      color: #67e8f9;
+      box-shadow: 0 0 12px rgba(34, 211, 238, 0.12);
+    }
+    #active-model-chip::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #22d3ee;
+      box-shadow: 0 0 6px #22d3ee;
+    }
+    .pha-consultation-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    .pha-consultation-actions button {
+      flex: 1 1 auto;
+      min-width: 10rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.65rem;
+      font-size: 0.8125rem;
+      cursor: pointer;
+      border: 1px solid #4b5563;
+      background: rgba(15, 23, 42, 0.85);
+      color: #e2e8f0;
+    }
+    #consultation-export-md:hover { border-color: #22c55e; color: #bbf7d0; }
+    #consultation-followup-chat:hover { border-color: #818cf8; color: #c4b5fd; }
+    .pha-main-panel {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow-y: auto;
+      background: #0d1117 !important;
+      padding: 1.5rem 2rem;
+    }
+    .pha-topbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    .pha-badges { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .pha-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 1rem;
+      border: 1px solid #374151;
+      background: rgba(0, 0, 0, 0.4);
+      font-size: 0.75rem;
+      color: #cbd5e1;
+    }
+    .pha-audit-cot-section {
+      margin: 0.75rem 0 0.65rem;
+      padding: 0.85rem 1rem;
+      border-radius: 0.85rem;
+      border: 1px solid rgba(124, 58, 237, 0.5);
+      background: linear-gradient(135deg, rgba(88, 28, 135, 0.22), rgba(15, 23, 42, 0.72));
+      box-shadow: inset 0 0 24px rgba(124, 58, 237, 0.08);
+    }
+    .pha-audit-cot-head {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      color: #ddd6fe;
+      margin: 0 0 0.35rem;
+    }
+    .pha-cot-shimmer {
+      font-size: 0.6875rem;
+      font-weight: 500;
+      margin: 0 0 0.5rem;
+      background: linear-gradient(90deg, #a78bfa, #e9d5ff, #818cf8, #a78bfa);
+      background-size: 220% auto;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: phaCotShimmer 2.4s linear infinite;
+    }
+    @keyframes phaCotShimmer {
+      0% { background-position: 0% center; }
+      100% { background-position: 220% center; }
+    }
+    #consultation-thinking-pre {
+      max-height: 26vh;
+      overflow: auto;
+      white-space: pre-wrap;
+      font-size: 0.6875rem;
+      line-height: 1.55;
+      color: #c4b5fd;
+      margin: 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .pha-audit-report-section {
+      margin-top: 0.65rem;
+      padding-top: 0.65rem;
+      border-top: 1px solid #334155;
+    }
+    .pha-audit-report-head {
+      font-size: 0.8125rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin: 0 0 0.5rem;
+    }
+    #consultation-report-pre {
+      max-height: 52vh;
+      overflow: auto;
+      font-size: 0.875rem;
+      line-height: 1.65;
+      margin: 0;
+    }
+    #consultation-report-pre h2 { font-size: 1.05rem; margin: 1rem 0 0.5rem; color: #f1f5f9; }
+    #consultation-report-pre ul { padding-left: 1.25rem; margin: 0.35rem 0; }
+    #consultation-report-pre table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+    #consultation-report-pre th, #consultation-report-pre td {
+      border: 1px solid #334155;
+      padding: 0.35rem 0.5rem;
+    }
+    .pha-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+    .pha-controls select,
+    .pha-controls input[type="text"] {
+      padding: 0.625rem 1rem;
+      border-radius: 1rem;
+      border: 1px solid #374151;
+      background: rgba(0, 0, 0, 0.5);
+      color: #e2e8f0;
+      font-size: 0.875rem;
+    }
+    #model-select { flex: 1 1 16rem; max-width: 28rem; min-width: 10rem; }
+    #user-id { width: 10rem; }
+    #model-hint { font-size: 0.875rem; color: #64748b; margin: 0; }
+    .pha-hero-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    @media (max-width: 900px) {
+      .pha-hero-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 520px) {
+      .pha-shell { flex-direction: column; }
+      .pha-sidebar { width: 100%; max-height: 40vh; border-right: none; border-bottom: 1px solid #374151; }
+      .pha-hero-grid { grid-template-columns: 1fr; }
+    }
+    .pha-card {
+      border-radius: 1rem;
+      border: 1px solid #374151;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 1.5rem;
+    }
+    .pha-card-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+      margin: 0;
+    }
+    .pha-card-value {
+      margin: 0.75rem 0 0;
+      font-size: 1.875rem;
+      font-weight: 600;
+      color: #f1f5f9;
+    }
+    .pha-card-desc { margin: 0.5rem 0 0; font-size: 0.75rem; color: #64748b; }
+    #stat-medical-card { cursor: pointer; }
+    #stat-medical-card:hover { border-color: #64748b; }
+    .pha-section {
+      border-radius: 1rem;
+      border: 1px solid #374151;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .pha-section-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .pha-section-head h2 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #f1f5f9;
+    }
+    .pha-tabs { display: flex; gap: 0.25rem; border: 1px solid #374151; border-radius: 1rem; padding: 2px; background: rgba(0,0,0,.4); }
+    .pha-tabs button {
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+      background: transparent;
+      color: #94a3b8;
+    }
+    .pha-tabs button.tab-active { background: rgba(37, 99, 235, 0.35); color: #bfdbfe; }
+    #refresh-trends {
+      padding: 0.35rem 0.75rem;
+      border-radius: 1rem;
+      border: 1px solid #374151;
+      background: transparent;
+      color: #cbd5e1;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .pha-metric-picker-wrap { margin-bottom: 0.75rem; }
+    .pha-metric-picker-label { display: block; font-size: 0.78rem; color: #94a3b8; margin-bottom: 0.35rem; }
+    .pha-golden-tags { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.5rem; }
+    .pha-metric-tag {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.35rem 0.65rem; border-radius: 999px; border: 1px solid #374151;
+      background: rgba(15, 23, 42, 0.6); color: #cbd5e1; font-size: 0.72rem; cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .pha-metric-tag.on { border-color: #3b82f6; background: rgba(37, 99, 235, 0.25); color: #e0f2fe; }
+    .pha-metric-tag .hint { font-size: 0.62rem; color: #94a3b8; margin-left: 0.15rem; }
+    .pha-more-metrics { margin-top: 0.5rem; border: 1px solid #374151; border-radius: 0.65rem; padding: 0.5rem 0.75rem; background: rgba(0,0,0,.25); }
+    .pha-more-metrics summary { cursor: pointer; font-size: 0.75rem; color: #94a3b8; list-style: none; }
+    .pha-more-metrics summary::-webkit-details-marker { display: none; }
+    #metric-search-bar {
+      width: 100%; margin: 0.65rem 0; padding: 0.45rem 0.6rem; border-radius: 0.5rem;
+      border: 1px solid #374151; background: #0a0a0a; color: #e2e8f0; font-size: 0.78rem;
+    }
+    .pha-metric-group { margin-bottom: 0.75rem; }
+    .pha-metric-group h4 { margin: 0 0 0.35rem; font-size: 0.72rem; color: #64748b; font-weight: 600; }
+    .pha-metric-group-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .pha-metric-tag.dim { opacity: 0.35; pointer-events: none; }
+    .pha-metric-tag.match { box-shadow: 0 0 0 1px #22d3ee; }
+    #ai-doctor-review-btn {
+      margin-top: 0.35rem; width: 100%; padding: 0.3rem 0.5rem; font-size: 0.68rem;
+      border-radius: 0.5rem; border: 1px solid #475569; background: rgba(30,41,59,.5);
+      color: #94a3b8; cursor: pointer;
+    }
+    #ai-doctor-review-btn.running { border-color: #3b82f6; color: #bfdbfe; }
+    #ai-doctor-review-btn.done { border-color: #059669; color: #6ee7b7; }
+    .pha-metric-picker { display: none; }
+    .pha-dynamic-charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+    @media (max-width: 768px) {
+      .pha-dynamic-charts-grid { grid-template-columns: 1fr; }
+    }
+    .pha-chart-box {
+      border-radius: 1rem;
+      border: 1px solid #374151;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 1rem;
+    }
+    .pha-chart-box p { margin: 0 0 0.5rem; font-size: 0.875rem; color: #cbd5e1; }
+    .pha-chart-box .sub { font-size: 0.75rem; color: #64748b; margin-bottom: 0.5rem; }
+    .chart-canvas-host { position: relative; height: 240px; width: 100%; }
+    .chart-canvas-host-lg { height: 280px; }
+    .chart-canvas-host canvas { display: block; width: 100% !important; height: 100% !important; max-width: 100%; }
+    .pha-chat-panel {
+      display: flex;
+      flex-direction: column;
+      min-height: 380px;
+      border-radius: 1rem;
+      border: 1px solid #374151;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .pha-chat-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .pha-chat-attach-btn {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.35rem 0.75rem; border-radius: 0.5rem; cursor: pointer;
+      border: 1px solid #475569; background: rgba(30, 41, 59, 0.8); color: #cbd5e1;
+      font-size: 0.75rem; font-weight: 600;
+    }
+    .pha-chat-attach-btn:hover { border-color: #6366f1; color: #e2e8f0; }
+    .pha-ingest-gold-btn {
+      margin-top: 0.65rem; align-self: flex-end;
+      padding: 0.4rem 0.85rem; border-radius: 0.5rem; cursor: pointer;
+      border: 1px solid rgba(234, 179, 8, 0.65);
+      background: linear-gradient(135deg, rgba(120, 53, 15, 0.55), rgba(234, 179, 8, 0.22));
+      color: #fcd34d; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em;
+      box-shadow: 0 0 12px rgba(234, 179, 8, 0.15);
+    }
+    .pha-ingest-gold-btn:hover { border-color: #fbbf24; color: #fde68a; }
+    .pha-ingest-gold-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .pha-assets-toolbar {
+      display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+      margin-bottom: 0.5rem; padding: 0.5rem 0;
+    }
+    .pha-assets-toolbar.hidden { display: none; }
+    .pha-assets-select-all { font-size: 0.75rem; color: #cbd5e1; cursor: pointer; display: flex; align-items: center; gap: 0.35rem; }
+    .pha-assets-delete-batch {
+      padding: 0.35rem 0.75rem; border-radius: 0.5rem; cursor: pointer;
+      border: 1px solid rgba(239, 68, 68, 0.7);
+      background: linear-gradient(135deg, rgba(127, 29, 29, 0.55), rgba(220, 38, 38, 0.25));
+      color: #fecaca; font-size: 0.72rem; font-weight: 700;
+    }
+    .pha-assets-delete-batch:hover { border-color: #f87171; color: #fff; }
+    #health-assets-list.pha-assets-list { display: flex; flex-direction: column; gap: 0.4rem; }
+    #health-assets-list.pha-assets-list-in .pha-asset-row {
+      animation: pha-asset-fade-in 0.38s ease backwards;
+    }
+    @keyframes pha-asset-fade-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .pha-asset-row {
+      display: grid;
+      grid-template-columns: 1.15rem minmax(0, 1fr) auto;
+      align-items: start;
+      gap: 0.45rem 0.5rem;
+      width: 100%; box-sizing: border-box;
+      border-radius: 0.5rem; border: 1px solid rgba(55, 65, 81, 0.8);
+      background: #161B22; padding: 0.45rem 0.5rem;
+      transition: opacity 0.28s ease, transform 0.28s ease, max-height 0.32s ease, margin 0.28s ease, padding 0.28s ease;
+      overflow: hidden;
+    }
+    .pha-asset-cb {
+      grid-column: 1; margin-top: 0.2rem; width: 1rem; height: 1rem;
+    }
+    .pha-asset-card {
+      grid-column: 2;
+      display: flex; flex-direction: column; width: 100%; min-width: 0;
+      text-align: left;
+    }
+    .pha-asset-del-btn { grid-column: 3; }
+    .pha-asset-row.pha-asset-row-exit {
+      opacity: 0; transform: translateX(10px) scale(0.98);
+      max-height: 0 !important; margin: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important;
+      border-width: 0;
+    }
+    .pha-asset-card-head {
+      display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center;
+      gap: 0.35rem 0.5rem; width: 100%; max-width: 100%;
+      font-size: 0.78rem; line-height: 1.35; overflow: hidden;
+    }
+    .pha-asset-date { font-family: ui-monospace, SFMono-Regular, monospace; color: #e2e8f0; white-space: nowrap; flex-shrink: 0; }
+    .pha-asset-filename {
+      color: #94a3b8; flex: 1 1 auto; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .pha-asset-filename[title] { cursor: help; border-bottom: 1px dotted rgba(148, 163, 184, 0.35); }
+    .pha-asset-source-tag {
+      font-size: 0.62rem; font-weight: 600; letter-spacing: 0.02em; flex-shrink: 0;
+      padding: 0.08rem 0.38rem; border-radius: 0.25rem;
+      border: 1px solid rgba(71, 85, 105, 0.65); color: #94a3b8; background: rgba(15, 23, 42, 0.65);
+    }
+    .pha-asset-card-row2 {
+      width: 100%; margin-top: 0.35rem;
+      flex: 0 0 auto;
+    }
+    .pha-asset-details {
+      margin-top: 0; width: 100%; flex: 0 0 100%; box-sizing: border-box;
+      display: block;
+    }
+    .pha-asset-details summary {
+      font-size: 0.65rem; color: #64748b; cursor: pointer; user-select: none; list-style: none;
+    }
+    .pha-asset-details summary::-webkit-details-marker { display: none; }
+    .pha-asset-details:not([open]) summary::before { content: '▶ '; }
+    .pha-asset-details[open] summary::before { content: '▼ '; }
+    .pha-asset-preview-body {
+      margin: 0.3rem 0 0; padding: 0.35rem 0.45rem; max-height: 7.5rem; overflow: auto;
+      font-size: 0.62rem; line-height: 1.4; color: #94a3b8;
+      background: rgba(0, 0, 0, 0.28); border-radius: 0.35rem; border: 1px solid rgba(55, 65, 81, 0.5);
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .pha-asset-json-link {
+      display: inline-block; margin-top: 0.15rem; padding: 0;
+      font-size: 0.62rem; color: #60a5fa; background: none; border: none; cursor: pointer;
+    }
+    .pha-asset-json-link:hover { color: #93c5fd; text-decoration: underline; }
+    .pha-audit-panel {
+      margin-top: 0.5rem; padding: 0.65rem 0.75rem; border-radius: 0.5rem;
+      border: 1px solid rgba(234, 179, 8, 0.45); background: rgba(120, 53, 15, 0.22);
+      font-size: 0.72rem; max-height: 14rem; overflow: auto;
+    }
+    .pha-audit-panel table { font-size: 0.68rem; width: 100%; }
+    .pha-audit-panel th, .pha-audit-panel td { padding: 0.2rem 0.35rem; border-bottom: 1px solid rgba(55,65,81,0.6); }
+    .pha-audit-warn { color: #fbbf24; font-weight: 700; margin-bottom: 0.35rem; }
+    #chat-stream {
+      flex: 1 1 auto; min-height: 220px; overflow-y: auto; scroll-behavior: smooth;
+      display: flex; flex-direction: column; gap: 0.65rem; padding: 0.25rem 0;
+    }
+    .pha-chat-row {
+      display: flex; width: 100%; max-width: 100%;
+      animation: pha-asset-fade-in 0.35s ease;
+    }
+    .pha-chat-row--user { justify-content: flex-end; }
+    .pha-chat-row--assistant { justify-content: flex-start; }
+    .pha-chat-bubble {
+      max-width: min(88%, 42rem);
+      padding: 0.65rem 0.9rem;
+      border-radius: 1rem;
+      font-size: 0.875rem;
+      line-height: 1.55;
+      word-break: break-word;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    }
+    .pha-chat-bubble--user {
+      background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 55%, #1d4ed8 100%);
+      color: #f8fafc;
+      border-bottom-right-radius: 0.25rem;
+    }
+    .pha-chat-bubble--assistant {
+      background: rgba(22, 27, 34, 0.95);
+      color: #e2e8f0;
+      border: 1px solid rgba(55, 65, 81, 0.85);
+      border-bottom-left-radius: 0.25rem;
+    }
+    .pha-chat-bubble--assistant.prose-pha { color: #e2e8f0; }
+    .pha-chat-audit-wrap { width: 100%; max-width: min(92%, 44rem); }
+    .pha-chat-audit-wrap .pha-audit-panel { margin-top: 0; max-height: 16rem; }
+    .pha-asset-del-btn {
+      flex-shrink: 0; padding: 0.25rem 0.5rem; border-radius: 0.35rem; cursor: pointer;
+      border: 1px solid rgba(234, 179, 8, 0.55);
+      background: rgba(120, 53, 15, 0.35); color: #fcd34d; font-size: 0.68rem;
+    }
+    .pha-asset-del-btn:hover { border-color: #fbbf24; color: #fde68a; }
+    #q {
+      width: 100%;
+      min-height: 80px;
+      margin-top: 0.75rem;
+      padding: 0.75rem 1rem;
+      border-radius: 1rem;
+      border: 1px solid #374151;
+      background: rgba(0, 0, 0, 0.5);
+      color: #e2e8f0;
+      font-size: 0.875rem;
+      resize: vertical;
+    }
+    #send {
+      width: 100%;
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      border-radius: 1rem;
+      border: 1px solid #4b5563;
+      background: rgba(241, 245, 249, 0.08);
+      color: #f1f5f9;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    #send:disabled { opacity: 0.4; cursor: not-allowed; }
+    /* 右侧数据导入抽屉：默认藏在屏外 */
+    .pha-drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      background: rgba(0, 0, 0, 0.8);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    #data-drawer:checked ~ .pha-drawer-backdrop {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .pha-drawer-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      z-index: 50;
+      width: min(28rem, 100vw);
+      height: 100vh;
+      overflow-y: auto;
+      background: #0a0a0a;
+      border-left: 1px solid #374151;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+    }
+    #data-drawer:checked ~ .pha-drawer-panel { transform: translateX(0); }
+    .pha-drawer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem;
+      border-bottom: 1px solid #374151;
+    }
+    .pha-drawer-head h2 { margin: 0; font-size: 1.125rem; color: #f1f5f9; }
+    .pha-drawer-body { padding: 1.25rem; }
+    .pha-drawer-body > * + * { margin-top: 1.5rem; }
+    .hidden { display: none !important; }
+    #pha-build { font-family: ui-monospace, monospace; font-size: 11px; color: #64748b; }
+    @media (min-width: 768px) { #pha-build { display: inline !important; } }
+    .pha-hidden-file-input {
+      position: absolute; width: 1px; height: 0; padding: 0; margin: -1px; border: 0;
+      overflow: hidden; clip: rect(0, 0, 0, 0); visibility: hidden; opacity: 0;
+    }
+    .prose-pha h1, .prose-pha h2, .prose-pha h3 { font-weight: 600; margin: .75em 0 .35em; color: #e2e8f0; }
+    .prose-pha p { margin: .5em 0; line-height: 1.65; }
+    .prose-pha code { background: #1e293b; padding: .15em .4em; border-radius: .35em; }
+    .prose-pha pre { background: #1e293b; padding: .75em; border-radius: .5em; overflow-x: auto; }
+    #parse-toast {
+      pointer-events: none;
+      position: fixed;
+      right: 1rem;
+      top: 1rem;
+      z-index: 100;
+      max-width: 24rem;
+    }
+    #parse-toast .alert {
+      pointer-events: auto;
+      border-radius: 1rem;
+      border: 1px solid #374151;
+      background: rgba(0, 0, 0, 0.9);
+      padding: 0.75rem 1rem;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    }
+    dialog { color: #cbd5e1; border: 1px solid #374151; border-radius: 1rem; background: #0d1117; }
+    dialog::backdrop { background: rgba(0, 0, 0, 0.8); }
+    .pha-drop {
+      border: 1px dashed #4b5563;
+      border-radius: 1rem;
+      padding: 1.25rem;
+      text-align: center;
+      cursor: pointer;
+      color: #94a3b8;
+      background: rgba(0, 0, 0, 0.25);
+    }
+    .pha-drop:hover, .pha-drop.border-primary, .pha-drop.border-secondary { border-color: #3b82f6; color: #e2e8f0; }
+    .pha-drop p { margin: 0; font-size: 0.875rem; }
+  #trends-pre {
+      margin: 0;
+      padding: 1rem;
+      max-height: 420px;
+      overflow: auto;
+      font-size: 12px;
+      line-height: 1.45;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      white-space: pre-wrap;
+      color: #cbd5e1;
+      background: #0b1220;
+      border-radius: 0.75rem;
+      border: 1px solid #374151;
+    }
+    button, .pha-drawer-body input, .pha-drawer-body select, .pha-drawer-body textarea {
+      padding: 0.5rem 0.875rem;
+      border-radius: 0.75rem;
+      border: 1px solid #4b5563;
+      background: rgba(241, 245, 249, 0.08);
+      color: #f1f5f9;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .pha-drawer-body input, .pha-drawer-body select, .pha-drawer-body textarea {
+      width: 100%;
+      cursor: text;
+      background: rgba(0, 0, 0, 0.4);
+    }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .pha-spinner {
+      display: inline-block;
+      width: 0.875rem;
+      height: 0.875rem;
+      border: 2px solid #475569;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: pha-spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes pha-spin { to { transform: rotate(360deg); } }
+    .pha-metrics-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+    .pha-metrics-table th, .pha-metrics-table td { padding: 0.35rem 0.5rem; border-bottom: 1px solid #374151; text-align: left; }
+    .pha-metrics-table input { width: 100%; padding: 0.25rem 0.4rem; font-size: 0.75rem; border: 1px solid #4b5563; border-radius: 0.35rem; background: #0b1220; color: #e2e8f0; }
+    .pha-page-ledger-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      max-height: 7.5rem;
+      overflow-y: auto;
+      margin: 0.35rem 0 0.5rem;
+      padding: 0.25rem;
+      border: 1px solid #374151;
+      border-radius: 0.75rem;
+      background: rgba(0, 0, 0, 0.25);
+    }
+    .pha-page-chip {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 2.75rem;
+      padding: 0.2rem 0.35rem;
+      font-size: 0.625rem;
+      line-height: 1.25;
+      border-radius: 0.45rem;
+      border: 1px solid #4b5563;
+      background: #111827;
+      color: #94a3b8;
+      cursor: pointer;
+    }
+    .pha-page-chip:hover { border-color: #64748b; color: #e2e8f0; }
+    .pha-page-chip.pending { border-color: #374151; color: #64748b; }
+    .pha-page-chip.success { border-color: #22c55e; color: #86efac; }
+    .pha-page-chip.skipped { border-color: #6b7280; color: #9ca3af; opacity: 0.85; }
+    .pha-page-chip.mismatch { border-color: #f59e0b; color: #fcd34d; }
+    .pha-page-chip.active { box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.65); }
+    .pha-page-chip .chip-count { font-size: 0.6rem; opacity: 0.9; }
+    #event-metrics-add-row {
+      margin-top: 0.35rem;
+      width: 100%;
+      font-size: 0.75rem;
+      padding: 0.35rem;
+      border: 1px dashed #4b5563;
+      border-radius: 0.5rem;
+      background: transparent;
+      color: #94a3b8;
+      cursor: pointer;
+    }
+    #event-metrics-add-row:hover { border-color: #3b82f6; color: #e2e8f0; }
+    #event-narratives-wrap { margin-top: 0.5rem; }
+    #event-narratives-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .pha-narrative-card {
+      border: 1px solid #374151;
+      border-radius: 0.75rem;
+      padding: 0.5rem 0.65rem;
+      background: linear-gradient(145deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.55));
+    }
+    .pha-narrative-card label { display: block; font-size: 0.65rem; color: #64748b; margin-bottom: 0.2rem; }
+    .pha-narrative-card input.pha-narrative-category,
+    .pha-narrative-card textarea.pha-narrative-content {
+      width: 100%;
+      font-size: 0.75rem;
+      border: 1px solid #4b5563;
+      border-radius: 0.45rem;
+      background: #0b1220;
+      color: #e2e8f0;
+      padding: 0.35rem 0.5rem;
+      box-sizing: border-box;
+    }
+    .pha-narrative-card textarea.pha-narrative-content { min-height: 4.5rem; resize: vertical; line-height: 1.45; }
+    .pha-narrative-card .pha-narrative-remove {
+      margin-top: 0.35rem;
+      font-size: 0.65rem;
+      color: #94a3b8;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+    }
+    .pha-narrative-card .pha-narrative-remove:hover { color: #f87171; }
+    #event-narratives-add { margin-top: 0.35rem; width: 100%; font-size: 0.75rem; padding: 0.35rem; border: 1px dashed #4b5563; border-radius: 0.5rem; background: transparent; color: #94a3b8; cursor: pointer; }
+    #event-narratives-add:hover { border-color: #22c55e; color: #bbf7d0; }
+    .pha-dual-track {
+      margin-top: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+    .pha-track-panel {
+      border-radius: 0.75rem;
+      padding: 0.55rem 0.65rem;
+      background: rgba(0, 0, 0, 0.2);
+    }
+    .pha-track-panel--metrics { border: 1px solid rgba(59, 130, 246, 0.45); }
+    .pha-track-panel--narratives { border: 1px solid rgba(34, 197, 94, 0.4); }
+    .pha-track-panel-head {
+      margin: 0 0 0.4rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .pha-track-panel--metrics .pha-track-panel-head { color: #93c5fd; }
+    .pha-track-panel--narratives .pha-track-panel-head { color: #86efac; }
+    .pha-track-empty {
+      margin: 0.25rem 0;
+      font-size: 0.7rem;
+      color: #64748b;
+      font-style: italic;
+    }
+    .pha-align-hint {
+      font-size: 0.7rem;
+      color: #94a3b8;
+      margin: 0 0 0.35rem;
+    }
+    .pha-align-hint.warn { color: #fcd34d; }
+    .pha-align-hint.ok { color: #86efac; }
+  </style>
+</head>
+<body class="pha-app">
+
+  <input id="data-drawer" type="checkbox" aria-hidden="true" />
+
+  <div class="pha-shell">
+    <aside class="pha-sidebar">
+      <div class="pha-sidebar-scroll">
+          <div class="pha-sidebar-logo">PHA</div>
+        <p class="pha-sidebar-tag">Health OS</p>
+        <span class="pha-nav-label">菜单</span>
+        <a href="#pha-main-top" class="pha-nav-link">仪表盘</a>
+        <label for="data-drawer" class="pha-nav-link">历史资产</label>
+        <label for="data-drawer" id="open-import-trigger-btn" class="pha-nav-link">数据导入</label>
+        <div class="pha-chat-sessions">
+          <div class="pha-chat-sessions-head">
+            <span>历史健康会话</span>
+            <button type="button" id="chat-session-new" title="新建会话">+ 新建</button>
+          </div>
+          <ul id="chat-session-list" aria-label="历史会话列表"></ul>
+        </div>
+      </div>
+      <div class="pha-sidebar-foot">
+        <button type="button" id="sidebar-deep-audit">生成深度审计报告</button>
+      </div>
+    </aside>
+
+    <main id="pha-main-top" class="pha-main-panel">
+      <div class="pha-topbar">
+        <div class="pha-badges">
+          <span id="conn-badge" class="pha-badge">连接中</span>
+          <span id="db-badge" class="pha-badge"><span id="db-status-text">DB</span></span>
+          <span id="pha-build" class="hidden">…</span>
+        </div>
+      </div>
+      <div class="pha-controls">
+        <select id="model-select"></select>
+        <input id="user-id" type="text" value="default" placeholder="user_id" />
+        <p id="model-hint"></p>
+      </div>
+      <div class="pha-hero-grid">
+        <div class="pha-card"><p class="pha-card-label">今日步数</p><p id="today-steps" class="pha-card-value">—</p><p class="pha-card-desc">近 7 日</p></div>
+        <div class="pha-card"><p class="pha-card-label">平均 HRV</p><p id="avg-hrv" class="pha-card-value">—</p><p class="pha-card-desc">RMSSD · ms</p></div>
+        <div class="pha-card"><p class="pha-card-label">睡眠时长</p><p id="sleep-duration" class="pha-card-value">—</p><p class="pha-card-desc">近 7 日均 · h</p></div>
+        <div id="stat-medical-card" class="pha-card" role="button" tabindex="0"><p class="pha-card-label">体检预警</p><p id="stat-medical" class="pha-card-value">—</p><p class="pha-card-desc">LLM 医生慢路径</p><button type="button" id="ai-doctor-review-btn">⚙️ AI 医生离线静默中</button></div>
+      </div>
+      <div class="pha-section">
+        <div class="pha-section-head">
+          <h2>趋势分析</h2>
+          <div class="pha-tabs">
+            <button type="button" class="tab-trends tab-active" data-trends-tab="charts">图表</button>
+            <button type="button" class="tab-trends" data-trends-tab="raw">原始数据</button>
+          </div>
+          <button type="button" id="refresh-trends">刷新</button>
+        </div>
+        <div id="trends-charts-panel">
+          <div class="pha-metric-picker-wrap">
+            <p class="pha-metric-picker-label">黄金核心指标 · 全自动无感穿戴（点击切换 · 图表即时刷新）</p>
+            <div id="golden-metric-tags" class="pha-golden-tags"></div>
+            <details id="more-metrics-container" class="pha-more-metrics">
+              <summary id="more-metrics-summary">展开更多健康指标报告 (查看全量体检与长尾体征)</summary>
+              <input type="text" id="metric-search-bar" placeholder="🔍 输入指标名称或英文缩写快速定位...（如 血糖、HDL）" autocomplete="off" />
+              <div id="grouped-metrics-list"></div>
+            </details>
+            <select id="metric-trend-picker" multiple class="pha-metric-picker" aria-hidden="true" tabindex="-1"></select>
+          </div>
+          <div id="trends-empty" class="hidden">暂无趋势数据，请上传 export.zip 或归仓体检报告</div>
+          <div id="dynamic-charts-grid" class="pha-dynamic-charts-grid"></div>
+        </div>
+        <div id="trends-raw-panel" class="hidden">
+          <pre id="trends-pre"></pre>
+        </div>
+      </div>
+
+      <div class="pha-chat-panel">
+        <div class="pha-chat-head">
+          <h2 style="margin:0;font-size:1rem;color:#f1f5f9">健康 AI 对话</h2>
+          <span style="font-size:0.75rem;color:#64748b">Cmd/Ctrl+Enter 发送 · SSE 流式</span>
+        </div>
+        <p id="active-model-chip"><span id="active-model-label">算力引擎：探测中…</span></p>
+        <div id="chat-stream"></div>
+
+        <div id="chat-status-bar" class="hidden" style="padding:0.5rem 0;font-size:0.75rem;color:#94a3b8">
+          <span class="pha-spinner"></span> <span id="chat-status-text">处理中…</span>
+        </div>
+        <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.5rem;flex-wrap:wrap">
+          <label for="chat-attach-file" class="pha-chat-attach-btn" title="上传体检/化验单（物理落盘）">📎 附件</label>
+          <input id="chat-attach-file" type="file" accept=".pdf,image/*" class="pha-hidden-file-input" />
+          <span id="chat-attach-label" style="font-size:0.75rem;color:#94a3b8"></span>
+        </div>
+        <textarea id="q" placeholder="向 PHA 提问：趋势解读、指标对比、训练建议…"></textarea>
+        <button type="button" id="send" disabled>发送</button>
+      </div>
+    </main>
+  </div>
+
+  <div class="pha-drawer-backdrop" aria-hidden="true"></div>
+  <aside id="data-import-panel" class="pha-drawer-panel" aria-label="数据导入">
+    <div class="pha-drawer-head">
+      <h2>数据导入</h2>
+      <label for="data-drawer" style="cursor:pointer;color:#94a3b8;font-size:0.875rem">关闭</label>
+    </div>
+    <div class="pha-drawer-body">
+      <section>
+        <p style="font-size:0.75rem;color:#64748b;margin:0 0 0.5rem">Apple Health export.zip（可多选队列）</p>
+        <div id="drop-zone-zip" class="pha-drop" tabindex="0" role="button">
+          <p>拖拽 export.zip 到此处 或点击选择</p>
+          <input id="zip-file" class="pha-hidden-file-input" type="file" accept=".zip" multiple />
+        </div>
+        <p id="import-filename" style="font-size:0.75rem;color:#64748b;margin:0.5rem 0"></p>
+        <button type="button" id="import-submit" disabled>开始导入</button>
+        <progress id="upload-progress" class="hidden" max="100" value="0" style="width:100%;margin-top:0.5rem"></progress>
+        <p id="upload-status" style="font-size:0.75rem;color:#94a3b8;margin-top:0.5rem"></p>
+      </section>
+      <section>
+        <h3 style="margin:0 0 0.75rem;font-size:0.875rem;color:#f1f5f9">同步状态</h3>
+        <p style="margin:0.25rem 0;font-size:0.875rem"><span style="color:#64748b">状态</span> <span id="sync-status-label">—</span></p>
+        <p style="margin:0.25rem 0;font-size:0.875rem"><span style="color:#64748b">最后记录</span> <span id="sync-last-time">—</span></p>
+        <p id="sync-counts-line" style="margin:0.25rem 0;font-size:0.75rem;color:#94a3b8"></p>
+        <progress id="sync-job-progress" class="hidden" max="100" value="0" style="width:100%;margin:0.5rem 0"></progress>
+        <p id="sync-status-message" style="font-size:0.75rem;color:#94a3b8"></p>
+      </section>
+      <section>
+        <h3 style="margin:0 0 0.75rem;font-size:0.875rem;color:#ef4444">危险操作</h3>
+        <div style="display:flex;flex-wrap:wrap;gap:0.5rem">
+          <button type="button" id="recompute-integrity-btn">重算数据库</button>
+          <button type="button" id="factory-reset-btn">清空所有健康数据</button>
+        </div>
+        <p id="recompute-integrity-status" style="font-size:0.75rem;color:#94a3b8;margin-top:0.5rem"></p>
+        <p id="factory-reset-status" style="font-size:0.75rem;color:#94a3b8"></p>
+      </section>
+      <section>
+        <h3 style="margin:0 0 0.75rem;font-size:0.875rem;color:#f1f5f9">事件录入 · 报告解析</h3>
+        <p style="font-size:0.75rem;color:#64748b;margin:0 0 0.5rem">上传 → AI 阅片 → 预览修改 → 提交（事件流 + SQLite 指标）</p>
+        <input id="report-file" class="pha-hidden-file-input" type="file" accept=".pdf,.png,.jpg,.jpeg,image/*" multiple />
+        <div class="pha-report-upload-row" style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;margin-bottom:0.5rem">
+          <button type="button" id="report-pick" style="flex:1;min-width:10rem">上传报告图/PDF</button>
+          <select id="pdf-model-override-selector" style="flex:1;min-width:11rem;font-size:0.75rem" title="PDF 文本结构化模型">
+            <option value="__auto__">智能选择 (Auto-Detect)</option>
+            <option value="FALLBACK_TO_HEURISTIC">纯规则提取 (Heuristic)</option>
+          </select>
+        </div>
+        <p id="vision-status" style="font-size:0.75rem;color:#94a3b8;margin:0.35rem 0"></p>
+        <progress id="vision-parse-progress" class="hidden" max="100" value="0" style="width:100%"></progress>
+        <div id="vision-page-ledger-wrap" class="hidden">
+          <p style="font-size:0.75rem;color:#64748b;margin:0.5rem 0 0">页面对账账本（点击页码查看/补录该页指标）</p>
+          <p id="vision-page-ledger-hint" style="font-size:0.7rem;color:#94a3b8;margin:0 0 0.25rem"></p>
+          <div id="vision-page-ledger" class="pha-page-ledger-grid" role="tablist" aria-label="PDF 页面对账"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.75rem">
+          <input id="event-date" type="date" />
+          <select id="event-type">
+            <option value="lab_report">化验</option>
+            <option value="visit">就诊</option>
+            <option value="medication">用药</option>
+            <option value="note">备注</option>
+          </select>
+          <input id="event-title" type="text" placeholder="标题" />
+          <input id="event-hospital" type="text" placeholder="医院 / 体检机构（可选，阅片自动回填）" />
+          <textarea id="event-summary" placeholder="描述 / AI 摘要" rows="3"></textarea>
+          <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.875rem">
+            <input id="event-milestone" type="checkbox" /> 里程碑
+          </label>
+        </div>
+        <div id="event-page-preview" class="pha-dual-track hidden">
+          <p id="event-align-hint" class="pha-align-hint"></p>
+          <section id="pha-track-metrics-panel" class="pha-track-panel pha-track-panel--metrics" aria-label="结构化数字指标">
+          <p id="event-metrics-page-label" class="pha-track-panel-head">版块 A · 结构化数字指标</p>
+          <p id="event-abnormal-hint" style="font-size:0.75rem;color:#fbbf24;margin:0 0 0.35rem"></p>
+          <p id="event-metrics-empty" class="pha-track-empty hidden">本页无可量化数字指标</p>
+          <div id="event-metrics-table-wrap" style="max-height:200px;overflow:auto;border:1px solid #374151;border-radius:0.5rem">
+            <table id="event-metrics-table" class="pha-metrics-table">
+              <thead><tr><th>项目</th><th>值</th><th>单位</th><th>参考</th></tr></thead>
+              <tbody id="event-metrics-body"></tbody>
+            </table>
+          </div>
+          <button type="button" id="event-metrics-add-row">+ 添加指标一行</button>
+          </section>
+          <section id="pha-track-narratives-panel" class="pha-track-panel pha-track-panel--narratives" aria-label="健康叙事">
+            <p id="event-narratives-label" class="pha-track-panel-head">版块 B · 非结构化健康叙事</p>
+            <p id="event-narratives-empty" class="pha-track-empty hidden">本页暂无叙事段落，可点击下方添加</p>
+            <div id="event-narratives-list"></div>
+            <button type="button" id="event-narratives-add">+ 添加叙事段落</button>
+          </section>
+        </div>
+        <button type="button" id="event-submit" style="width:100%;margin-top:0.75rem">提交事件并入库指标</button>
+        <p id="event-status" style="font-size:0.75rem;color:#94a3b8"></p>
+        <div style="margin-top:1rem">
+          <p style="font-size:0.75rem;color:#64748b;margin:0 0 0.5rem">已归档报告</p>
+          <div id="health-assets-toolbar" class="pha-assets-toolbar hidden">
+            <label class="pha-assets-select-all">
+              <input type="checkbox" id="health-assets-select-all" /> ☑️ 全选
+            </label>
+            <button type="button" id="health-assets-delete-batch" class="pha-assets-delete-batch">
+              💥 清空选中历史资产
+            </button>
+          </div>
+          <div id="health-assets-list" class="pha-assets-list"></div>
+        </div>
+      </section>
+    </div>
+  </aside>
+
+  <div id="parse-toast" class="hidden"><div class="alert"><span id="parse-toast-text"></span></div></div>
+
+  <dialog id="error-debug-modal">
+    <form method="dialog" style="margin:0">
+      <h3 id="error-debug-title" style="margin:0 0 1rem">解析错误</h3>
+      <pre id="error-debug-pre" style="max-height:60vh;overflow:auto;font-size:12px;white-space:pre-wrap"></pre>
+      <button type="submit" style="margin-top:1rem">关闭</button>
+    </form>
+  </dialog>
+
+  <dialog id="medical-alerts-modal">
+    <form method="dialog" style="margin:0;min-width:min(32rem,90vw)">
+      <h3 style="margin:0 0 0.5rem">体检预警</h3>
+      <p id="medical-alerts-summary" style="font-size:0.875rem;color:#94a3b8"></p>
+      <div id="medical-alerts-list" style="margin:1rem 0;max-height:50vh;overflow:auto;display:flex;flex-direction:column;gap:0.5rem"></div>
+      <button type="submit">关闭</button>
+    </form>
+  </dialog>
+
+  <dialog id="asset-json-modal">
+    <form method="dialog" style="margin:0;min-width:min(36rem,92vw)">
+      <p id="asset-json-meta" style="font-size:0.75rem;color:#64748b"></p>
+      <pre id="asset-json-pre" style="max-height:60vh;overflow:auto;font-size:12px;white-space:pre-wrap"></pre>
+      <button type="submit" style="margin-top:1rem">关闭</button>
+    </form>
+  </dialog>
+
+  <dialog id="consultation-modal" style="max-width:min(52rem,96vw)">
+    <form method="dialog" style="margin:0">
+      <h3 style="margin:0 0 0.35rem">PHA 大脑 v1.7 · 工业级离线大审计</h3>
+      <p id="consultation-meta" style="font-size:0.75rem;color:#64748b"></p>
+      <section class="pha-audit-cot-section" aria-label="本地核心思维链">
+        <p class="pha-audit-cot-head">⚙️ 本地核心思维链 (CoT)</p>
+        <p id="consultation-cot-shimmer" class="pha-cot-shimmer">M4 显存已满载 · 本地 DeepSeek-R1:14b 正在疯狂推导中...</p>
+        <pre id="consultation-thinking-pre" aria-live="polite"></pre>
+      </section>
+      <section class="pha-audit-report-section" aria-label="终极健康大白皮书">
+        <p class="pha-audit-report-head">📄 终极健康大白皮书</p>
+        <div id="consultation-report-pre" class="prose-pha"></div>
+      </section>
+      <div class="pha-consultation-actions">
+        <button type="button" id="consultation-export-md">📥 导出 Markdown</button>
+        <button type="button" id="consultation-followup-chat">💬 带着报告去追问</button>
+      </div>
+      <button type="submit" style="margin-top:0.85rem">关闭</button>
+    </form>
+  </dialog>
+
+  <script src="/static/js/app.js?v=__PHA_ASSET_VERSION__"></script>
+</body>
+</html>
