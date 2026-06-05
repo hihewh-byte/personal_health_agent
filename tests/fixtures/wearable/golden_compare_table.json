@@ -1,0 +1,114 @@
+{
+  "schema_version": "wearable_golden_compare_table_v1",
+  "fixture_id": "msg310_baseline_90d_standard_compare",
+  "source": "msg-310 定账 + msg-311 数仓摘要（脱敏 · 合成 baseline）",
+  "reference_date": "2026-05-31",
+  "window_90d": {
+    "start": "2026-03-03",
+    "end": "2026-05-31",
+    "n_days": 80
+  },
+  "inputs": {
+    "golden_ocr_fixture": "apple_health_screens_6panel_msg310",
+    "user_message_standard": "对比过去90天是否正常，尤其睡眠",
+    "user_message_workout": "锻炼心率范围怎么样",
+    "baseline_90d": {
+      "sleep_time_asleep": { "mean": 8.0, "range_min": 6.4, "range_max": 9.9, "unit": "hr" },
+      "hrv_rmssd_ms": { "mean": 32.8, "range_min": 23.1, "range_max": 45.0, "unit": "ms" },
+      "resting_heart_rate_bpm": { "mean": 57.4, "range_min": 51.0, "range_max": 64.0, "unit": "bpm" },
+      "spo2_percent": { "mean": 96.2, "range_min": 94.0, "range_max": 98.0, "unit": "%" },
+      "respiratory_rate": { "mean": 13.2, "range_min": 11.0, "range_max": 17.5, "unit": "breaths/min" }
+    }
+  },
+  "expected_standard": {
+    "schema_version": "wearable_compare_table_v1",
+    "rows": [
+      {
+        "metric_id": "sleep_time_asleep",
+        "row_kind": "comparable_90d",
+        "snapshot_value": "8hr43min",
+        "baseline_90d_value": "8.0",
+        "baseline_90d_range": "[6.4-9.9]",
+        "verdict": "within_range"
+      },
+      {
+        "metric_id": "hrv_rmssd_ms",
+        "row_kind": "comparable_90d",
+        "snapshot_value": "30",
+        "baseline_90d_value": "32.8",
+        "baseline_90d_range": "[23.1-45.0]",
+        "verdict": "within_range"
+      },
+      {
+        "metric_id": "resting_heart_rate_bpm",
+        "row_kind": "comparable_90d",
+        "snapshot_value": "58",
+        "baseline_90d_value": "57.4",
+        "baseline_90d_range": "[51.0-64.0]",
+        "verdict": "within_range"
+      },
+      {
+        "metric_id": "spo2_percent",
+        "row_kind": "comparable_90d",
+        "snapshot_value": "96",
+        "baseline_90d_value": "96.2",
+        "baseline_90d_range": "[94.0-98.0]",
+        "verdict": "within_range"
+      },
+      {
+        "metric_id": "respiratory_rate",
+        "row_kind": "comparable_90d",
+        "snapshot_value": "11.0-17.5",
+        "baseline_90d_value": "13.2",
+        "baseline_90d_range": "[11.0-17.5]",
+        "verdict": "within_range"
+      },
+      {
+        "metric_id": "sleep_deep",
+        "row_kind": "snapshot_only",
+        "snapshot_value": "1hr9min",
+        "baseline_90d_value": "NO_BASELINE",
+        "verdict": "snapshot_only"
+      },
+      {
+        "metric_id": "sleep_rem",
+        "row_kind": "snapshot_only",
+        "snapshot_value": "2hr17min",
+        "baseline_90d_value": "NO_BASELINE",
+        "verdict": "snapshot_only"
+      }
+    ],
+    "forbidden_rows": [],
+    "forbidden_reply_patterns": [
+      "数仓摘要平均",
+      "近90天的平均值",
+      "1hr52",
+      "2hr36"
+    ]
+  },
+  "expected_spo2_absent": {
+    "description": "省略 SpO2 屏时不得出现 spo2 对比行",
+    "omit_panel_indices": [3],
+    "forbidden_rows": ["spo2_percent"]
+  },
+  "expected_workout_intent": {
+    "user_message": "锻炼心率范围怎么样",
+    "additional_rows": [
+      {
+        "metric_id": "workout_heart_rate_range_bpm",
+        "row_kind": "snapshot_only",
+        "snapshot_value": "76-147",
+        "baseline_90d_value": "NO_BASELINE",
+        "verdict": "snapshot_only"
+      },
+      {
+        "metric_id": "workout_count_recent",
+        "row_kind": "snapshot_only",
+        "snapshot_value": "8",
+        "baseline_90d_value": "NO_BASELINE",
+        "verdict": "snapshot_only"
+      }
+    ]
+  },
+  "verdict_rules_ref": "stage3d-gamma-wearable-compare-contract-spec.md §12 Q1 · 区间对齐法"
+}

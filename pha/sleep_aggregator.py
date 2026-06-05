@@ -98,6 +98,30 @@ def compute_sleep_hours_union(segments: Sequence[SleepSegment]) -> Tuple[float, 
     return total_seconds / 3600.0, 0.0
 
 
+def sleep_stage_kind_from_hk_value(value: str) -> str:
+    """Classify HKCategoryTypeIdentifierSleepAnalysis value string."""
+    v = (value or "").lower()
+    if "awake" in v:
+        return "awake"
+    if "deep" in v:
+        return "deep"
+    if "rem" in v:
+        return "rem"
+    if "core" in v:
+        return "core"
+    if "asleep" in v and "inbed" not in v:
+        return "asleep"
+    return "unknown"
+
+
+def sleep_stage_kind_from_sample_id(sample_id: str) -> str:
+    """Parse stage from ``make_sleep_sample_id`` pipe-delimited id (value in 4th field)."""
+    parts = (sample_id or "").split("|")
+    if len(parts) < 4:
+        return "unknown"
+    return sleep_stage_kind_from_hk_value(parts[3])
+
+
 def make_sleep_sample_id(
     *,
     record_type: str,

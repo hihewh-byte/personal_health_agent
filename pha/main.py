@@ -11,7 +11,7 @@ import tempfile
 from contextlib import asynccontextmanager
 from datetime import date, datetime, time
 from pathlib import Path
-from typing import Any, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 import httpx
 from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, Query, UploadFile
@@ -24,6 +24,7 @@ from pha.build_marker import PHA_SERVER_BUILD
 from pha.console import CONSOLE_PAGE_HTML
 from pha.dashboard_api import router as dashboard_router
 from pha.metrics_api import router as metrics_api_router
+from pha.wearable_api import router as wearable_api_router
 from pha.data_importer import AppleImportResult, run_import_from_path
 from pha.health_data import ImportIncompleteError
 from pha.import_jobs import create_job, get_job
@@ -131,6 +132,7 @@ async def _lifespan(_app: FastAPI):
 app = FastAPI(title="PHA", version=PHA_SERVER_BUILD, lifespan=_lifespan)
 app.include_router(dashboard_router)
 app.include_router(metrics_api_router)
+app.include_router(wearable_api_router)
 
 _STATIC_DIR = Path(__file__).resolve().parent / "static"
 if _STATIC_DIR.is_dir():
@@ -243,6 +245,48 @@ def _run_import_background(job_id: str, path: str, user_id: str, filename: str) 
             logger.warning("Failed to remove temp import file %s", path)
 
 
+def _run_workout_backfill_background(job_id: str, path: str, user_id: str, filename: str) -> None:
+    """Incremental Workout-only parse — does not clear wearable_daily."""
+    from pha.data_importer import AppleHealthParser
+    from pha.import_jobs import update_job
+
+    uid = (user_id or "default").strip() or "default"
+    try:
+        update_job(job_id, status="running", message="正在增量同步锻炼（HKWorkout）…")
+        with open(path, "rb") as fh:
+            result = AppleHealthParser(uid).backfill_workouts_from_zip(
+                fh,
+                filename=filename,
+                on_progress=lambda c, t, m: update_job(
+                    job_id,
+                    status="running",
+                    message=m,
+                    percent=100.0 if t else 0.0,
+                ),
+            )
+        update_job(
+            job_id,
+            status="complete",
+            percent=100.0,
+            message=result.message,
+            import_complete=True,
+        )
+        upsert_import_sync_state(
+            uid,
+            status="complete",
+            message=result.message,
+        )
+    except Exception as exc:
+        update_job(job_id, status="failed", import_complete=False, error=str(exc), message=str(exc))
+        upsert_import_sync_state(uid, status="failed", message=str(exc))
+        raise
+    finally:
+        try:
+            os.unlink(path)
+        except OSError:
+            logger.warning("Failed to remove temp import file %s", path)
+
+
 @app.post("/data/upload", response_model=AppleImportResult)
 async def data_upload(
     background_tasks: BackgroundTasks,
@@ -282,6 +326,111 @@ async def data_upload(
         zip_filename=file.filename or "export.zip",
         job_id=job.job_id,
         message="导入已在后台启动；请轮询 /data/import/status/{job_id} 查看进度。",
+    )
+
+
+def _enqueue_hk_workout_backfill(
+    background_tasks: BackgroundTasks,
+    *,
+    user_id: str,
+    zip_bytes: bytes,
+    filename: str,
+    clear_existing: bool,
+) -> AppleImportResult:
+    uid = (user_id or "default").strip() or "default"
+    if clear_existing:
+        from pha.workout_storage import clear_workout_sessions
+
+        clear_workout_sessions(uid)
+    job = create_job(user_id=uid)
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
+    try:
+        tmp.write(zip_bytes)
+        tmp.flush()
+        tmp_path = tmp.name
+    finally:
+        tmp.close()
+    background_tasks.add_task(
+        _run_workout_backfill_background,
+        job.job_id,
+        tmp_path,
+        uid,
+        filename,
+    )
+    return AppleImportResult(
+        ok=True,
+        user_id=uid,
+        zip_filename=filename,
+        job_id=job.job_id,
+        message="锻炼增量同步已启动（不清空步数/睡眠/HRV 等已有数据）；请查看同步状态。",
+    )
+
+
+@app.get("/data/sync-modules")
+def data_list_sync_modules() -> dict[str, Any]:
+    """Registry 声明的可增量同步模块（Wave 3d-δ-c）。"""
+    from pha.wearable_metric_registry import list_ingest_modules
+
+    return {"modules": list_ingest_modules()}
+
+
+@app.post("/data/sync-module/{module_id}", response_model=AppleImportResult)
+async def data_sync_module(
+    module_id: str,
+    background_tasks: BackgroundTasks,
+    user_id: str = Form("default"),
+    file: UploadFile = File(..., description="Apple Health export.zip"),
+    clear_existing: bool = Form(False),
+) -> AppleImportResult:
+    """按 Registry ``ingest_modules`` 触发增量同步（当前仅 ``hk_workout``）。"""
+    from pha.wearable_metric_registry import ingest_module
+
+    spec = ingest_module(module_id)
+    if not spec:
+        raise HTTPException(status_code=404, detail=f"unknown ingest module_id={module_id!r}")
+    fname = (file.filename or "").strip().lower()
+    if not fname.endswith(".zip"):
+        raise HTTPException(status_code=400, detail="file must be a .zip (Apple Health export.zip)")
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="empty upload")
+    mid = (module_id or "").strip()
+    if mid == "hk_workout":
+        return _enqueue_hk_workout_backfill(
+            background_tasks,
+            user_id=user_id,
+            zip_bytes=content,
+            filename=file.filename or "export.zip",
+            clear_existing=clear_existing,
+        )
+    raise HTTPException(status_code=501, detail=f"ingest module {mid!r} is registered but not wired")
+
+
+@app.post("/data/backfill-workouts", response_model=AppleImportResult)
+async def data_backfill_workouts(
+    background_tasks: BackgroundTasks,
+    user_id: str = Form("default"),
+    file: UploadFile = File(..., description="Apple Health export.zip（仅增量同步锻炼，不清空已有数仓）"),
+    clear_existing: bool = Form(False, description="清空该用户已有 Workout 会话后再写入"),
+) -> AppleImportResult:
+    """
+    Dashboard 入口：增量解析 zip 中的 ``<Workout>``，**不**调用 ``clear_wearable_storage``。
+
+    用于历史全量导入早于 δ-b 时补全锻炼基线；新上传请仍用 ``/data/upload``（已含 Workout 解析）。
+    等价于 ``POST /data/sync-module/hk_workout``（保留兼容）。
+    """
+    fname = (file.filename or "").strip().lower()
+    if not fname.endswith(".zip"):
+        raise HTTPException(status_code=400, detail="file must be a .zip (Apple Health export.zip)")
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="empty upload")
+    return _enqueue_hk_workout_backfill(
+        background_tasks,
+        user_id=user_id,
+        zip_bytes=content,
+        filename=file.filename or "export.zip",
+        clear_existing=clear_existing,
     )
 
 
@@ -795,6 +944,15 @@ class ChatRequest(BaseModel):
     extra_system_context: str = Field(default="")
     attachment_path: Optional[str] = Field(default=None, description="Server-local path from /api/chat/attachments")
     attachment_name: Optional[str] = Field(default=None)
+    attachment_paths: Optional[List[str]] = Field(
+        default=None,
+        description="Multiple attachments (front + Supplement Facts); merged server-side",
+    )
+    attachment_names: Optional[List[str]] = Field(default=None)
+    attachment_parsed_parts: Optional[List[Dict[str, Any]]] = Field(
+        default=None,
+        description="Pre-parsed payloads from /api/chat/attachments/parse (multi-image merge)",
+    )
 
 
 class ChatAttachmentParseRequest(BaseModel):
@@ -1014,7 +1172,8 @@ def api_assets_delete_batch(body: AssetDeleteBatchRequest) -> dict[str, Any]:
 @app.post("/api/chat")
 async def api_chat_stream(body: ChatRequest) -> StreamingResponse:
     """SSE streaming health chat (replaces blocking ``/agent/ask`` for UI)."""
-    if not (body.message or "").strip() and not (body.attachment_path or "").strip():
+    has_att = bool((body.attachment_path or "").strip()) or bool(body.attachment_paths)
+    if not (body.message or "").strip() and not has_att:
         raise HTTPException(status_code=400, detail="message or attachment_path required")
 
     async def event_generator():
@@ -1026,6 +1185,9 @@ async def api_chat_stream(body: ChatRequest) -> StreamingResponse:
             extra_system_context=body.extra_system_context or "",
             attachment_path=body.attachment_path,
             attachment_name=body.attachment_name,
+            attachment_paths=body.attachment_paths,
+            attachment_names=body.attachment_names,
+            attachment_parsed_parts=body.attachment_parsed_parts,
         ):
             yield f"data: {payload}\n\n"
             await asyncio.sleep(0)
@@ -1080,4 +1242,6 @@ def create_app() -> FastAPI:
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("pha.main:app", host="127.0.0.1", port=8787, reload=False)
+    _host = (os.environ.get("PHA_HOST") or "127.0.0.1").strip() or "127.0.0.1"
+    _port = int((os.environ.get("PHA_PORT") or "8787").strip() or "8787")
+    uvicorn.run("pha.main:app", host=_host, port=_port, reload=False)

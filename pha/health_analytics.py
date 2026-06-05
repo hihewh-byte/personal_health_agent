@@ -275,3 +275,69 @@ def build_analytics_snapshot(
     if len(text) > max_len:
         return text[: max_len - 1] + "…"
     return text
+
+
+def build_wearable_macro_analytics_snapshot(
+    rows: Sequence[WearableDailySummary],
+    *,
+    start_date: date,
+    end_date: date,
+    reference_date: date,
+    user_message: str = "",
+    metrics: Optional[Sequence[str]] = None,
+) -> str:
+    """
+    Macro-only narrative for wearable screenshot-compare turns.
+
+    Omits per-metric means/ranges and HRV-lowest-day tables so LLM cannot hijack
+    them for 90d compare (CompareTable remains the SSO for compare digits).
+    """
+    if not rows:
+        return ""
+
+    mset = {str(x).strip().lower() for x in (metrics or ()) if str(x).strip()}
+    dynamic = bool(mset)
+
+    lines: List[str] = []
+    anomaly = validate_common_sense(rows)
+    if anomaly:
+        lines.append(anomaly)
+    lines.append(
+        f"区间 {start_date.isoformat()}～{end_date.isoformat()}，共 {len(rows)} 天有效记录。",
+    )
+
+    pearsons: List[Tuple[str, Callable, Callable]] = []
+    if not dynamic or ("steps" in mset and "hrv" in mset):
+        pearsons.append(("步数-HRV", lambda r: r.steps, lambda r: r.hrv_rmssd_ms))
+    if not dynamic or ("sleep" in mset and "hrv" in mset):
+        pearsons.append(("睡眠-HRV", lambda r: r.sleep_hours, lambda r: r.hrv_rmssd_ms))
+    if not dynamic or ("rhr" in mset and "hrv" in mset):
+        pearsons.append(("静息心率-HRV", lambda r: r.resting_heart_rate_bpm, lambda r: r.hrv_rmssd_ms))
+
+    for name, pa, pb in pearsons:
+        xs, ys = _paired(rows, pa, pb)
+        r = _pearson(xs, ys)
+        if r is not None:
+            lines.append(f"Pearson {name}={r:+.2f}(n={len(xs)})；")
+
+    monthly = _monthly_means(rows)
+    if len(monthly) >= 2:
+        months = sorted(monthly.keys())
+        last_m, prev_m = months[-1], months[-2]
+        lm, pm = monthly[last_m], monthly[prev_m]
+        parts: List[str] = []
+        month_keys = (
+            [("hrv", "HRV"), ("sleep", "睡眠"), ("steps", "步数")]
+            if not dynamic
+            else [(k, lbl) for k, lbl in (("hrv", "HRV"), ("sleep", "睡眠"), ("steps", "步数")) if k in mset]
+        )
+        for mk, label in month_keys:
+            a, b = lm.get(mk), pm.get(mk)
+            if a is not None and b is not None:
+                delta = a - b
+                sign = "+" if delta >= 0 else ""
+                parts.append(f"{label}{prev_m}→{last_m}{sign}{delta:.1f}")
+        if parts:
+            lines.append("月度变化：" + "，".join(parts) + "；")
+
+    return "".join(lines)

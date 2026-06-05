@@ -7,7 +7,7 @@ import logging
 import sqlite3
 from datetime import date, datetime, time
 from pathlib import Path
-from typing import Callable, List, Optional, Sequence
+from typing import Any, Callable, List, Mapping, Optional, Sequence, Tuple
 
 from pha.date_parser import safe_parse_date, safe_parse_datetime
 from pha.models import WearableDailySummary
@@ -40,6 +40,11 @@ _WEARABLE_DAILY_EXTENSION_COLS = (
     "respiratory_rate_bpm",
     "vo2max_ml_kg_min",
     "wrist_temp_c",
+    "sleep_deep_hours",
+    "sleep_rem_hours",
+    "workout_session_count",
+    "workout_hr_min_bpm",
+    "workout_hr_max_bpm",
 )
 _WEARABLE_DAILY_DATA_COLS = (
     "user_id",
@@ -234,10 +239,16 @@ def clear_wearable_storage(user_id: Optional[str] = None) -> None:
             conn.execute("DELETE FROM wearable_data WHERE user_id = ?", (uid,))
             conn.execute("DELETE FROM wearable_sleep_segments WHERE user_id = ?", (uid,))
             conn.execute("DELETE FROM wearable_daily WHERE user_id = ?", (uid,))
+            from pha.workout_storage import clear_workout_sessions
+
+            clear_workout_sessions(uid)
         else:
             conn.execute("DELETE FROM wearable_data")
             conn.execute("DELETE FROM wearable_sleep_segments")
             conn.execute("DELETE FROM wearable_daily")
+            from pha.workout_storage import clear_workout_sessions
+
+            clear_workout_sessions()
         conn.commit()
         logger.info("Cleared wearable storage for user_id=%s", user_id or "ALL")
     finally:
@@ -338,6 +349,9 @@ def init_schema(conn: Optional[sqlite3.Connection] = None) -> None:
         db.commit()
         _migrate_wearable_schema(db)
         _migrate_import_sync_schema(db)
+        from pha.workout_storage import init_workout_schema
+
+        init_workout_schema(db)
     finally:
         if own:
             db.close()
@@ -513,11 +527,20 @@ def get_wearable_record_counts(user_id: str) -> dict:
             "SELECT COUNT(*) FROM wearable_daily WHERE user_id = ?",
             (uid,),
         ).fetchone()[0]
+        workout_sessions = 0
+        try:
+            workout_sessions = conn.execute(
+                "SELECT COUNT(*) FROM wearable_workout_sessions WHERE user_id = ?",
+                (uid,),
+            ).fetchone()[0]
+        except sqlite3.OperationalError:
+            pass
         return {
             "sleep_segments": int(sleep_seg),
             "steps_samples": int(steps),
             "heart_rate_samples": int(heart),
             "daily_days": int(daily_days),
+            "workout_sessions": int(workout_sessions),
         }
     finally:
         conn.close()
@@ -678,8 +701,34 @@ def query_wearable_hr_samples_in_range(
         conn.close()
 
 
+def _sleep_stage_hours_from_segment_rows(
+    raw_segs: Sequence[Mapping[str, Any]],
+) -> Tuple[Optional[float], Optional[float]]:
+    """Sum deep/REM asleep segment durations (hours) from DB segment rows."""
+    from pha.sleep_aggregator import sleep_stage_kind_from_sample_id
+
+    deep_s = 0.0
+    rem_s = 0.0
+    for raw in raw_segs:
+        if int(raw.get("is_awake") or 0):
+            continue
+        start = safe_parse_datetime(raw["start_time"])
+        end = safe_parse_datetime(raw["end_time"])
+        if start is None or end is None or end <= start:
+            continue
+        dur = (end - start).total_seconds()
+        stage = sleep_stage_kind_from_sample_id(str(raw.get("sample_id") or ""))
+        if stage == "deep":
+            deep_s += dur
+        elif stage == "rem":
+            rem_s += dur
+    deep_h = deep_s / 3600.0 if deep_s > 0 else None
+    rem_h = rem_s / 3600.0 if rem_s > 0 else None
+    return deep_h, rem_h
+
+
 def rebuild_daily_sleep_from_segments(user_id: str) -> int:
-    """Recompute ``wearable_daily.sleep_hours`` from stored segment union."""
+    """Recompute daily sleep union + deep/REM stage hours from stored segments."""
     from pha.data_processor import SleepSegment, compute_sleep_hours_union
 
     uid = (user_id or "default").strip() or "default"
@@ -734,6 +783,9 @@ def rebuild_daily_sleep_from_segments(user_id: str) -> int:
             by_day[d] = row
         row.sleep_hours = sleep_h if sleep_h > 0 else None
         row.awake_duration_hours = awake_h
+        deep_h, rem_h = _sleep_stage_hours_from_segment_rows(raw_segs)
+        row.sleep_deep_hours = deep_h
+        row.sleep_rem_hours = rem_h
         if asleep:
             row.sleep_start_time = min(s.start for s in asleep)
         updated += 1
@@ -767,6 +819,8 @@ def _row_to_model(row: sqlite3.Row) -> WearableDailySummary:
         resting_heart_rate_bpm=row["resting_heart_rate_bpm"],
         hrv_rmssd_ms=row["hrv_rmssd_ms"],
         sleep_hours=row["sleep_hours"],
+        sleep_deep_hours=_opt_float("sleep_deep_hours"),
+        sleep_rem_hours=_opt_float("sleep_rem_hours"),
         awake_duration_hours=row["awake_duration_hours"],
         sleep_start_time=sleep_start,
         active_energy_kcal=_opt_float("active_energy_kcal"),
@@ -795,6 +849,11 @@ def _model_to_tuple(row: WearableDailySummary) -> tuple:
         row.respiratory_rate_bpm,
         row.vo2max_ml_kg_min,
         row.wrist_temp_c,
+        row.sleep_deep_hours,
+        row.sleep_rem_hours,
+        row.workout_session_count,
+        row.workout_hr_min_bpm,
+        row.workout_hr_max_bpm,
     )
 
 

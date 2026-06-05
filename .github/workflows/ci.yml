@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  selfcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-eng
+
+      - name: Install Python deps
+        run: pip install -r requirements.txt
+
+      - name: Doctor (offline — Ollama expected to fail)
+        run: PYTHONPATH=. python scripts/doctor.py --quick || true
+
+      - name: Offline selfcheck suite
+        run: bash scripts/run_selfchecks.sh
+
+      - name: Import smoke test
+        run: PYTHONPATH=. python -c "from pha.main import create_app; create_app()"

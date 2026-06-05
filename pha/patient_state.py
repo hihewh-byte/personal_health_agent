@@ -25,6 +25,14 @@ _LAB_ROW_HINT_RE = re.compile(
 )
 
 
+def _format_overlay_value(val: Any) -> str:
+    if val is None:
+        return "—"
+    if isinstance(val, (int, float)):
+        return f"{val:g}"
+    return str(val).strip() or "—"
+
+
 def _fmt_val(row: MedicalMetricRow) -> str:
     if row.value is None:
         return "—"
@@ -150,10 +158,64 @@ def _wearable_ledger_lines(
     return lines
 
 
+def _wearable_attachment_overlay_lines(
+    parsed_payload: Dict[str, Any],
+    metrics: List[Dict[str, Any]],
+) -> List[str]:
+    count = int(parsed_payload.get("attachment_count") or 1)
+    conf = str(parsed_payload.get("parse_confidence") or "").strip()
+    lines = [
+        f"【本轮穿戴截图定账 · {len(metrics)} 项 KPI · {count} 张 · conf={conf or '—'}】",
+    ]
+    for m in metrics[:32]:
+        if not isinstance(m, dict):
+            continue
+        name = (m.get("metric_id") or m.get("metric_name") or "?").strip()
+        val = m.get("value")
+        if val is None:
+            continue
+        unit = (m.get("unit") or "").strip()
+        sub = (m.get("sub_value") or "").strip()
+        val_s = _format_overlay_value(val)
+        if sub and sub not in val_s:
+            val_s = f"{val_s} {sub}".strip()
+        if unit and unit.lower() not in val_s.lower():
+            val_s = f"{val_s} {unit}".strip()
+        lines.append(f"| {name} | {val_s} | — | 截图定账 |")
+    return lines
+
+
 def _parsed_attachment_overlay_lines(parsed_payload: Optional[Dict[str, Any]]) -> List[str]:
     if not parsed_payload:
         return []
+    wearable_metrics = [
+        m for m in (parsed_payload.get("wearable_metrics") or []) if isinstance(m, dict)
+    ]
+    fam = str(parsed_payload.get("document_family") or "").strip().lower()
+    if wearable_metrics or fam == "wearable":
+        metrics = wearable_metrics or [
+            m for m in (parsed_payload.get("metrics") or []) if isinstance(m, dict)
+        ]
+        if metrics:
+            return _wearable_attachment_overlay_lines(parsed_payload, metrics)
     metrics = list(parsed_payload.get("metrics") or [])
+    narratives = list(parsed_payload.get("narratives") or [])
+    if not metrics and narratives:
+        rd = (parsed_payload.get("report_date") or "")[:10] or "本轮附件"
+        lines = [
+            f"【本轮附件解析 · 叙事/标签 · report_date={rd} · narratives={len(narratives)}】",
+        ]
+        for n in narratives[:32]:
+            if not isinstance(n, dict):
+                continue
+            cat = (n.get("category") or "未分类").strip()
+            content = (n.get("content") or n.get("summary") or "").strip()
+            if content:
+                lines.append(f"- [{cat}] {content[:400]}")
+        summary = (parsed_payload.get("vision_summary") or "").strip()
+        if summary and len(lines) < 6:
+            lines.append(f"摘要: {summary[:600]}")
+        return lines
     if not metrics:
         return []
     rd = (parsed_payload.get("report_date") or "")[:10] or "本轮附件"
@@ -164,6 +226,7 @@ def _parsed_attachment_overlay_lines(parsed_payload: Optional[Dict[str, Any]]) -
     for m in metrics[:48]:
         name = (
             m.get("metric_name")
+            or m.get("metric_id")
             or m.get("name_zh")
             or m.get("item")
             or m.get("metric_code")
@@ -175,7 +238,7 @@ def _parsed_attachment_overlay_lines(parsed_payload: Optional[Dict[str, Any]]) -
             continue
         unit = (m.get("unit") or "").strip()
         ref_s = (m.get("reference_range") or "—").strip()
-        val_s = f"{val:g}{(' ' + unit) if unit else ''}"
+        val_s = f"{_format_overlay_value(val)}{(' ' + unit) if unit else ''}"
         lines.append(f"| {name} | {val_s} | {ref_s} | 附件解析·{rd} |")
     return lines
 

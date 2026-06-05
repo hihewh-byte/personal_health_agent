@@ -998,7 +998,7 @@
         </div>
         <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.5rem;flex-wrap:wrap">
           <label for="chat-attach-file" class="pha-chat-attach-btn" title="上传体检/化验单（物理落盘）">📎 附件</label>
-          <input id="chat-attach-file" type="file" accept=".pdf,image/*" class="pha-hidden-file-input" />
+          <input id="chat-attach-file" type="file" accept=".pdf,image/*" multiple class="pha-hidden-file-input" />
           <span id="chat-attach-label" style="font-size:0.75rem;color:#94a3b8"></span>
         </div>
         <textarea id="q" placeholder="向 PHA 提问：趋势解读、指标对比、训练建议…"></textarea>
@@ -1022,6 +1022,12 @@
         </div>
         <p id="import-filename" style="font-size:0.75rem;color:#64748b;margin:0.5rem 0"></p>
         <button type="button" id="import-submit" disabled>开始导入</button>
+        <label for="sync-module-select" style="display:block;font-size:0.75rem;color:#94a3b8;margin:0.75rem 0 0.35rem">增量同步模块（Registry）</label>
+        <select id="sync-module-select" style="width:100%;padding:0.45rem 0.5rem;border-radius:0.375rem;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:0.8125rem">
+          <option value="">加载模块列表…</option>
+        </select>
+        <button type="button" id="sync-module-submit" disabled style="margin-top:0.5rem">增量同步所选模块（不清库）</button>
+        <p id="sync-module-hint" style="font-size:0.7rem;color:#64748b;margin:0.35rem 0 0">选择 export.zip 与模块：仅补 Registry 声明的增量管道，不删除步数/睡眠/HRV 等已有记录。</p>
         <progress id="upload-progress" class="hidden" max="100" value="0" style="width:100%;margin-top:0.5rem"></progress>
         <p id="upload-status" style="font-size:0.75rem;color:#94a3b8;margin-top:0.5rem"></p>
       </section>

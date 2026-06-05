@@ -202,6 +202,11 @@ def safe_json_parse(raw_output: str) -> Any:
     raise ValueError("No valid JSON found in model output")
 
 
+def robust_json_cleaner(raw_output: str) -> dict[str, Any]:
+    """Stage 3A alias — force-extract a JSON object from model prose/fences."""
+    return safe_json_object(raw_output)
+
+
 def safe_json_object(raw_output: str) -> dict[str, Any]:
     """Like :func:`safe_json_parse` but require a top-level object."""
     parsed = safe_json_parse(raw_output)

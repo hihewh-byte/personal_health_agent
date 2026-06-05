@@ -1,0 +1,131 @@
+{
+  "schema_version": "wearable_metric_registry_v1",
+  "version": "2026.06.01",
+  "description": "PHA 穿戴指标注册表 — CompareTable / L1 聚合 / 增量同步模块的唯一配置源（Wave 3d-δ-c）",
+  "ingest_modules": [
+    {
+      "module_id": "hk_workout",
+      "display_zh": "锻炼 (HKWorkout)",
+      "requires_zip": true,
+      "clears_on_full_import": false,
+      "legacy_endpoint": "/data/backfill-workouts"
+    }
+  ],
+  "metrics": [
+    {
+      "metric_id": "sleep_time_asleep",
+      "l1": { "kind": "wearable_daily", "field": "sleep_hours" },
+      "compare": {
+        "comparable_90d": true,
+        "rollup": "mean_minmax",
+        "baseline_source": "wearable.summary"
+      },
+      "snapshot": { "unit": "hr", "parser": "sleep_duration" },
+      "ui": { "label_zh": "睡眠总时长" },
+      "intent_hints": ["睡眠", "sleep_time", "asleep", "时长"]
+    },
+    {
+      "metric_id": "hrv_rmssd_ms",
+      "l1": { "kind": "wearable_daily", "field": "hrv_rmssd_ms" },
+      "compare": {
+        "comparable_90d": true,
+        "rollup": "mean_minmax",
+        "baseline_source": "wearable.summary"
+      },
+      "snapshot": { "unit": "ms", "parser": "numeric" },
+      "ui": { "label_zh": "HRV" },
+      "intent_hints": ["hrv", "心率变异性", "HRV"]
+    },
+    {
+      "metric_id": "resting_heart_rate_bpm",
+      "l1": { "kind": "wearable_daily", "field": "resting_heart_rate_bpm" },
+      "compare": {
+        "comparable_90d": true,
+        "rollup": "mean_minmax",
+        "baseline_source": "wearable.summary"
+      },
+      "snapshot": { "unit": "bpm", "parser": "numeric" },
+      "ui": { "label_zh": "静息心率" },
+      "intent_hints": ["静息", "resting", "RHR"]
+    },
+    {
+      "metric_id": "spo2_percent",
+      "l1": { "kind": "wearable_daily", "field": "spo2_pct" },
+      "compare": {
+        "comparable_90d": true,
+        "rollup": "mean_minmax",
+        "baseline_source": "wearable.summary",
+        "omit_row_without_snapshot": true
+      },
+      "snapshot": { "unit": "%", "parser": "numeric" },
+      "ui": { "label_zh": "血氧" },
+      "intent_hints": ["血氧", "spo2", "SpO2"]
+    },
+    {
+      "metric_id": "respiratory_rate",
+      "l1": { "kind": "wearable_daily", "field": "respiratory_rate_bpm" },
+      "compare": {
+        "comparable_90d": true,
+        "rollup": "mean_minmax",
+        "baseline_source": "wearable.summary"
+      },
+      "snapshot": { "unit": "breaths/min", "parser": "numeric" },
+      "ui": { "label_zh": "呼吸率" },
+      "intent_hints": ["呼吸率", "respiratory", "breaths", "呼吸"]
+    },
+    {
+      "metric_id": "sleep_deep",
+      "l1": { "kind": "wearable_daily", "field": "sleep_deep_hours" },
+      "compare": {
+        "comparable_90d": true,
+        "rollup": "mean_minmax",
+        "baseline_source": "wearable.summary",
+        "snapshot_only_if_no_baseline": true
+      },
+      "snapshot": { "unit": "hr", "parser": "sleep_duration" },
+      "ui": { "label_zh": "深睡", "footer_when_snapshot_only": true },
+      "intent_hints": ["深睡", "深度睡眠", "睡眠分期"]
+    },
+    {
+      "metric_id": "sleep_rem",
+      "l1": { "kind": "wearable_daily", "field": "sleep_rem_hours" },
+      "compare": {
+        "comparable_90d": true,
+        "rollup": "mean_minmax",
+        "baseline_source": "wearable.summary",
+        "snapshot_only_if_no_baseline": true
+      },
+      "snapshot": { "unit": "hr", "parser": "sleep_duration" },
+      "ui": { "label_zh": "REM", "footer_when_snapshot_only": true },
+      "intent_hints": ["REM", "快速眼动", "睡眠分期"]
+    },
+    {
+      "metric_id": "workout_heart_rate_range_bpm",
+      "l1": { "kind": "workout_sessions", "rollup": "hr_range_90d" },
+      "compare": {
+        "comparable_90d": true,
+        "rollup": "workout_hr_range",
+        "baseline_source": "wearable.workout",
+        "conditional_row": true
+      },
+      "snapshot": { "unit": "bpm", "parser": "numeric_range" },
+      "ingest": { "module": "hk_workout" },
+      "ui": { "label_zh": "锻炼心率范围" },
+      "intent_hints": ["锻炼", "workout", "运动", "心率范围"]
+    },
+    {
+      "metric_id": "workout_count_recent",
+      "l1": { "kind": "workout_sessions", "rollup": "rolling_28d_count" },
+      "compare": {
+        "comparable_90d": true,
+        "rollup": "workout_count_mean",
+        "baseline_source": "wearable.workout",
+        "conditional_row": true
+      },
+      "snapshot": { "unit": "count", "parser": "integer" },
+      "ingest": { "module": "hk_workout" },
+      "ui": { "label_zh": "近期锻炼次数" },
+      "intent_hints": ["锻炼", "workout", "运动", "次锻炼"]
+    }
+  ]
+}

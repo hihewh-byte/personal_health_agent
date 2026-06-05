@@ -19,6 +19,7 @@ from pha.date_parser import safe_parse_datetime
 from pha.memory_engine import compress_wearable_data
 from pha.models import WearableDailySummary
 from pha.data_processor import SleepSegment, compute_sleep_hours_union, make_sleep_sample_id
+from pha.sleep_aggregator import sleep_stage_kind_from_hk_value
 from pha.sleep_audit import audit_sleep_after_import
 from pha.sqlite_storage import (
     METRIC_ACTIVE_ENERGY,
@@ -38,6 +39,7 @@ from pha.sqlite_storage import (
     upsert_wearable_daily_batch,
 )
 from pha.store import store
+from pha.workout_storage import WorkoutSessionBatchWriter, WorkoutSessionRow, make_workout_sample_id
 
 logger = logging.getLogger(__name__)
 
@@ -146,12 +148,24 @@ class _DayAgg:
     wrist_temp_sum: float = 0.0
     wrist_temp_n: int = 0
     sleep_segments: List[SleepSegment] = field(default_factory=list)
+    sleep_deep_seconds: float = 0.0
+    sleep_rem_seconds: float = 0.0
     awake_seconds: float = 0.0
     first_sleep_start: Optional[datetime] = None
 
 
+@dataclass
+class _PendingWorkout:
+    """Accumulate WorkoutStatistics before iterparse clears child nodes."""
+
+    attribs: Dict[str, str] = field(default_factory=dict)
+    hr_min: Optional[float] = None
+    hr_max: Optional[float] = None
+    energy_kcal: Optional[float] = None
+
+
 def _count_records_in_zip(fileobj: BinaryIO) -> tuple[int, int]:
-    """Fast pre-scan: total Record elements and xml file count."""
+    """Fast pre-scan: total Record + Workout elements and xml file count."""
     fileobj.seek(0)
     total = 0
     xml_files = 0
@@ -167,7 +181,8 @@ def _count_records_in_zip(fileobj: BinaryIO) -> tuple[int, int]:
             xml_files += 1
             with zf.open(info, "r") as fp:
                 for _event, elem in iterparse(fp, events=("end",)):
-                    if _local_tag(elem.tag) == "Record":
+                    tag = _local_tag(elem.tag)
+                    if tag in ("Record", "Workout"):
                         total += 1
                     elem.clear()
     fileobj.seek(0)
@@ -210,6 +225,7 @@ class AppleHealthParser:
         self._user_id = user_id.strip() or "default"
         self._xml_max_dt: Optional[datetime] = None
         self._seen_samples: set[str] = set()
+        self._pending_workout: Optional[_PendingWorkout] = None
 
     def parse_export_zip(
         self,
@@ -253,6 +269,7 @@ class AppleHealthParser:
         self._seen_samples = set()
         writer = WearableDataBatchWriter(self._user_id)
         sleep_writer = SleepSegmentBatchWriter(self._user_id)
+        workout_writer = WorkoutSessionBatchWriter(self._user_id)
 
         try:
             fileobj.seek(0)
@@ -271,6 +288,7 @@ class AppleHealthParser:
                             per_day,
                             writer,
                             sleep_writer,
+                            workout_writer,
                             records_offset=records,
                             rows_total=rows_total,
                             report=report,
@@ -280,6 +298,7 @@ class AppleHealthParser:
         finally:
             samples_written = writer.close()
             sleep_writer.close()
+            _ = workout_writer.close()
 
         xml_max_dt = self._xml_max_dt
 
@@ -287,6 +306,12 @@ class AppleHealthParser:
         if incoming_rows:
             upsert_wearable_daily_batch(incoming_rows)
             store.replace_wearable_rows_in_memory(self._user_id, incoming_rows)
+            from pha.sqlite_storage import rebuild_daily_sleep_from_segments
+
+            rebuild_daily_sleep_from_segments(self._user_id)
+            from pha.workout_storage import rebuild_workout_daily_rollup
+
+            rebuild_workout_daily_rollup(self._user_id)
 
         integrity = verify_import_completeness(
             self._user_id,
@@ -346,6 +371,68 @@ class AppleHealthParser:
 
         return result
 
+    def backfill_workouts_from_zip(
+        self,
+        fileobj: BinaryIO,
+        *,
+        filename: str = "export.zip",
+        on_progress: Optional[ProgressCallback] = None,
+    ) -> AppleImportResult:
+        """
+        Incremental import: parse only ``<Workout>`` elements.
+
+        Does **not** call ``clear_wearable_storage`` — safe when daily/Record data already exist.
+        """
+        if not getattr(fileobj, "seekable", lambda: True)():
+            raise ValueError("export.zip stream must be seekable")
+        fileobj.seek(0)
+        self._seen_samples = set()
+        self._pending_workout = None
+        workout_writer = WorkoutSessionBatchWriter(self._user_id)
+        workouts_seen = 0
+        try:
+            fileobj.seek(0)
+            with zipfile.ZipFile(fileobj, mode="r") as zf:
+                for info in zf.infolist():
+                    if info.is_dir():
+                        continue
+                    name = info.filename
+                    if not name.lower().endswith(".xml"):
+                        continue
+                    if "__macosx/" in name.replace("\\", "/"):
+                        continue
+                    with zf.open(info, "r") as fp:
+                        workouts_seen += self._stream_parse_workout_elements(fp, workout_writer)
+        finally:
+            sessions_written = workout_writer.close()
+
+        from pha.sqlite_storage import rebuild_daily_sleep_from_segments
+        from pha.workout_storage import rebuild_workout_daily_rollup
+
+        days_rollup = rebuild_workout_daily_rollup(self._user_id)
+        rebuild_daily_sleep_from_segments(self._user_id)
+
+        merged = store.list_wearable_rows(self._user_id)
+        if merged:
+            store.replace_wearable_rows_in_memory(self._user_id, merged)
+
+        if on_progress:
+            on_progress(workouts_seen, workouts_seen, f"Workout backfill: {sessions_written:,} sessions written")
+
+        return AppleImportResult(
+            ok=True,
+            user_id=self._user_id,
+            zip_filename=filename,
+            record_elements_seen=workouts_seen,
+            record_elements_total=workouts_seen,
+            wearable_samples_written=sessions_written,
+            days_written=days_rollup,
+            message=(
+                f"Workout 增量回填完成：扫描 {workouts_seen:,} 条 Workout，"
+                f"新写入 {sessions_written:,} 条会话（INSERT OR IGNORE）。"
+            ),
+        )
+
     def _note_xml_datetime(self, dt: Optional[datetime]) -> None:
         if dt is None:
             return
@@ -358,6 +445,7 @@ class AppleHealthParser:
         per_day: DefaultDict[date, _DayAgg],
         writer: WearableDataBatchWriter,
         sleep_writer: SleepSegmentBatchWriter,
+        workout_writer: WorkoutSessionBatchWriter,
         *,
         records_offset: int,
         rows_total: int,
@@ -367,20 +455,39 @@ class AppleHealthParser:
         last_reported = 0
 
         try:
-            for _event, elem in iterparse(fp, events=("end",)):
-                if _local_tag(elem.tag) != "Record":
+            for event, elem in iterparse(fp, events=("start", "end")):
+                tag = _local_tag(elem.tag)
+                if tag == "Workout":
+                    if event == "start":
+                        self._pending_workout = _PendingWorkout(attribs=dict(elem.attrib))
+                    elif event == "end":
+                        if self._pending_workout is not None:
+                            att = self._pending_workout.attribs
+                            start_raw = att.get("startDate") or att.get("creationDate") or ""
+                            end_raw = att.get("endDate") or start_raw
+                            self._note_xml_datetime(_parse_apple_datetime(start_raw))
+                            self._note_xml_datetime(_parse_apple_datetime(end_raw))
+                            self._flush_pending_workout(self._pending_workout, workout_writer)
+                        self._pending_workout = None
+                        count += 1
                     elem.clear()
                     continue
-
-                att = elem.attrib
-                start_raw = att.get("startDate") or att.get("creationDate") or ""
-                end_raw = att.get("endDate") or start_raw
-                self._note_xml_datetime(_parse_apple_datetime(start_raw))
-                self._note_xml_datetime(_parse_apple_datetime(end_raw))
-
-                self._consume_record(elem, per_day, writer, sleep_writer)
-                count += 1
-                elem.clear()
+                if tag == "WorkoutStatistics" and event == "end" and self._pending_workout is not None:
+                    self._apply_workout_statistic(self._pending_workout, elem)
+                    elem.clear()
+                    continue
+                if tag == "Record" and event == "end":
+                    att = elem.attrib
+                    start_raw = att.get("startDate") or att.get("creationDate") or ""
+                    end_raw = att.get("endDate") or start_raw
+                    self._note_xml_datetime(_parse_apple_datetime(start_raw))
+                    self._note_xml_datetime(_parse_apple_datetime(end_raw))
+                    self._consume_record(elem, per_day, writer, sleep_writer)
+                    count += 1
+                    elem.clear()
+                    continue
+                if event == "end":
+                    elem.clear()
 
                 processed = records_offset + count
                 if processed - last_reported >= max(1, rows_total // 20) or processed >= rows_total:
@@ -536,6 +643,11 @@ class AppleHealthParser:
                 return
             if not _sleep_is_asleep(value):
                 return
+            stage = sleep_stage_kind_from_hk_value(value)
+            if stage == "deep":
+                per_day[day].sleep_deep_seconds += dur
+            elif stage == "rem":
+                per_day[day].sleep_rem_seconds += dur
             seg = SleepSegment(
                 start=start_dt,
                 end=end_dt,
@@ -555,6 +667,110 @@ class AppleHealthParser:
                 per_day[day].first_sleep_start = start_dt
             return
 
+    def _apply_workout_statistic(self, pending: _PendingWorkout, elem: Element) -> None:
+        stype = elem.attrib.get("type") or ""
+        if "HeartRate" in stype:
+            lo = _safe_float(elem.attrib.get("minimum") or "")
+            hi = _safe_float(elem.attrib.get("maximum") or "")
+            if lo is not None:
+                pending.hr_min = lo if pending.hr_min is None else min(pending.hr_min, lo)
+            if hi is not None:
+                pending.hr_max = hi if pending.hr_max is None else max(pending.hr_max, hi)
+        elif "ActiveEnergyBurned" in stype:
+            v = _safe_float(elem.attrib.get("sum") or elem.attrib.get("average") or "")
+            if v is not None:
+                pending.energy_kcal = (
+                    v if pending.energy_kcal is None else pending.energy_kcal + v
+                )
+
+    def _stream_parse_workout_elements(
+        self,
+        fp: BinaryIO,
+        workout_writer: WorkoutSessionBatchWriter,
+    ) -> int:
+        count = 0
+        for event, elem in iterparse(fp, events=("start", "end")):
+            tag = _local_tag(elem.tag)
+            if tag == "Workout":
+                if event == "start":
+                    self._pending_workout = _PendingWorkout(attribs=dict(elem.attrib))
+                elif event == "end":
+                    if self._pending_workout is not None:
+                        att = self._pending_workout.attribs
+                        start_raw = att.get("startDate") or att.get("creationDate") or ""
+                        end_raw = att.get("endDate") or start_raw
+                        self._note_xml_datetime(_parse_apple_datetime(start_raw))
+                        self._note_xml_datetime(_parse_apple_datetime(end_raw))
+                        self._flush_pending_workout(self._pending_workout, workout_writer)
+                    self._pending_workout = None
+                    count += 1
+                elem.clear()
+            elif tag == "WorkoutStatistics" and event == "end" and self._pending_workout is not None:
+                self._apply_workout_statistic(self._pending_workout, elem)
+                elem.clear()
+            elif event == "end":
+                elem.clear()
+            if count and count % 50_000 == 0:
+                gc.collect()
+        return count
+
+    def _flush_pending_workout(
+        self,
+        pending: _PendingWorkout,
+        workout_writer: WorkoutSessionBatchWriter,
+    ) -> None:
+        att = pending.attribs
+        start_raw = att.get("startDate") or att.get("creationDate") or ""
+        end_raw = att.get("endDate") or start_raw
+        source_name = att.get("sourceName") or att.get("device") or ""
+        activity = att.get("workoutActivityType") or ""
+
+        start_dt = _parse_apple_datetime(start_raw)
+        end_dt = _parse_apple_datetime(end_raw)
+        if start_dt is None or end_dt is None or end_dt <= start_dt:
+            return
+
+        duration_sec = (end_dt - start_dt).total_seconds()
+        dur_attr = _safe_float(att.get("duration") or "")
+        unit = (att.get("durationUnit") or "").lower()
+        if dur_attr is not None and dur_attr > 0:
+            if unit.startswith("min"):
+                duration_sec = dur_attr * 60.0
+            elif unit.startswith("hr") or unit.startswith("h"):
+                duration_sec = dur_attr * 3600.0
+            elif unit.startswith("sec"):
+                duration_sec = dur_attr
+
+        hr_min = pending.hr_min
+        hr_max = pending.hr_max
+        energy_kcal = pending.energy_kcal
+
+        sample_id = make_workout_sample_id(
+            activity_type=activity,
+            start_raw=start_raw,
+            end_raw=end_raw,
+            source_name=source_name,
+        )
+        if sample_id in self._seen_samples:
+            return
+        self._seen_samples.add(sample_id)
+
+        day = _as_utc_date(start_dt)
+        workout_writer.add_session(
+            WorkoutSessionRow(
+                user_id=self._user_id,
+                day=day,
+                start_time=start_dt,
+                end_time=end_dt,
+                activity_type=activity,
+                duration_sec=duration_sec,
+                hr_min_bpm=hr_min,
+                hr_max_bpm=hr_max,
+                energy_kcal=energy_kcal,
+                sample_id=sample_id,
+            ),
+        )
+
     def _build_summaries(self, per_day: Dict[date, _DayAgg]) -> List[WearableDailySummary]:
         rows: List[WearableDailySummary] = []
         for d in sorted(per_day.keys()):
@@ -569,6 +785,8 @@ class AppleHealthParser:
             hrv = (agg.hrv_sum / agg.hrv_n) if agg.hrv_n > 0 else None
             sleep_h, _ = compute_sleep_hours_union(agg.sleep_segments)
             sleep_h = sleep_h if sleep_h > 0 else None
+            deep_h = (agg.sleep_deep_seconds / 3600.0) if agg.sleep_deep_seconds > 0 else None
+            rem_h = (agg.sleep_rem_seconds / 3600.0) if agg.sleep_rem_seconds > 0 else None
             awake_h = (agg.awake_seconds / 3600.0) if agg.awake_seconds > 0 else None
             kcal = agg.active_energy_sum if agg.active_energy_sum > 0 else None
             spo2 = (agg.spo2_sum / agg.spo2_n) if agg.spo2_n > 0 else None
@@ -583,6 +801,8 @@ class AppleHealthParser:
                     resting_heart_rate_bpm=rhr,
                     hrv_rmssd_ms=hrv,
                     sleep_hours=sleep_h,
+                    sleep_deep_hours=deep_h,
+                    sleep_rem_hours=rem_h,
                     awake_duration_hours=awake_h,
                     sleep_start_time=agg.first_sleep_start,
                     active_energy_kcal=kcal,

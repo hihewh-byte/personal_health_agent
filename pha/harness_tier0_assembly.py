@@ -32,6 +32,10 @@ _SLOT_MARKERS: Dict[str, str] = {
     "LDL_AUTHORITY": "SQLite LDL 权威表",
     "WEARABLE_90D_SUMMARY": "近90日穿戴",
     "SUPPLEMENT_BG": "聊天背景档案",
+    "ATTACHMENT_LABEL": "标签摘录与成分定账",
+    "WEARABLE_SNAPSHOT": "穿戴截图定账",
+    "WEARABLE_COMPARE_TABLE": "穿戴对比定账",
+    "DATA_AVAILABILITY": "数据可用性（库内概况）",
 }
 
 _PROFILE_CONFIG: Dict[str, Dict[str, Any]] = {
@@ -59,6 +63,25 @@ _PROFILE_CONFIG: Dict[str, Dict[str, Any]] = {
         "degradation_order": ["SUPPLEMENT_BG"],
         "supplement_start": "summary",
     },
+    "attachment_asset_qa": {
+        "priority": ["ATTACHMENT_LABEL", "DATA_AVAILABILITY", "TASK", "SUPPLEMENT_BG"],
+        "protected": {"ATTACHMENT_LABEL", "TASK", "SUPPLEMENT_BG"},
+        "degradation_order": ["SUPPLEMENT_BG", "DATA_AVAILABILITY"],
+        "supplement_start": "summary",
+    },
+    "attachment_episodic_bridge": {
+        "priority": [
+            "ATTACHMENT_LABEL",
+            "DATA_AVAILABILITY",
+            "TASK",
+            "NUMERICS_MANIFEST",
+            "WEARABLE_90D_SUMMARY",
+            "SUPPLEMENT_BG",
+        ],
+        "protected": {"ATTACHMENT_LABEL", "TASK"},
+        "degradation_order": ["SUPPLEMENT_BG", "WEARABLE_90D_SUMMARY", "NUMERICS_MANIFEST"],
+        "supplement_start": "min",
+    },
     "lab_cross_year": {
         "priority": ["TASK", "NUMERICS_MANIFEST", "LDL_AUTHORITY"],
         "protected": {"TASK", "NUMERICS_MANIFEST", "LDL_AUTHORITY"},
@@ -68,6 +91,12 @@ _PROFILE_CONFIG: Dict[str, Dict[str, Any]] = {
     "wearable_only": {
         "priority": ["TASK", "WEARABLE_90D_SUMMARY"],
         "protected": {"TASK", "WEARABLE_90D_SUMMARY"},
+        "degradation_order": ["WEARABLE_90D_SUMMARY"],
+        "supplement_start": "full",
+    },
+    "wearable_screenshot_review": {
+        "priority": ["WEARABLE_SNAPSHOT", "WEARABLE_COMPARE_TABLE", "WEARABLE_90D_SUMMARY", "TASK"],
+        "protected": {"WEARABLE_SNAPSHOT", "WEARABLE_COMPARE_TABLE", "TASK", "WEARABLE_90D_SUMMARY"},
         "degradation_order": ["WEARABLE_90D_SUMMARY"],
         "supplement_start": "full",
     },
@@ -138,8 +167,8 @@ def _compress_wearable_summary(raw: str, level: TierLevel) -> str:
         return text
     if level == "min":
         return (
-            "【Evidence · 近90日穿戴摘要 · Tier0 最小占位】"
-            " HRV/活动消耗/Pearson 见 Patient State 或工具结果。"
+            "【Evidence · 近90日穿戴宏观趋势 · Tier0 最小占位】"
+            " Pearson/月度变化见本块；截图对比数字见 WEARABLE_COMPARE_TABLE。"
         )
     keep: List[str] = []
     for line in text.split("\n"):
@@ -151,10 +180,9 @@ def _compress_wearable_summary(raw: str, level: TierLevel) -> str:
             for k in (
                 "Evidence",
                 "近90日",
-                "HRV均值",
-                "活动消耗",
+                "宏观趋势",
                 "Pearson",
-                "区间",
+                "月度",
                 "wearable",
             )
         ):
@@ -181,6 +209,21 @@ def _compress_ldl_block(raw: str, level: TierLevel) -> str:
     if len(text) <= 900:
         return text
     return text[:880] + "\n…（LDL Tier0 摘要已截断）"
+
+
+def _compress_attachment_label(raw: str, level: TierLevel) -> str:
+    """Never replace label ledger with a placeholder — model must see 成分定账."""
+    text = (raw or "").strip()
+    if not text:
+        return ""
+    if level == "full" or level == "summary":
+        cap = int(os.environ.get("PHA_ATTACHMENT_LABEL_TIER0_MAX", "2400"))
+        if len(text) <= cap:
+            return text
+        return text[: cap - 20] + "\n…（标签定账 Tier0 已截断）"
+    if len(text) <= 600:
+        return text
+    return text[:580] + "\n…（标签定账 Tier0 最小压缩）"
 
 
 def _compress_supplement(raw: str, level: TierLevel) -> str:
@@ -218,7 +261,9 @@ def _build_slot_assemblies(
         raw = (slot_contents.get(slot_id) or "").strip()
         if slot_id == "TASK" and not raw:
             raw = plan.task_text
-        if slot_id == "SUPPLEMENT_BG":
+        if slot_id == "ATTACHMENT_LABEL":
+            start = "full"
+        elif slot_id == "SUPPLEMENT_BG":
             start: TierLevel = supplement_start if raw else "full"
         elif slot_id in protected:
             start = "full"
@@ -242,6 +287,25 @@ def _build_slot_assemblies(
             asm.text_full = _compress_wearable_summary(raw, "full")
             asm.text_summary = _compress_wearable_summary(raw, "summary")
             asm.text_min = _compress_wearable_summary(raw, "min")
+        elif slot_id == "ATTACHMENT_LABEL":
+            asm.text_full = _compress_attachment_label(raw, "full")
+            asm.text_summary = _compress_attachment_label(raw, "summary")
+            asm.text_min = _compress_attachment_label(raw, "min")
+        elif slot_id == "WEARABLE_SNAPSHOT":
+            cap = int(os.environ.get("PHA_WEARABLE_SNAPSHOT_MAX_CHARS", "2800"))
+            asm.text_full = raw[:cap] if len(raw) > cap else raw
+            asm.text_summary = asm.text_full
+            asm.text_min = asm.text_full[:400] if asm.text_full else ""
+        elif slot_id == "WEARABLE_COMPARE_TABLE":
+            cap = int(os.environ.get("PHA_WEARABLE_COMPARE_TABLE_MAX_CHARS", "2400"))
+            asm.text_full = raw[:cap] if len(raw) > cap else raw
+            asm.text_summary = asm.text_full
+            asm.text_min = asm.text_full
+        elif slot_id == "DATA_AVAILABILITY":
+            cap = int(os.environ.get("PHA_DATA_AVAILABILITY_MAX_CHARS", "520"))
+            asm.text_full = raw[:cap] if len(raw) > cap else raw
+            asm.text_summary = asm.text_full
+            asm.text_min = asm.text_full
         elif slot_id == "SUPPLEMENT_BG":
             asm.text_full = _compress_supplement(raw, "full")
             asm.text_summary = _compress_supplement(raw, "summary")

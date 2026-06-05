@@ -61,6 +61,14 @@ class WearableDailySummary(BaseModel):
         description="Heart rate variability (HRV), RMSSD in milliseconds.",
     )
     sleep_hours: Optional[float] = None
+    sleep_deep_hours: Optional[float] = Field(
+        default=None,
+        description="Deep sleep duration aggregated for the calendar day (hours).",
+    )
+    sleep_rem_hours: Optional[float] = Field(
+        default=None,
+        description="REM sleep duration aggregated for the calendar day (hours).",
+    )
     awake_duration_hours: Optional[float] = Field(
         default=None,
         description="Time spent awake during sleep window (hours), for fragmentation analysis.",
@@ -88,6 +96,18 @@ class WearableDailySummary(BaseModel):
     wrist_temp_c: Optional[float] = Field(
         default=None,
         description="Sleeping wrist / body temperature daily mean (°C).",
+    )
+    workout_session_count: Optional[int] = Field(
+        default=None,
+        description="HKWorkout sessions completed on this calendar day.",
+    )
+    workout_hr_min_bpm: Optional[float] = Field(
+        default=None,
+        description="Minimum workout heart rate across sessions that day (bpm).",
+    )
+    workout_hr_max_bpm: Optional[float] = Field(
+        default=None,
+        description="Maximum workout heart rate across sessions that day (bpm).",
     )
 
 

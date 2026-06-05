@@ -20,6 +20,11 @@ _MANIFEST_MAX_CHARS = int(os.environ.get("PHA_MANIFEST_MAX_CHARS", "600"))
 # Known E2E hallucination anchors — always forbidden in model output.
 _GLOBAL_FORBIDDEN_DATES: frozenset[str] = frozenset({"2026-04-30", "2025-01-13"})
 
+_WEARABLE_MANIFEST_FORBIDDEN_FOOTER = (
+    "FORBIDDEN_90D: sleep_deep_avg, sleep_rem_avg, deep_sleep_90d, rem_sleep_90d "
+    "（数仓无睡眠分期历史均值；90 天对比见 WEARABLE_COMPARE_TABLE）"
+)
+
 _LIPID_SQL = """
 SELECT report_date, metric_name, metric_code, name_zh, value, unit
 FROM medical_reports
@@ -382,7 +387,11 @@ def build_numerics_manifest(
     if include_lipid and profile in ("combined_review", "lab_cross_year", "lifestyle"):
         entries.extend(_lipid_entries(user_id))
 
-    if include_wearable and profile in ("combined_review", "wearable_only"):
+    if include_wearable and profile in (
+        "combined_review",
+        "wearable_only",
+        "wearable_screenshot_review",
+    ):
         entries.extend(
             _wearable_entries(user_id, user_message, wearable_result=wearable_result),
         )
@@ -400,15 +409,19 @@ def format_manifest_tier0_block(
     manifest: NumericsManifest,
     *,
     max_chars: Optional[int] = None,
+    profile: str = "",
 ) -> str:
     cap = max_chars if max_chars is not None else _MANIFEST_MAX_CHARS
     if not manifest.entries:
-        return (
+        empty = (
             "【Numerics Manifest · T0 · 机器白名单】\n"
             "Numerics Manifest (T0): no verifiable lipid/wearable values in DB this turn.\n"
             "（本轮库内无血脂/穿戴可校验数值；禁止编造化验或 HRV/千卡数字。）\n"
             "T1 guide values: use 【参考标准】 or [Reference Standard] disclosure; not whitelisted here."
         )
+        if (profile or manifest.profile or "").strip() == "wearable_screenshot_review":
+            empty = f"{empty}\n{_WEARABLE_MANIFEST_FORBIDDEN_FOOTER}"
+        return empty
     header = (
         "【T0 · 您的个人化验/穿戴实测值 · Personal lab/wearable values】\n"
         "Numerics Manifest (T0): reply citations must match KV below.\n"
@@ -422,6 +435,8 @@ def format_manifest_tier0_block(
         lines.append(e.kv_line())
     body = "\n".join(lines)
     if len(body) <= cap:
+        if (profile or manifest.profile or "").strip() == "wearable_screenshot_review":
+            body = f"{body}\n{_WEARABLE_MANIFEST_FORBIDDEN_FOOTER}"
         return body
     trimmed = [header.strip()]
     for e in manifest.entries:
@@ -431,7 +446,10 @@ def format_manifest_tier0_block(
             break
         trimmed.append(line)
     trimmed.append("…（Manifest 已按 Tier0 上限截断，仍以已列 KV 为唯一合法数字源）")
-    return "\n".join(trimmed)[:cap]
+    body = "\n".join(trimmed)[:cap]
+    if (profile or manifest.profile or "").strip() == "wearable_screenshot_review":
+        body = f"{body}\n{_WEARABLE_MANIFEST_FORBIDDEN_FOOTER}"
+    return body
 
 
 def _normalize_cn_date(y: str, m: str, d: str) -> str:

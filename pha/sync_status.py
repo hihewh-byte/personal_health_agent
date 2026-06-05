@@ -64,6 +64,11 @@ def build_sync_status_payload(user_id: str) -> Dict[str, Any]:
     if not last_record_time and db_max:
         last_record_time = db_max.isoformat()
 
+    workout_sessions = int(counts.get("workout_sessions") or 0)
+    workout_backfill_needed = (
+        counts["daily_days"] > 0 and workout_sessions == 0 and status_key == "complete"
+    )
+
     return {
         "user_id": uid,
         "status": status_key,
@@ -74,11 +79,14 @@ def build_sync_status_payload(user_id: str) -> Dict[str, Any]:
         "last_record_time": last_record_time,
         "records_seen": records_seen,
         "days_written": days_written,
+        "workout_sessions": workout_sessions,
+        "workout_backfill_needed": workout_backfill_needed,
         "counts": {
             "sleep_segments": counts["sleep_segments"],
             "steps_samples": counts["steps_samples"],
             "heart_rate_samples": counts["heart_rate_samples"],
             "daily_days": counts["daily_days"],
+            "workout_sessions": workout_sessions,
         },
         "active_job_id": active.job_id if active else None,
         "latest_job": latest_job.to_dict() if latest_job else None,

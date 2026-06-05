@@ -56,21 +56,9 @@ def _pearson(xs: Sequence[float], ys: Sequence[float]) -> Optional[float]:
 
 
 def _sleep_stage_from_sample_id(sample_id: str) -> str:
-    parts = (sample_id or "").split("|")
-    if len(parts) < 4:
-        return "unknown"
-    v = parts[3].lower()
-    if "awake" in v:
-        return "awake"
-    if "deep" in v:
-        return "deep"
-    if "rem" in v:
-        return "rem"
-    if "core" in v:
-        return "core"
-    if "asleep" in v:
-        return "asleep"
-    return "unknown"
+    from pha.sleep_aggregator import sleep_stage_kind_from_sample_id
+
+    return sleep_stage_kind_from_sample_id(sample_id)
 
 
 def _segment_duration_hours(seg: dict) -> float:

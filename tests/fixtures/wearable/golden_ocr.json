@@ -1,0 +1,86 @@
+{
+  "schema_version": "wearable_golden_ocr_v1",
+  "fixture_id": "apple_health_screens_6panel_msg310",
+  "source": "真机 msg-310 六屏 OCR excerpt（脱敏 · 合成文本）",
+  "reference_build": "pha-v2.3.12-wave0-stage90d-audit-workout",
+  "panels": [
+    {
+      "screen_index": 0,
+      "screen_type": "sleep",
+      "ocr_text": "Sleep\nMay 30\nTIME ASLEEP\n8 hr 43 min\n1 hr 9 min @ Deep\n2 hr 17 min @ REM\nAwake 45 min",
+      "expected_metrics": {
+        "sleep_time_asleep": "8hr43min",
+        "sleep_deep": "1hr9min",
+        "sleep_rem": "2hr17min"
+      }
+    },
+    {
+      "screen_index": 1,
+      "screen_type": "hrv",
+      "ocr_text": "Heart Rate Variability\nMay 30\nAVERAGE\n30 ms\nTrend",
+      "expected_metrics": {
+        "hrv_rmssd_ms": "30"
+      }
+    },
+    {
+      "screen_index": 2,
+      "screen_type": "heart_rate",
+      "ocr_text": "Heart Rate May 30\nWalking Average 74 bpm\nResting 58 bpm\nHeart Rate Range 52-120 bpm",
+      "expected_metrics": {
+        "resting_heart_rate_bpm": "58",
+        "heart_rate_range_bpm": "52-120"
+      }
+    },
+    {
+      "screen_index": 3,
+      "screen_type": "spo2",
+      "ocr_text": "Blood Oxygen\nMay 30\nAVERAGE\n96%\nDuring Sleep",
+      "expected_metrics": {
+        "spo2_percent": "96"
+      }
+    },
+    {
+      "screen_index": 4,
+      "screen_type": "respiratory_rate",
+      "ocr_text": "Respiratory Rate 6M\n11.0-17.5 breaths/min average",
+      "expected_metrics": {
+        "respiratory_rate": "11.0-17.5"
+      }
+    },
+    {
+      "screen_index": 5,
+      "screen_type": "workout",
+      "ocr_text": "Workouts\nHighlights\n@ Heart Rate: Workout\nYour heart rate range during your recent run was 76-147 beats per minute.\n8 Workouts\nIn the last 4 weeks",
+      "expected_metrics": {
+        "workout_heart_rate_range_bpm": "76-147",
+        "workout_count_recent": "8"
+      }
+    }
+  ],
+  "merged_expected": {
+    "parse_confidence_min": "medium",
+    "metric_count_min": 9,
+    "required_metrics": {
+      "sleep_time_asleep": "8hr43min",
+      "sleep_deep": "1hr9min",
+      "sleep_rem": "2hr17min",
+      "hrv_rmssd_ms": "30",
+      "resting_heart_rate_bpm": "58",
+      "spo2_percent": "96",
+      "respiratory_rate": "11.0-17.5",
+      "workout_heart_rate_range_bpm": "76-147",
+      "workout_count_recent": "8"
+    },
+    "optional_metrics": {
+      "heart_rate_range_bpm": "52-120"
+    }
+  },
+  "negative_panels": [
+    {
+      "fixture_id": "spo2_absent_omit_row",
+      "description": "无 SpO2 截图时 CompareTable 应省略 spo2 行（§3.1）",
+      "omit_panel_indices": [3],
+      "forbidden_compare_rows": ["spo2_percent"]
+    }
+  ]
+}

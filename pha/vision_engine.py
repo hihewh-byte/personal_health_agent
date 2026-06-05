@@ -17,7 +17,7 @@ from pha.llm_provider import OllamaProvider, list_ollama_installed_models, load_
 
 logger = logging.getLogger(__name__)
 
-VISION_MAX_WIDTH_PX = int(os.environ.get("PHA_VISION_MAX_WIDTH_PX", "896"))
+VISION_MAX_WIDTH_PX = int(os.environ.get("PHA_VISION_MAX_WIDTH_PX", "1280"))
 PDF_RENDER_MATRIX = float(os.environ.get("PHA_PDF_RENDER_MATRIX", "1.25"))
 _PDF_MAX_PAGES_RAW = os.environ.get("PHA_VISION_MAX_PAGES", "50").strip()
 # 0 = 不限制页数，处理 PDF 全部页面
@@ -66,6 +66,142 @@ VISION_PAGE_USER_PROMPT = (
     "请阅读本页医疗报告图像，按系统要求输出 JSON。"
     "若本页仅有文字描述无数字，results 可为 []，内容放入 narratives。"
 )
+
+
+def _vision_prompts_for_page(
+    *,
+    ocr_text: str,
+    page_index: int,
+    page_total: int,
+) -> tuple[str, str]:
+    """Pick system/user prompts using OCR document classification."""
+    from pha.vision_ocr import classify_document_from_ocr, format_ocr_context_block
+    from pha.vision_supplement import (
+        SUPPLEMENT_LABEL_VISION_SYSTEM,
+        build_supplement_vision_user_message,
+    )
+
+    kind = classify_document_from_ocr(ocr_text)
+    if kind == "supplement_label":
+        return (
+            SUPPLEMENT_LABEL_VISION_SYSTEM,
+            build_supplement_vision_user_message(
+                ocr_text=ocr_text,
+                page_index=page_index,
+                page_total=page_total,
+            ),
+        )
+    user_msg = VISION_PAGE_USER_PROMPT
+    if page_total > 1:
+        user_msg = f"这是共 {page_total} 页报告的第 {page_index + 1} 页。{VISION_PAGE_USER_PROMPT}"
+    ocr_block = format_ocr_context_block(ocr_text)
+    if ocr_block:
+        user_msg = f"{ocr_block}\n\n{user_msg}"
+    return VISION_EXTRACTION_SYSTEM_PROMPT, user_msg
+
+
+def _parse_page_with_ocr_fallback(
+    llm: OllamaProvider,
+    jpeg_bytes: bytes,
+    *,
+    page_index: int,
+    page_total: int,
+    raw_reply_holder: Optional[List[str]] = None,
+) -> ReportExtraction:
+    """Vision parse one page; on JSON failure use OCR-only supplement-safe fallback."""
+    from pha.vision_ocr import tesseract_ocr_png
+    from pha.vision_parser import VisionJsonParseError
+    from pha.vision_supplement import extraction_from_ocr_fallback
+
+    from pha.layout_region import detect_layout_regions, primary_parse_regions, regions_to_telemetry
+    from pha.perception_arbitration import arbitrate_ocr_for_page
+
+    full_page_ocr = tesseract_ocr_png(jpeg_bytes)
+    layout_regions = detect_layout_regions(jpeg_bytes, source_page_index=page_index)
+    primary = primary_parse_regions(layout_regions)
+    region_ocrs = [r.ocr_preview or tesseract_ocr_png(r.crop_bytes) for r in primary]
+    ocr_text, _ocr_lane = arbitrate_ocr_for_page(full_page_ocr, region_ocrs)
+    _layout_telemetry = regions_to_telemetry(layout_regions)
+    vlm_bytes = primary[0].crop_bytes if primary else jpeg_bytes
+
+    system_prompt, user_msg = _vision_prompts_for_page(
+        ocr_text=ocr_text,
+        page_index=page_index,
+        page_total=page_total,
+    )
+    b64 = png_list_to_base64([vlm_bytes])[0]
+    raw_reply = llm.chat_with_vision(
+        system_prompt=system_prompt,
+        user_message=user_msg,
+        images=[b64],
+    )
+    if raw_reply_holder is not None:
+        raw_reply_holder.append(raw_reply)
+    from pha.vision_ocr import classify_document_from_ocr as _doc_kind
+
+    try:
+        data = _extract_json_object(raw_reply)
+        ext = _parse_extraction(data)
+        if _doc_kind(ocr_text) == "supplement_label":
+            ext.results = []
+        return ext
+    except VisionJsonParseError as exc:
+        logger.warning(
+            "Page %s vision JSON failed; OCR fallback (%s chars ocr)",
+            page_index + 1,
+            len(ocr_text),
+        )
+        transcript = _vision_transcribe_page(
+            llm,
+            b64,
+            page_index=page_index,
+            page_total=page_total,
+        )
+        blended = _blend_ocr_and_transcript(ocr_text, transcript)
+        return extraction_from_ocr_fallback(
+            blended,
+            raw_model_snippet=getattr(exc, "raw_snippet", str(exc))[:2000],
+        )
+
+
+def _vision_transcribe_page(
+    llm: OllamaProvider,
+    b64_image: str,
+    *,
+    page_index: int,
+    page_total: int,
+) -> str:
+    """Second-pass transcript when structured JSON is unstable."""
+    prompt = (
+        "请逐行抄写图中可见印刷文字。仅输出纯文本，不要 JSON，不要解释。"
+        "优先抄写标题、品牌、Supplement Facts/Serving Size/Amount per serving、成分剂量行。"
+    )
+    if page_total > 1:
+        prompt = f"这是共 {page_total} 页中的第 {page_index + 1} 页。{prompt}"
+    try:
+        reply = llm.chat_with_vision(
+            system_prompt="你是OCR转写助手，只做忠实抄写，不做总结。",
+            user_message=prompt,
+            images=[b64_image],
+        )
+        return (reply or "").strip()
+    except Exception:
+        logger.debug("vision text transcript fallback failed", exc_info=True)
+        return ""
+
+
+def _blend_ocr_and_transcript(ocr_text: str, transcript_text: str) -> str:
+    ocr = (ocr_text or "").strip()
+    trans = (transcript_text or "").strip()
+    if not ocr:
+        return trans
+    if not trans:
+        return ocr
+    if trans in ocr:
+        return ocr
+    if ocr in trans:
+        return trans
+    return f"{ocr}\n\n--- VISION_TRANSCRIPT ---\n{trans}"
 
 
 class LabResultRow(BaseModel):
@@ -169,14 +305,16 @@ def _scale_png_to_max_width(png_bytes: bytes, max_width: int = VISION_MAX_WIDTH_
     with Image.open(io.BytesIO(png_bytes)) as img:
         w, h = img.size
         if w <= max_width:
+            # Keep original bytes to avoid extra JPEG artifacts on tiny label fonts.
             return png_bytes
         ratio = max_width / float(w)
         new_size = (max_width, max(1, int(h * ratio)))
         resized = img.resize(new_size, Image.Resampling.LANCZOS)
         out = io.BytesIO()
-        if resized.mode not in ("RGB", "L"):
+        if resized.mode not in ("RGB", "L", "RGBA"):
             resized = resized.convert("RGB")
-        resized.save(out, format="JPEG", quality=VISION_JPEG_QUALITY, optimize=True)
+        # Prefer PNG to preserve small text edges for OCR and VLM.
+        resized.save(out, format="PNG", optimize=True)
         return out.getvalue()
 
 
@@ -498,17 +636,13 @@ class VisionReportParser:
         from pha.vision_parser import VisionJsonParseError
 
         llm = self._acquire_vision_llm(page_request=True)
-        b64 = png_list_to_base64([jpeg_bytes])[0]
-        user_msg = VISION_PAGE_USER_PROMPT
-        if page_total > 1:
-            user_msg = f"这是共 {page_total} 页报告的第 {page_index + 1} 页。{VISION_PAGE_USER_PROMPT}"
         try:
-            raw_reply = llm.chat_with_vision(
-                system_prompt=VISION_EXTRACTION_SYSTEM_PROMPT,
-                user_message=user_msg,
-                images=[b64],
+            extraction = _parse_page_with_ocr_fallback(
+                llm,
+                jpeg_bytes,
+                page_index=page_index,
+                page_total=page_total,
             )
-            data = _extract_json_object(raw_reply)
         except VisionJsonParseError as exc:
             logger.warning("Page %s JSON salvage exhausted: %s", page_index + 1, exc)
             _log_page_alignment_ledger(page_index + 1, 0, 0, 0)
@@ -538,14 +672,13 @@ class VisionReportParser:
                 )
             raise
 
-        extraction = _parse_extraction(data)
         return build_vision_page_response(
             extraction,
             page_index=page_index,
             page_total=page_total,
             vision_model=llm.model,
             parse_mode="scan",
-            parse_channel="vision",
+            parse_channel="vision_ocr_guarded",
         )
 
     def parse_pdf_page_native(
@@ -628,23 +761,20 @@ class VisionReportParser:
             raise ValueError("No renderable pages in upload")
 
         llm = self._acquire_vision_llm()
-        b64_images = png_list_to_base64(pages)
         page_parts: List[ReportExtraction] = []
-        total = len(b64_images)
+        total = len(pages)
 
-        for idx, b64 in enumerate(b64_images):
+        for idx, page_png in enumerate(pages):
             if on_progress:
                 on_progress(idx + 1, total, "vision")
-            user_msg = VISION_PAGE_USER_PROMPT
-            if total > 1:
-                user_msg = f"这是共 {total} 页报告的第 {idx + 1} 页。{VISION_PAGE_USER_PROMPT}"
-            raw_reply = llm.chat_with_vision(
-                system_prompt=VISION_EXTRACTION_SYSTEM_PROMPT,
-                user_message=user_msg,
-                images=[b64],
+            page_parts.append(
+                _parse_page_with_ocr_fallback(
+                    llm,
+                    page_png,
+                    page_index=idx,
+                    page_total=total,
+                ),
             )
-            data = _extract_json_object(raw_reply)
-            page_parts.append(_parse_extraction(data))
 
         merged = merge_extractions(page_parts)
         summary = format_extraction_as_summary(merged)

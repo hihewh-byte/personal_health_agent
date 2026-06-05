@@ -49,6 +49,15 @@ _WEARABLE_RE = re.compile(
 
 _WEARABLE_WINDOW_RE = re.compile(r"90\s*天|近\s*90|三个月|3\s*个月|半年|一年|365", re.I)
 
+_ATTACHMENT_RECALL_RE = re.compile(
+    r"图片|附件|上传的|截图|刚才|那张|这些图|发的图",
+    re.I,
+)
+_ATTACHMENT_RECALL_ASK_RE = re.compile(
+    r"是什么|什么信息|分析|解读|说了什么|看到什么|信息是什么",
+    re.I,
+)
+
 
 class QuestionType(str, Enum):
     CASUAL = "casual"
@@ -96,6 +105,7 @@ def classify_question_type(user_message: str) -> QuestionType:
         "lab_cross_year": QuestionType.LAB,
         "wearable_only": QuestionType.WEARABLE,
         "supplement_manifest": QuestionType.LIFESTYLE,
+        "attachment_asset_qa": QuestionType.LIFESTYLE,
         "lifestyle": QuestionType.LIFESTYLE,
     }
     return mapping.get(route.profile, QuestionType.LIFESTYLE)
@@ -119,6 +129,16 @@ def user_message_needs_wearable_query(user_message: str) -> bool:
     if _WEARABLE_WINDOW_RE.search(text) and _WEARABLE_RE.search(text):
         return True
     return False
+
+
+def user_message_needs_attachment_recall(user_message: str) -> bool:
+    """Follow-up about a prior upload without re-attaching files."""
+    text = (user_message or "").strip()
+    if not text or user_message_is_casual(text):
+        return False
+    return bool(
+        _ATTACHMENT_RECALL_RE.search(text) and _ATTACHMENT_RECALL_ASK_RE.search(text),
+    )
 
 
 def user_message_needs_lab_dossier(user_message: str) -> bool:

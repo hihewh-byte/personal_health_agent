@@ -48,6 +48,8 @@ window.pdfParsing = false;
   var chatAttachLabel = document.getElementById('chat-attach-label');
   var pendingChatAttachment = null;
   var pendingAttachMeta = null;
+  var pendingAttachBundle = null;
+  var attachParseInFlight = false;
   var lastChatIngestPayload = null;
   var lastChatUserMessageId = null;
   var pinnedTemporalStatus = '';
@@ -88,6 +90,9 @@ window.pdfParsing = false;
         if (ev.code === 'background_too_long') {
           showToast(m || '生活背景内容过长，已跳过落库。', 'error');
         }
+      if (/已合并|定账\s+\d+\s+行/.test(m)) {
+        showToast(m, 'success');
+      }
       if (ev.is_temporal_dynamic || ev.slow_path_stage || /勾兑|时间轴|动态提取|深度审阅|WASO|SQLite/.test(m)) {
         showChatStatus(m, { pin: true });
       } else if (pinnedTemporalStatus) {
@@ -95,6 +100,7 @@ window.pdfParsing = false;
       } else {
         showChatStatus(m);
       }
+      if (ev.open_data_drawer && dataDrawerCheckbox) dataDrawerCheckbox.checked = true;
       if (ev.session_id) currentChatSessionId = ev.session_id;
       return;
     }
@@ -122,7 +128,12 @@ window.pdfParsing = false;
       var ans = ev.answer || {};
       var ingestOptsDone = null;
       if (ev.ingest_payload && ev.user_message_id) {
-        ingestOptsDone = { ingest_payload: ev.ingest_payload, user_message_id: ev.user_message_id };
+        ingestOptsDone = {
+          ingest_payload: ev.ingest_payload,
+          user_message_id: ev.user_message_id,
+          ingest_status: ev.ingest_status || '',
+          ingest_metrics_stored: ev.ingest_metrics_stored
+        };
       }
       if (streamingAssistantBubble) {
         finalizeStreamingAssistantBubble(
@@ -190,20 +201,28 @@ window.pdfParsing = false;
     return wrap;
   }
 
+  /** Post-audit answer_text is authoritative; model_reply_raw only for 【依据索引】 parse. */
+  function resolveAssistantBubble(text, raw) {
+    var body = String(text || '').trim();
+    var verbatim = String(raw || '').trim();
+    var parsed = parseEvidence(verbatim || body);
+    return { display: body || parsed.display || verbatim, ids: parsed.ids };
+  }
+
   function finalizeStreamingAssistantBubble(text, items, raw, ingestOpts) {
     if (!streamingAssistantBubble) return;
-    var parsed = parseEvidence(raw || text);
+    var resolved = resolveAssistantBubble(text, raw);
     var bubble = streamingAssistantBubble.querySelector('.pha-chat-bubble');
-    if (bubble) bubble.innerHTML = renderMarkdown(parsed.display || text || '');
-    if (ingestOpts && ingestOpts.ingest_payload && ingestOpts.user_message_id) {
+    if (bubble) bubble.innerHTML = renderMarkdown(resolved.display || '');
+    if (shouldShowIngestConfirm(ingestOpts)) {
       attachIngestButton(streamingAssistantBubble, ingestOpts.ingest_payload, ingestOpts.user_message_id);
     }
-    if (parsed.ids.length && items && items.length && bubble) {
+    if (resolved.ids.length && items && items.length && bubble) {
       var pills = document.createElement('div');
       pills.className = 'mt-2 flex flex-wrap gap-1';
       var map = {};
       items.forEach(function (it) { if (it.ref_id) map[it.ref_id] = it.title || it.ref_id; });
-      parsed.ids.forEach(function (id) {
+      resolved.ids.forEach(function (id) {
         var b = document.createElement('button');
         b.className = 'rounded border border-gray-600 px-2 py-0.5 text-xs text-slate-300 hover:border-blue-500/50';
         b.textContent = id;
@@ -1175,9 +1194,16 @@ window.pdfParsing = false;
         syncCountsLine.textContent =
           '睡眠 ' + (d.counts.sleep_segments || 0).toLocaleString() + ' 条 · ' +
           '运动(步数) ' + (d.counts.steps_samples || 0).toLocaleString() + ' 条 · ' +
+          '锻炼会话 ' + (d.counts.workout_sessions || 0).toLocaleString() + ' 条 · ' +
           '日聚合 ' + (d.counts.daily_days || 0).toLocaleString() + ' 天';
       }
-      if (syncStatusMessage) syncStatusMessage.textContent = d.message || '';
+      if (syncStatusMessage) {
+        var msg = d.message || '';
+        if (d.workout_backfill_needed) {
+          msg = (msg ? msg + ' · ' : '') + '锻炼数据未入库：请选择 export.zip 与「锻炼 (HKWorkout)」模块后增量同步';
+        }
+        syncStatusMessage.textContent = msg;
+      }
       if (syncJobProgress) {
         if (d.status === 'parsing' && d.percent > 0) {
           syncJobProgress.classList.remove('hidden');
@@ -1305,6 +1331,12 @@ window.pdfParsing = false;
     return { display: raw.slice(0, m.index).trim(), ids: m[1].split(',').map(function (s) { return s.trim(); }).filter(Boolean) };
   }
 
+  function shouldShowIngestConfirm(ingestOpts) {
+    if (!ingestOpts || !ingestOpts.ingest_payload) return false;
+    var st = (ingestOpts.ingest_status || '').trim();
+    return st === 'manual_required' || st === 'auto_partial';
+  }
+
   function attachIngestButton(wrap, ingestPayload, userMessageId) {
     if (!wrap || !ingestPayload) return;
     var tracks = splitTracksFromPageData({
@@ -1328,7 +1360,7 @@ window.pdfParsing = false;
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'pha-ingest-gold-btn';
-    btn.textContent = '📥 识别结果一键归仓（存入 SQLite 趋势表）';
+    btn.textContent = '保存到健康档案';
     btn.addEventListener('click', function () {
       ingestChatPayload(userMessageId, ingestPayload, tracks, btn);
     });
@@ -1355,7 +1387,7 @@ window.pdfParsing = false;
       if (!res.ok) {
         var err = await readHttpErrorDetail(res);
         showToast(err.detail || '归仓失败', 'error');
-        if (btn) { btn.disabled = false; btn.textContent = '📥 识别结果一键归仓（存入 SQLite 趋势表）'; }
+        if (btn) { btn.disabled = false; btn.textContent = '保存到健康档案'; }
         return;
       }
       var data = await res.json();
@@ -1369,18 +1401,18 @@ window.pdfParsing = false;
   }
 
   function appendAssistantWithEvidence(text, items, raw, ingestOpts) {
-    var parsed = parseEvidence(raw || text);
-    var body = renderMarkdown(parsed.display || text || '');
+    var resolved = resolveAssistantBubble(text, raw);
+    var body = renderMarkdown(resolved.display || '');
     var wrap = appendChat(body, 'assistant');
-    if (ingestOpts && ingestOpts.ingest_payload && ingestOpts.user_message_id) {
+    if (shouldShowIngestConfirm(ingestOpts)) {
       attachIngestButton(wrap, ingestOpts.ingest_payload, ingestOpts.user_message_id);
     }
-    if (parsed.ids.length && items && items.length) {
+    if (resolved.ids.length && items && items.length) {
       var pills = document.createElement('div');
       pills.className = 'mt-2 flex flex-wrap gap-1';
       var map = {};
       items.forEach(function (it) { if (it.ref_id) map[it.ref_id] = it.title || it.ref_id; });
-      parsed.ids.forEach(function (id) {
+      resolved.ids.forEach(function (id) {
         var b = document.createElement('button');
         b.className = 'rounded border border-gray-600 px-2 py-0.5 text-xs text-slate-300 hover:border-blue-500/50';
         b.textContent = id;
@@ -1396,6 +1428,9 @@ window.pdfParsing = false;
   var dropZip = document.getElementById('drop-zone-zip');
   var zipInput = document.getElementById('zip-file');
   var importSubmit = document.getElementById('import-submit');
+  var syncModuleSelect = document.getElementById('sync-module-select');
+  var syncModuleSubmit = document.getElementById('sync-module-submit');
+  var syncModuleHint = document.getElementById('sync-module-hint');
   var uploadProgress = document.getElementById('upload-progress');
   var uploadStatus = document.getElementById('upload-status');
   var importFilename = document.getElementById('import-filename');
@@ -1405,7 +1440,53 @@ window.pdfParsing = false;
     if (importFilename) {
       importFilename.textContent = zipFiles.length ? zipFiles.map(function (f) { return f.name; }).join(', ') : '';
     }
-    if (importSubmit) importSubmit.disabled = !zipFiles.length;
+    var hasZip = zipFiles.length > 0;
+    if (importSubmit) importSubmit.disabled = !hasZip;
+    updateSyncModuleSubmitState();
+  }
+
+  function updateSyncModuleSubmitState() {
+    if (!syncModuleSubmit) return;
+    var mod = syncModuleSelect ? (syncModuleSelect.value || '').trim() : '';
+    syncModuleSubmit.disabled = !(zipFiles.length > 0 && mod);
+  }
+
+  async function loadSyncModules() {
+    if (!syncModuleSelect) return;
+    try {
+      var res = await fetch('/data/sync-modules');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var data = await res.json();
+      var mods = data.modules || [];
+      syncModuleSelect.innerHTML = '';
+      if (!mods.length) {
+        syncModuleSelect.innerHTML = '<option value="">（无已注册模块）</option>';
+        updateSyncModuleSubmitState();
+        return;
+      }
+      var placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = '选择增量同步模块…';
+      syncModuleSelect.appendChild(placeholder);
+      mods.forEach(function (m) {
+        var opt = document.createElement('option');
+        opt.value = m.module_id || '';
+        opt.textContent = m.display_zh || m.module_id || 'module';
+        if (m.requires_zip) opt.dataset.requiresZip = '1';
+        syncModuleSelect.appendChild(opt);
+      });
+      if (mods.length === 1 && mods[0].module_id) {
+        syncModuleSelect.value = mods[0].module_id;
+      }
+      updateSyncModuleSubmitState();
+    } catch (e) {
+      syncModuleSelect.innerHTML = '<option value="">模块列表加载失败</option>';
+      updateSyncModuleSubmitState();
+    }
+  }
+
+  if (syncModuleSelect) {
+    syncModuleSelect.addEventListener('change', updateSyncModuleSubmitState);
   }
   if (dropZip && zipInput) {
     dropZip.addEventListener('click', function (e) {
@@ -1473,6 +1554,48 @@ window.pdfParsing = false;
       xhr.send(fd);
     });
   }
+
+  function uploadSyncModuleZip(f, uid, moduleId) {
+    return new Promise(function (resolve, reject) {
+      var mid = (moduleId || '').trim();
+      if (!mid) return reject(new Error('未选择同步模块'));
+      var fd = new FormData();
+      fd.append('file', f, f.name);
+      fd.append('user_id', uid);
+      fd.append('clear_existing', 'false');
+      if (uploadStatus) uploadStatus.textContent = '增量同步 ' + mid + '：' + f.name + '…';
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '/data/sync-module/' + encodeURIComponent(mid));
+      xhr.onload = function () {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try { resolve(JSON.parse(xhr.responseText || '{}')); } catch (e) { resolve({}); }
+        } else reject(new Error('HTTP ' + xhr.status));
+      };
+      xhr.onerror = function () { reject(new Error('网络错误')); };
+      xhr.send(fd);
+    });
+  }
+
+  if (syncModuleSubmit) syncModuleSubmit.addEventListener('click', async function () {
+    if (!zipFiles.length) return;
+    var mod = syncModuleSelect ? (syncModuleSelect.value || '').trim() : '';
+    if (!mod) return;
+    var uid = (userIdInput.value || 'default').trim() || 'default';
+    syncModuleSubmit.disabled = true;
+    if (importSubmit) importSubmit.disabled = true;
+    if (uploadProgress) uploadProgress.classList.remove('hidden');
+    try {
+      var rep = await uploadSyncModuleZip(zipFiles[0], uid, mod);
+      if (rep.job_id) pollImportJob(rep.job_id);
+      else showParseToast('模块同步已提交', 'success');
+      await loadSyncStatus();
+    } catch (e) {
+      showToast('模块同步失败：' + (e.message || String(e)), 'error');
+    } finally {
+      updateSyncModuleSubmitState();
+      if (importSubmit) importSubmit.disabled = !zipFiles.length;
+    }
+  });
 
   if (importSubmit) importSubmit.addEventListener('click', async function () {
     if (!zipFiles.length) return;
@@ -2888,44 +3011,40 @@ window.pdfParsing = false;
 
   if (chatAttachFile) {
     chatAttachFile.addEventListener('change', async function () {
-      var f = chatAttachFile.files && chatAttachFile.files[0];
-      pendingChatAttachment = f || null;
+      var files = chatAttachFile.files ? Array.prototype.slice.call(chatAttachFile.files) : [];
+      pendingChatAttachment = null;
       pendingAttachMeta = null;
-      if (chatAttachLabel) {
-        chatAttachLabel.textContent = f ? ('待发送：' + f.name) : '';
-      }
-      if (!f) return;
+      pendingAttachBundle = null;
+      attachParseInFlight = false;
+      if (chatAttachLabel) chatAttachLabel.textContent = '';
+      if (!files.length) return;
       var uid = (userIdInput.value || 'default').trim() || 'default';
       try {
-        showChatStatus('📎 附件上传并视觉解析中…', { pin: false });
-        var meta = await uploadChatAttachment(f);
-        var pres = await fetch('/api/chat/attachments/parse', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id: uid,
-            attachment_path: meta.attachment_path,
-            attachment_name: meta.attachment_name || f.name,
-            auto_ingest: true
-          })
-        });
-        var pr = await pres.json().catch(function () { return { ok: false, error: 'invalid JSON' }; });
-        if (pr && pr.ok && pr.parsed) {
-          pendingAttachMeta = meta;
-          if (chatAttachLabel) {
-            chatAttachLabel.textContent = '已解析·待发送：' + (meta.attachment_name || f.name);
-          }
-          showChatStatus('📎 附件解析成功，已尝试归仓；点击发送可附带该文件继续对话', { pin: false });
-        } else {
-          if (chatAttachLabel) {
-            chatAttachLabel.textContent = '解析失败：' + (meta.attachment_name || f.name);
-          }
-          showChatStatus('📎 附件解析失败：' + (pr && pr.error ? pr.error : 'unknown'), { pin: true });
+        showChatStatus('📎 正在上传 ' + files.length + ' 个附件…', { pin: false });
+        var paths = [];
+        var names = [];
+        for (var fi = 0; fi < files.length; fi++) {
+          var f = files[fi];
+          var meta = await uploadChatAttachment(f);
+          paths.push(meta.attachment_path);
+          names.push(meta.attachment_name || f.name);
         }
+        pendingAttachBundle = { paths: paths, names: names };
+        pendingAttachMeta = { attachment_path: paths[0], attachment_name: names[0] };
+        if (chatAttachLabel) {
+          chatAttachLabel.textContent = files.length > 1
+            ? ('已上传：' + files.length + ' 个附件')
+            : ('已上传：' + names[0]);
+        }
+        showChatStatus(
+          '📎 已上传，可直接输入问题并发送（服务端将 OCR + 视觉解析）',
+          { pin: false }
+        );
         loadHealthAssets();
       } catch (e) {
+        pendingAttachBundle = null;
         pendingAttachMeta = null;
-        if (chatAttachLabel) chatAttachLabel.textContent = '上传/解析异常';
+        if (chatAttachLabel) chatAttachLabel.textContent = '上传异常';
         showChatStatus(String(e.message || e), { pin: true });
       }
     });
@@ -2935,8 +3054,14 @@ window.pdfParsing = false;
     var model = (modelSelect.value || '').trim();
     if (!model) return appendError({ status: 0 }, '未选择模型');
     var msg = (q.value || '').trim();
-    if (!msg && !pendingChatAttachment) return;
-    appendChat(msg || ('[附件] ' + (pendingChatAttachment && pendingChatAttachment.name)), 'user');
+    if (!msg && !(pendingAttachBundle && pendingAttachBundle.paths && pendingAttachBundle.paths.length)) return;
+    var attachLabel = '';
+    if (pendingAttachBundle && pendingAttachBundle.names && pendingAttachBundle.names.length) {
+      attachLabel = pendingAttachBundle.names.join(' + ');
+    } else if (pendingChatAttachment && pendingChatAttachment.name) {
+      attachLabel = pendingChatAttachment.name;
+    }
+    appendChat(msg || ('[附件] ' + attachLabel), 'user');
     q.value = '';
     sendBtn.disabled = true;
     pinnedTemporalStatus = '';
@@ -2948,16 +3073,12 @@ window.pdfParsing = false;
     var uid = (userIdInput.value || 'default').trim() || 'default';
     var attachMeta = pendingAttachMeta || null;
     try {
-      if (pendingChatAttachment && !attachMeta) {
-        showChatStatus('📎 正在将附件物理落盘至 storage/attachments…');
-        attachMeta = await uploadChatAttachment(pendingChatAttachment);
-      }
       pendingChatAttachment = null;
+      var bundleSend = pendingAttachBundle;
+      pendingAttachBundle = null;
       pendingAttachMeta = null;
       if (chatAttachFile) chatAttachFile.value = '';
-      if (attachMeta && chatAttachLabel) {
-        chatAttachLabel.textContent = attachMeta.attachment_name ? ('已落盘：' + attachMeta.attachment_name) : '';
-      }
+      if (chatAttachLabel) chatAttachLabel.textContent = '';
       var body = {
         user_id: uid,
         message: msg,
@@ -2965,7 +3086,14 @@ window.pdfParsing = false;
         session_id: currentChatSessionId,
         extra_system_context: chatExtraSystemContext || ''
       };
-      if (attachMeta && attachMeta.attachment_path) {
+      if (bundleSend && bundleSend.paths && bundleSend.paths.length) {
+        body.attachment_paths = bundleSend.paths;
+        body.attachment_names = bundleSend.names;
+        if (bundleSend.paths.length === 1) {
+          body.attachment_path = bundleSend.paths[0];
+          body.attachment_name = bundleSend.names[0];
+        }
+      } else if (attachMeta && attachMeta.attachment_path) {
         body.attachment_path = attachMeta.attachment_path;
         body.attachment_name = attachMeta.attachment_name;
       }
@@ -3073,6 +3201,7 @@ window.pdfParsing = false;
   setInterval(refreshVisionStatus, 12000);
   loadTrends();
   loadHealthAssets();
+  loadSyncModules();
   loadSyncStatus();
   setInterval(loadSyncStatus, 4000);
   if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();

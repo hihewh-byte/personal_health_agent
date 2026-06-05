@@ -99,6 +99,9 @@ def recompute_user_data_integrity(user_id: str) -> RecomputeResult:
     uid = (user_id or "default").strip() or "default"
     wd_removed, seg_removed = dedupe_wearable_data(user_id=uid)
     days_rebuilt = rebuild_daily_sleep_from_segments(uid)
+    from pha.workout_storage import rebuild_workout_daily_rollup
+
+    rebuild_workout_daily_rollup(uid)
 
     rows = load_wearable_rows(uid)
     if rows:
@@ -111,6 +114,6 @@ def recompute_user_data_integrity(user_id: str) -> RecomputeResult:
         days_sleep_rebuilt=days_rebuilt,
         message=(
             f"已优化：删除重复样本 {wd_removed} 条、重复睡眠片段 {seg_removed} 条，"
-            f"重算 {days_rebuilt} 天睡眠并集。"
+            f"重算 {days_rebuilt} 天睡眠并集与深睡/REM 分期。"
         ),
     )

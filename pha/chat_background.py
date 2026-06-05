@@ -120,6 +120,49 @@ def maybe_capture_chat_background(
         conn.close()
 
 
+def store_unstructured_vision_note(
+    user_id: str,
+    *,
+    ocr_text: str = "",
+    error: str = "",
+    source_message_id: Optional[int] = None,
+    session_id: str = "",
+) -> bool:
+    """Stage 3A fallback — never promotes to catalog menu; audit trail only."""
+    body_parts = []
+    if (error or "").strip():
+        body_parts.append(f"[vision_parse_failed] {(error or '')[:1200]}")
+    if (ocr_text or "").strip():
+        body_parts.append(f"[ocr]\n{(ocr_text or '')[:MAX_CHAT_BACKGROUND_CHARS - 200]}")
+    text = "\n\n".join(body_parts).strip()
+    if not text:
+        return False
+    uid = (user_id or "default").strip() or "default"
+    note_date = date.today().isoformat()
+    init_background_schema()
+    conn = _connect()
+    try:
+        conn.execute(
+            """
+            INSERT INTO user_health_background_notes (
+                user_id, note_date, category, content, session_id, source_message_id
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                uid,
+                note_date,
+                "unstructured_vision",
+                text[:MAX_CHAT_BACKGROUND_CHARS],
+                (session_id or "").strip() or None,
+                source_message_id,
+            ),
+        )
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
 def list_background_notes(user_id: str, *, limit: int = 20) -> List[dict]:
     uid = (user_id or "default").strip() or "default"
     init_background_schema()

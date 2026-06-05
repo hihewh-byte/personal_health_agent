@@ -7,7 +7,7 @@ import sqlite3
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pha.date_parser import safe_parse_datetime
 from pha.sqlite_storage import _connect, init_schema
@@ -55,6 +55,11 @@ def init_chat_schema() -> None:
     try:
         conn.executescript(CHAT_SCHEMA)
         _migrate_chat_columns(conn)
+        from pha.session_turn_focus import init_session_focus_schema
+        from pha.active_recall_ledger import init_active_recall_schema
+
+        init_session_focus_schema(conn)
+        init_active_recall_schema(conn)
         conn.commit()
     finally:
         conn.close()
@@ -286,6 +291,36 @@ def get_message(message_id: int) -> Optional[ChatMessageRow]:
         if not row:
             return None
         return _row_to_message(row)
+    finally:
+        conn.close()
+
+
+def get_latest_session_attachment_parse(session_id: str) -> Optional[Dict[str, Any]]:
+    """Most recent user message in session with non-empty attachment parse JSON."""
+    import json
+
+    sid = (session_id or "").strip()
+    if not sid:
+        return None
+    init_chat_schema()
+    conn = _connect()
+    try:
+        row = conn.execute(
+            """
+            SELECT parsed_json FROM chat_messages
+            WHERE session_id = ? AND role = 'user'
+              AND parsed_json IS NOT NULL AND TRIM(parsed_json) != ''
+            ORDER BY id DESC LIMIT 1
+            """,
+            (sid,),
+        ).fetchone()
+        if not row:
+            return None
+        try:
+            data = json.loads(row["parsed_json"] or "{}")
+        except json.JSONDecodeError:
+            return None
+        return data if isinstance(data, dict) else None
     finally:
         conn.close()
 

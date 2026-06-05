@@ -1,0 +1,51 @@
+# PHA — Docker Compose
+#
+# Default (host Ollama — recommended on Mac for GPU):
+#   docker compose up -d --build
+#
+# Bundled Ollama (CPU-only servers):
+#   docker compose --profile bundled up -d --build
+#   docker compose exec ollama ollama pull qwen2.5:7b-instruct
+
+services:
+  pha:
+    build: .
+    container_name: pha
+    restart: unless-stopped
+    ports:
+      - "${PHA_PORT:-8787}:8787"
+    environment:
+      PHA_HOST: "0.0.0.0"
+      PHA_PORT: "8787"
+      OLLAMA_BASE_URL: "${OLLAMA_BASE_URL:-http://host.docker.internal:11434}"
+      OLLAMA_MODEL: "${OLLAMA_MODEL:-qwen2.5:7b-instruct}"
+      OLLAMA_MEDICAL_MODEL: "${OLLAMA_MEDICAL_MODEL:-qwen2.5:7b-instruct}"
+      LLM_TIMEOUT_SECONDS: "${LLM_TIMEOUT_SECONDS:-120}"
+      PHA_AGENT_TIMEOUT_SECONDS: "${PHA_AGENT_TIMEOUT_SECONDS:-180}"
+    volumes:
+      - ./data:/app/data
+      - ./storage/users:/app/storage/users
+      - ./storage/attachments:/app/storage/attachments
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: pha-ollama
+    profiles: ["bundled"]
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # Uncomment for NVIDIA GPU on Linux:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+volumes:
+  ollama_data:

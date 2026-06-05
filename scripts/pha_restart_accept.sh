@@ -26,14 +26,27 @@ sleep 1
 
 echo "==> Starting PHA (PYTHONPATH=. $PY -m pha.main)"
 export PYTHONPATH=.
+# Homebrew Tesseract (Stage 3A OCR) — required on PATH for pytesseract
+export PATH="/opt/homebrew/bin:/usr/local/bin:${PATH}"
 # Production numerics tier (Manifest Tier v1) — rollback: PHA_NUMERICS_AUDIT_SCOPE=t0_strict
 export PHA_NUMERICS_AUDIT_SCOPE="${PHA_NUMERICS_AUDIT_SCOPE:-t0_plus_disclosure}"
 export PHA_NUMERICS_T1_M4_MODE="${PHA_NUMERICS_T1_M4_MODE:-warn}"
 echo "    PHA_NUMERICS_AUDIT_SCOPE=${PHA_NUMERICS_AUDIT_SCOPE}"
 echo "    PHA_NUMERICS_T1_M4_MODE=${PHA_NUMERICS_T1_M4_MODE}"
-nohup "$PY" -m pha.main >"$LOG" 2>&1 &
-echo $! >"$PIDFILE"
-echo "    pid=$(cat "$PIDFILE") log=$LOG"
+nohup env PYTHONPATH=. PATH="${PATH}" \
+  PHA_NUMERICS_AUDIT_SCOPE="${PHA_NUMERICS_AUDIT_SCOPE}" \
+  PHA_NUMERICS_T1_M4_MODE="${PHA_NUMERICS_T1_M4_MODE}" \
+  "$PY" -m pha.main >>"$LOG" 2>&1 </dev/null &
+PHA_PID=$!
+echo "$PHA_PID" >"$PIDFILE"
+disown "$PHA_PID" 2>/dev/null || true
+echo "    pid=${PHA_PID} log=$LOG"
+sleep 1
+if ! kill -0 "$PHA_PID" 2>/dev/null; then
+  echo "ERROR: PHA exited immediately after start; tail log:" >&2
+  tail -n 40 "$LOG" >&2 || true
+  exit 1
+fi
 
 echo "==> Waiting for ${BASE}/health (max ${WAIT_SECS}s)"
 ready=0

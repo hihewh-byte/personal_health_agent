@@ -622,7 +622,8 @@ IF random() < effective_rate: enqueue shadow_job
 - [ ] 接受 2A→2B→2C→2D 顺序；Shadow **2D 前默认关**  
 - [x] **显式命令启动 Phase 2A 编码**（文辉：「批准 v2.3.3 + 启动 2A」）
 
-> **2A ✅** · **2B ✅** · **2C ✅** `pha-v2.3.3-stage2c-metadata-catalog` · **2D ✅** `pha-v2.3.3-stage2d-shadow-routing`
+> **2A ✅** · **2B ✅** · **2C ✅** · **2D ✅** · **3A ✅** · **3A.1 ✅** `pha-v2.3.3-stage3a1-attachment-qa-governance`  
+> 3A.1 规格：[`stage3a1-attachment-qa-governance.md`](stage3a1-attachment-qa-governance.md)
 
 ---
 

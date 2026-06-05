@@ -6,7 +6,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from pha.agent import (
     AgentAnswer,
@@ -37,6 +37,7 @@ from pha.intent_gates import (
     should_inject_wearable_snapshot,
     should_strip_polluted_assistant_history,
     user_message_is_casual,
+    user_message_needs_attachment_recall,
     user_message_needs_lab_dossier,
     user_message_needs_wearable_query,
 )
@@ -267,6 +268,7 @@ def build_pha_chat_message_stack(
     evidence_user_blocks: Optional[List[str]] = None,
     raw_user_message: Optional[str] = None,
     tiered_system: Optional[str] = None,
+    recall_focus_user_block: str = "",
 ) -> List[Dict[str, Any]]:
     """
     Physical message stack for Ollama (recency-optimized):
@@ -302,6 +304,10 @@ def build_pha_chat_message_stack(
         body = (block or "").strip()
         if body:
             messages.append({"role": "user", "content": body})
+
+    recall_block = (recall_focus_user_block or "").strip()
+    if recall_block:
+        messages.append({"role": "user", "content": recall_block})
 
     raw = (raw_user_message if raw_user_message is not None else current_user_message) or ""
     messages.append({"role": "user", "content": raw.strip()})
@@ -447,22 +453,253 @@ def parse_chat_attachment_file(
         message_id=None,
         auto_ingest=False,
     )
+    from pha.vision_label_ledger import enrich_parsed_payload
+
+    ocr_pre = (parsed.get("ocr_text") or "").strip()
+    parsed = enrich_parsed_payload(
+        parsed,
+        ocr_text=ocr_pre,
+        filename=attachment_name or Path(attachment_path).name,
+    )
     metrics = list(parsed.get("metrics") or [])
     narratives = list(parsed.get("narratives") or [])
-    if auto_ingest and (metrics or narratives):
+    if metrics:
+        parsed["ingest_status"] = "manual_required"
+    elif auto_ingest and narratives:
         ing = ingest_parsed_payload(
             user_id=uid,
             report_date=parsed.get("report_date") or "",
             hospital=parsed.get("hospital", ""),
             source_filename=parsed.get("source_filename") or (attachment_name or Path(attachment_path).name),
             source_kind="chat_attach_parse_api",
-            metrics=metrics,
+            metrics=[],
             narratives=narratives,
             vision_raw=parsed,
             vision_model="",
         )
         parsed["ingest"] = ing
-    return parsed
+        parsed["ingest_status"] = "auto_ok"
+    else:
+        parsed["ingest_status"] = "auto_skipped"
+    from pha.perception_worker import finalize_attachment_parse
+
+    return finalize_attachment_parse(
+        parsed,
+        attachment_path_count=1,
+        parts=[parsed],
+        client_parse_reuse=False,
+    )
+
+
+def compute_attachment_ingest_status(parsed: Optional[Dict[str, Any]]) -> str:
+    """SSE/UI: manual_required when lab metrics present and not yet ingested."""
+    if not parsed:
+        return "auto_skipped"
+    if parsed.get("ingest_status"):
+        return str(parsed["ingest_status"])
+    metrics = list(parsed.get("metrics") or [])
+    if not metrics:
+        return "auto_skipped"
+    ing = parsed.get("ingest") or {}
+    stored = int(ing.get("metrics_stored") or 0)
+    if stored >= len(metrics) and stored > 0:
+        return "auto_ok"
+    if stored > 0:
+        return "auto_partial"
+    return "manual_required"
+
+
+def _ocr_text_from_attachment_bytes(raw: bytes, filename: str) -> str:
+    try:
+        from pha.vision_engine import image_file_to_png_list
+        from pha.vision_ocr import tesseract_ocr_png
+
+        pages = image_file_to_png_list(raw, filename=filename)
+        ocr_chunks = [tesseract_ocr_png(p) for p in pages]
+        return "\n\n".join(c for c in ocr_chunks if c).strip()
+    except Exception:
+        logger.debug("attachment ocr read skipped", exc_info=True)
+        return ""
+
+
+def _ocr_with_layout_regions(
+    raw: bytes,
+    filename: str,
+) -> Tuple[str, List[Any], Dict[str, Any]]:
+    """L0.2 layout_region crop + OCR arbitration (Wave 3). Falls back to full-page OCR."""
+    try:
+        from pha.layout_region import (
+            layout_hints_from_regions,
+            ocr_with_layout_regions,
+        )
+        from pha.vision_engine import image_file_to_png_list
+
+        pages = image_file_to_png_list(raw, filename=filename)
+        if not pages:
+            return "", [], {}
+        merged_parts: List[str] = []
+        all_regions: List[Any] = []
+        telem: Dict[str, Any] = {"layout_region_count": 0, "regions": []}
+        for idx, page in enumerate(pages):
+            text, regions, t = ocr_with_layout_regions(page, source_page_index=idx)
+            if text:
+                merged_parts.append(text)
+            all_regions.extend(regions)
+            telem["layout_region_count"] = int(telem.get("layout_region_count", 0)) + t.get(
+                "layout_region_count",
+                0,
+            )
+            telem.setdefault("regions", []).extend(t.get("regions") or [])
+        telem["layout_hints"] = layout_hints_from_regions(all_regions)
+        return "\n\n".join(merged_parts).strip(), all_regions, telem
+    except Exception:
+        logger.debug("layout_region ocr failed; full-page fallback", exc_info=True)
+        return _ocr_text_from_attachment_bytes(raw, filename), [], {}
+
+
+def _vision_model_available() -> bool:
+    """Return True if at least one supported Ollama vision model is installed.
+
+    Uses the same base URL resolution as other llm_provider helpers
+    (OLLAMA_BASE_URL / OLLAMA_HOST / http://127.0.0.1:11434).
+    """
+    import os
+
+    try:
+        from pha.llm_provider import find_vision_model, list_ollama_installed_models
+
+        base_url = (
+            os.environ.get("OLLAMA_BASE_URL")
+            or os.environ.get("OLLAMA_HOST")
+            or "http://127.0.0.1:11434"
+        )
+        installed = list_ollama_installed_models(base_url, timeout_seconds=5.0)
+        return bool(find_vision_model(installed))
+    except Exception:
+        return False
+
+
+def _extraction_looks_like_ocr_fallback(extraction: Any) -> bool:
+    """True when vision page parse fell back to OCR-only supplement extraction."""
+    if extraction is None:
+        return True
+    narratives = getattr(extraction, "narratives", None) or []
+    cats = {str(getattr(n, "category", "") or "") for n in narratives}
+    if "vision_raw_snippet" in cats:
+        return True
+    if not getattr(extraction, "results", None) and "unstructured_vision" in cats:
+        return True
+    return False
+
+
+def _wearable_ocr_only_parse(
+    *,
+    ocr_text: str,
+    filename: str,
+    raw: bytes = b"",
+    parse_channel: str = "ocr_only_no_vlm",
+    perception_channel: str = "ocr_only",
+    layout_telemetry: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    parsed: Dict[str, Any] = {
+        "ocr_text": ocr_text,
+        "vision_summary": "",
+        "perception_channel": perception_channel,
+        "parse_channel": parse_channel,
+        "ingredient_rows": [],
+        "metrics_parsed_count": 0,
+        "ingest_status": "auto_skipped",
+        "document_family": "wearable",
+        "document_type": "apple_watch",
+    }
+    if layout_telemetry:
+        parsed["layout_region_meta"] = layout_telemetry
+    return _annotate_attachment_routing(
+        parsed,
+        raw=raw,
+        filename=filename,
+        ocr_text=ocr_text,
+        layout_telemetry=layout_telemetry,
+    )
+
+
+def _supplement_ocr_only_parse(
+    *,
+    ocr_text: str,
+    filename: str,
+    user_id: str,
+    message_id: Optional[int],
+    auto_ingest: bool,
+    raw: bytes = b"",
+    parse_channel: str = "ocr_fallback",
+    perception_channel: str = "ocr_only",
+    layout_telemetry: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    from pha.vision_label_ledger import enrich_parsed_payload
+    from pha.vision_supplement import (
+        extraction_from_ocr_fallback,
+        parsed_payload_from_extraction,
+    )
+
+    fname = filename or "attachment"
+    ext = extraction_from_ocr_fallback(ocr_text)
+    parsed = parsed_payload_from_extraction(
+        ext,
+        filename=fname,
+        parse_channel=parse_channel,
+    )
+    parsed["ocr_text"] = ocr_text
+    parsed["perception_channel"] = perception_channel
+    parsed = enrich_parsed_payload(parsed, ocr_text=ocr_text, filename=fname)
+    parsed["metrics_parsed_count"] = 0
+    parsed["ingest_status"] = "auto_skipped"
+    if auto_ingest and message_id is not None and parsed.get("narratives"):
+        ing = _auto_ingest_attachment_payload(
+            parsed,
+            user_id=user_id,
+            message_id=message_id,
+            filename=fname,
+        )
+        parsed["ingest"] = ing
+        parsed["ingest_status"] = "auto_ok" if ing else "auto_skipped"
+    if layout_telemetry:
+        parsed["layout_region_meta"] = layout_telemetry
+    return _annotate_attachment_routing(
+        parsed,
+        raw=raw,
+        filename=fname,
+        ocr_text=ocr_text,
+        layout_telemetry=layout_telemetry,
+    )
+
+
+def _annotate_attachment_routing(
+    parsed: Dict[str, Any],
+    *,
+    raw: bytes,
+    filename: str,
+    ocr_text: str = "",
+    layout_telemetry: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    from pha.perception_media import attach_perception_routing_metadata
+
+    out = attach_perception_routing_metadata(
+        parsed,
+        raw=raw,
+        filename=filename,
+        ocr_text=ocr_text or str(parsed.get("ocr_text") or ""),
+    )
+    out["media_route"] = out.get("media_route") or "unknown"
+    if layout_telemetry:
+        out["layout_region_meta"] = layout_telemetry
+        hints = layout_telemetry.get("layout_hints") or []
+        if hints:
+            existing = list(out.get("layout_hints") or [])
+            for h in hints:
+                if h not in existing:
+                    existing.append(h)
+            out["layout_hints"] = existing
+    return out
 
 
 def _vision_parse_attachment(
@@ -473,12 +710,161 @@ def _vision_parse_attachment(
     message_id: Optional[int] = None,
     auto_ingest: bool = False,
 ) -> Dict[str, Any]:
+    """
+    Per-image perception: OCR classifies layout; wearable Lane-O skips VLM when OCR is actionable.
+    """
     from pha.vision_engine import VisionReportParser
+    from pha.vision_supplement import parsed_payload_from_extraction
 
     fname = filename or Path(path).name
     raw = Path(path).read_bytes()
-    resp = VisionReportParser().parse_upload(raw, filename=fname)
+    from pha.perception_media import (
+        classify_document_family,
+        detect_media_route,
+        legacy_doc_kind_from_family,
+    )
+
+    media_route, _media_meta = detect_media_route(raw, fname)
+    ocr_text, _layout_regions, _layout_telem = _ocr_with_layout_regions(raw, fname)
+    doc_family = "unknown"
+    if ocr_text:
+        doc_family, _, _ = classify_document_family(ocr_text)
+        doc_kind = legacy_doc_kind_from_family(doc_family)
+    else:
+        doc_kind = "other"
+
+    from pha.perception_family import should_skip_vlm_for_wearable
+
+    if should_skip_vlm_for_wearable(
+        doc_kind=doc_kind,
+        document_family=doc_family,
+        ocr_text=ocr_text,
+    ):
+        logger.info("Wearable Lane-O: skip VLM for %s (doc_kind=%s)", fname, doc_kind)
+        return _wearable_ocr_only_parse(
+            ocr_text=ocr_text,
+            filename=fname,
+            raw=raw,
+            parse_channel="wearable_lane_o",
+            perception_channel="ocr_only",
+            layout_telemetry=_layout_telem,
+        )
+
+    if not _vision_model_available():
+        logger.warning(
+            "No Ollama vision model; degraded OCR-only parse for %s (doc_kind=%s)",
+            fname,
+            doc_kind,
+        )
+        if doc_kind == "supplement_label":
+            return _supplement_ocr_only_parse(
+                ocr_text=ocr_text,
+                filename=fname,
+                user_id=user_id,
+                message_id=message_id,
+                auto_ingest=auto_ingest,
+                raw=raw,
+                parse_channel="ocr_only_no_vlm",
+                layout_telemetry=_layout_telem,
+            )
+        if doc_kind == "apple_watch":
+            return _wearable_ocr_only_parse(
+                ocr_text=ocr_text,
+                filename=fname,
+                raw=raw,
+                parse_channel="ocr_only_no_vlm",
+                layout_telemetry=_layout_telem,
+            )
+        raise ValueError(
+            "未检测到可用的 Ollama 视觉模型（需 llama3.2-vision 或 llava）。"
+            "化验/报告解析无法仅依赖 OCR。",
+        )
+
+    try:
+        resp = VisionReportParser().parse_upload(raw, filename=fname)
+    except Exception as exc:
+        logger.exception("VisionReportParser.parse_upload failed for %s", fname)
+        if doc_kind == "supplement_label":
+            return _supplement_ocr_only_parse(
+                ocr_text=ocr_text,
+                filename=fname,
+                user_id=user_id,
+                message_id=message_id,
+                auto_ingest=auto_ingest,
+                raw=raw,
+                parse_channel="vision_failed_ocr_fallback",
+                layout_telemetry=_layout_telem,
+            )
+        if doc_kind == "apple_watch":
+            return _wearable_ocr_only_parse(
+                ocr_text=ocr_text,
+                filename=fname,
+                raw=raw,
+                parse_channel="vision_failed_ocr_fallback",
+                layout_telemetry=_layout_telem,
+            )
+        raise
+
     extraction = resp.extraction
+    vision_fallback = _extraction_looks_like_ocr_fallback(extraction)
+    perception_channel: str = "ocr_only" if vision_fallback else "vision_structured"
+    parse_channel = (
+        "vision_failed_ocr_fallback"
+        if vision_fallback
+        else ("vision_supplement" if doc_kind == "supplement_label" else "vision_lab")
+    )
+
+    if doc_kind == "apple_watch":
+        parsed = {
+            "ocr_text": ocr_text,
+            "vision_summary": (resp.summary_text or "").strip(),
+            "perception_channel": perception_channel,
+            "parse_channel": "vision_wearable",
+            "vision_model": resp.vision_model,
+            "ingredient_rows": [],
+            "metrics_parsed_count": 0,
+            "ingest_status": "auto_skipped",
+        }
+        return _annotate_attachment_routing(
+            parsed,
+            raw=raw,
+            filename=fname,
+            ocr_text=ocr_text,
+            layout_telemetry=_layout_telem,
+        )
+
+    if doc_kind == "supplement_label":
+        parsed = parsed_payload_from_extraction(
+            extraction,
+            filename=fname,
+            parse_channel=parse_channel,
+            vision_summary=(resp.summary_text or "").strip(),
+        )
+        parsed["ocr_text"] = ocr_text
+        parsed["perception_channel"] = perception_channel
+        parsed["vision_model"] = resp.vision_model
+        from pha.vision_label_ledger import enrich_parsed_payload
+
+        parsed = enrich_parsed_payload(parsed, ocr_text=ocr_text, filename=fname)
+        parsed["metrics_parsed_count"] = 0
+        parsed["ingest_status"] = "auto_skipped"
+        if auto_ingest and message_id is not None and parsed.get("narratives"):
+            ing = _auto_ingest_attachment_payload(
+                parsed,
+                user_id=user_id,
+                message_id=message_id,
+                filename=fname,
+            )
+            parsed["ingest"] = ing
+            parsed["ingest_status"] = "auto_ok" if ing else "auto_skipped"
+        return _annotate_attachment_routing(
+            parsed,
+            raw=raw,
+            filename=fname,
+            ocr_text=ocr_text,
+            layout_telemetry=_layout_telem,
+        )
+
     metrics = list(resp.metrics_preview or [])
     if not metrics and extraction and extraction.results:
         from pha.event_medical import extraction_to_metric_rows
@@ -498,6 +884,9 @@ def _vision_parse_attachment(
     )
     report_date = (extraction.date if extraction else "") or ""
     hospital = (extraction.hospital if extraction else "") or ""
+    if ocr_text and doc_kind == "supplement_label":
+        metrics = []
+
     parsed: Dict[str, Any] = {
         "metrics": metrics,
         "narratives": narratives,
@@ -505,9 +894,16 @@ def _vision_parse_attachment(
         "hospital": hospital,
         "source_filename": fname,
         "vision_summary": (resp.summary_text or "").strip(),
+        "ocr_text": ocr_text,
+        "perception_channel": perception_channel,
+        "parse_channel": parse_channel,
+        "vision_model": resp.vision_model,
     }
+    metrics = list(parsed.get("metrics") or [])
     parsed["metrics_parsed_count"] = len(metrics)
-    if auto_ingest and message_id is not None and (metrics or narratives):
+    if metrics:
+        parsed["ingest_status"] = "manual_required"
+    elif auto_ingest and message_id is not None and narratives:
         ing = _auto_ingest_attachment_payload(
             parsed,
             user_id=user_id,
@@ -515,7 +911,16 @@ def _vision_parse_attachment(
             filename=fname,
         )
         parsed["ingest"] = ing
-    return parsed
+        parsed["ingest_status"] = "auto_ok" if ing else "auto_skipped"
+    else:
+        parsed["ingest_status"] = "auto_skipped"
+    return _annotate_attachment_routing(
+        parsed,
+        raw=raw,
+        filename=fname,
+        ocr_text=ocr_text,
+        layout_telemetry=_layout_telem,
+    )
 
 
 def _model_supports_ollama_tools(model: str) -> bool:
@@ -554,12 +959,23 @@ def _resolve_runtime_mode(
     return "evidence_preload"
 
 
-def _runtime_status_message(runtime_mode: str) -> Optional[str]:
+def _runtime_status_message(
+    runtime_mode: str,
+    *,
+    attachment_qa: bool = False,
+    attach_status_suffix: str = "",
+) -> Optional[str]:
     if runtime_mode == "catalog_tool_loop":
         return "Catalog 模式：请先点单拉取证据（fetch_evidence_by_id），再生成答复"
     if runtime_mode == "evidence_preload":
+        if attachment_qa:
+            base = "附件标签问答：定账与背景已预注入，不调用工具"
+            return f"{base} · {attach_status_suffix}".strip(" ·") if attach_status_suffix else base
         return "本轮由 Harness 预注入证据，不调用工具"
     if runtime_mode == "model_no_tools":
+        if attachment_qa:
+            base = "附件标签问答：定账与背景已预注入，单轮流式答复"
+            return f"{base} · {attach_status_suffix}".strip(" ·") if attach_status_suffix else base
         return "当前模型不支持工具调用，已切换为单轮证据流式答复…"
     return None
 
@@ -824,6 +1240,9 @@ def stream_pha_chat_events(
     extra_system_context: str = "",
     attachment_path: Optional[str] = None,
     attachment_name: Optional[str] = None,
+    attachment_paths: Optional[List[str]] = None,
+    attachment_names: Optional[List[str]] = None,
+    attachment_parsed_parts: Optional[List[Dict[str, Any]]] = None,
 ) -> Iterator[str]:
     """
     Yield SSE payloads (JSON per ``data:`` line content):
@@ -831,10 +1250,14 @@ def stream_pha_chat_events(
     """
     uid = (user_id or "default").strip() or "default"
     msg = (user_message or "").strip()
-    if not msg and not attachment_path:
+    _paths_in = [p.strip() for p in (attachment_paths or []) if (p or "").strip()]
+    if not _paths_in and (attachment_path or "").strip():
+        _paths_in = [(attachment_path or "").strip()]
+    _names_in = [n.strip() for n in (attachment_names or []) if (n or "").strip()]
+    if not msg and not _paths_in:
         yield json.dumps({"event": "error", "message": "消息不能为空"}, ensure_ascii=False)
         return
-    if not msg and attachment_path:
+    if not msg and _paths_in:
         msg = "请根据附件与 Current Patient State 事实账本，逐项解读化验指标（指标 | 数值 | 参考），勿输出空泛健康模板。"
 
     # Step 0: hard temporal intercept — SSE status before any heavy work
@@ -877,10 +1300,20 @@ def stream_pha_chat_events(
         sess = create_session(uid)
         sid = sess.id
 
-    att_path = (attachment_path or "").strip()
-    att_name = (attachment_name or "").strip()
+    att_path = _paths_in[0] if len(_paths_in) == 1 else json.dumps(_paths_in, ensure_ascii=False)
+    att_name = (
+        _names_in[0]
+        if len(_names_in) == 1
+        else " + ".join(_names_in[:4])
+        if _names_in
+        else (attachment_name or "").strip()
+    )
+    raw_user_msg = (msg or "").strip()
     parsed_payload: Optional[Dict[str, Any]] = None
     attach_parse_failed = False
+    attachment_asset_qa = False
+    attach_status_suffix = ""
+    attach_client_reuse = False
     user_row = append_message(
         sid,
         "user",
@@ -924,18 +1357,133 @@ def stream_pha_chat_events(
             ensure_ascii=False,
         )
 
-    if att_path:
+    if _paths_in:
         yield json.dumps(
-            {"event": "status", "message": "📎 附件已落盘，正在视觉解析化验单结构…"},
+            {
+                "event": "status",
+                "message": f"📎 正在 OCR + 视觉解析（{len(_paths_in)} 个附件）…",
+            },
             ensure_ascii=False,
         )
         try:
-            parsed_payload = _vision_parse_attachment(
-                att_path,
-                att_name,
-                user_id=uid,
-                message_id=user_row.id,
-                auto_ingest=True,
+            from pha.vision_label_ledger import enrich_parsed_payload, merge_parsed_payloads
+            from pha.perception_family import (
+                WEARABLE_FAMILY,
+                coerce_wearable_family,
+                parts_should_finalize_as_wearable,
+                requires_label_ledger_v1,
+            )
+
+            _parsed_parts: List[Dict[str, Any]] = []
+            _client_parts = [
+                dict(p)
+                for p in (attachment_parsed_parts or [])
+                if isinstance(p, dict)
+            ]
+            # Chat send must be server-authoritative: client-side parse can race
+            # (user sends before 2nd image parse completes) or carry stale single-image ledger.
+            # Never reuse client-side parse for attachments: server Vision+merge is authoritative.
+            _use_client = False
+            attach_client_reuse = _use_client
+            for _i, _p in enumerate(_paths_in):
+                _n = _names_in[_i] if _i < len(_names_in) else Path(_p).name
+                if len(_paths_in) > 1:
+                    yield json.dumps(
+                        {
+                            "event": "status",
+                            "message": f"📎 正在解析第 {_i + 1}/{len(_paths_in)} 张：{_n}…",
+                            "attachment_index": _i + 1,
+                            "attachment_total": len(_paths_in),
+                        },
+                        ensure_ascii=False,
+                    )
+                if _use_client and _i < len(_client_parts):
+                    _cp = _client_parts[_i]
+                    if not (_cp.get("ocr_text") or "").strip():
+                        _parsed_parts.append(
+                            _vision_parse_attachment(
+                                _p,
+                                _n,
+                                user_id=uid,
+                                message_id=user_row.id,
+                                auto_ingest=(len(_paths_in) == 1),
+                            ),
+                        )
+                    else:
+                        _parsed_parts.append(
+                            enrich_parsed_payload(
+                                _cp,
+                                ocr_text=str(_cp.get("ocr_text") or ""),
+                                filename=_n,
+                            ),
+                        )
+                else:
+                    _parsed_parts.append(
+                        coerce_wearable_family(
+                            _vision_parse_attachment(
+                                _p,
+                                _n,
+                                user_id=uid,
+                                message_id=user_row.id,
+                                auto_ingest=(len(_paths_in) == 1),
+                            ),
+                        ),
+                    )
+            if len(_parsed_parts) > 1 and parts_should_finalize_as_wearable(_parsed_parts):
+                parsed_payload = {
+                    "ocr_text": "\n\n".join(
+                        str(p.get("ocr_text") or "") for p in _parsed_parts
+                    ),
+                    "document_family": WEARABLE_FAMILY,
+                    "document_type": "apple_watch",
+                }
+                for _pp in _parsed_parts:
+                    if str(_pp.get("perception_channel") or "") == "vision_structured":
+                        parsed_payload["perception_channel"] = "vision_structured"
+                        break
+            else:
+                parsed_payload = (
+                    merge_parsed_payloads(_parsed_parts)
+                    if len(_parsed_parts) > 1
+                    else _parsed_parts[0]
+                )
+            from pha.perception_worker import finalize_attachment_parse
+
+            _best_channel = "ocr_only"
+            for _pp in _parsed_parts:
+                if str(_pp.get("perception_channel") or "") == "vision_structured":
+                    _best_channel = "vision_structured"
+                    break
+            parsed_payload = finalize_attachment_parse(
+                parsed_payload,
+                attachment_path_count=len(_paths_in),
+                parts=_parsed_parts,
+                client_parse_reuse=False,
+                perception_channel=_best_channel,  # type: ignore[arg-type]
+                user_message=raw_user_msg,
+            )
+            if (
+                requires_label_ledger_v1(parsed_payload)
+                and len(_paths_in) >= 2
+                and int(parsed_payload.get("attachment_count") or 0) < len(_paths_in)
+            ):
+                parsed_payload["parse_confidence"] = "low"
+                _rr = list(parsed_payload.get("reject_reasons") or [])
+                if "merge_incomplete" not in _rr:
+                    _rr.append("merge_incomplete")
+                parsed_payload["reject_reasons"] = _rr
+            _fam_attach = str(parsed_payload.get("document_family") or "")
+            _ing_n = len(parsed_payload.get("ingredient_rows") or [])
+            _wear_metric_n = len(
+                parsed_payload.get("wearable_metrics") or parsed_payload.get("metrics") or [],
+            )
+            logger.info(
+                "[Chat Attach] paths=%s merged_parts=%s ingredients=%s wearable_metrics=%s client_reuse=%s",
+                len(_paths_in),
+                len(_parsed_parts),
+                _ing_n,
+                _wear_metric_n,
+                _use_client,
             )
             update_message_parsed_json(user_row.id, json.dumps(parsed_payload, ensure_ascii=False))
             parsed_n = int(
@@ -962,12 +1510,89 @@ def stream_pha_chat_events(
                     },
                     ensure_ascii=False,
                 )
-            preview = (parsed_payload.get("vision_summary") or "")[:800]
+            _ac = int(parsed_payload.get("attachment_count") or len(_paths_in))
+            if _fam_attach == "wearable":
+                if _ac > 1 or len(_paths_in) > 1:
+                    attach_status_suffix = (
+                        f"已合并 {max(_ac, len(_paths_in))} 张·穿戴 KPI {_wear_metric_n} 项"
+                    )
+                elif _wear_metric_n:
+                    attach_status_suffix = f"穿戴 KPI {_wear_metric_n} 项"
+            elif _ac > 1 or len(_paths_in) > 1:
+                attach_status_suffix = (
+                    f"已合并 {max(_ac, len(_paths_in))} 张"
+                    f"·定账 {_ing_n} 行"
+                    + ("·复用选图解析" if _use_client else "")
+                )
+            elif _ing_n:
+                attach_status_suffix = f"定账 {_ing_n} 行"
+            if (parsed_payload.get("parse_confidence") or "") == "low":
+                _reasons = parsed_payload.get("reject_reasons") or []
+                _fam_low = str(parsed_payload.get("document_family") or "")
+                _low_hint = (
+                    "：截图 KPI 未完全识别，将结合数仓对比"
+                    if _fam_low == "wearable"
+                    else "：回答将避免编造剂量，建议补拍 Supplement Facts 面"
+                )
+                yield json.dumps(
+                    {
+                        "event": "status",
+                        "message": (
+                            "⚠️ 定账置信度偏低"
+                            + (f"（{','.join(_reasons[:3])}）" if _reasons else "")
+                            + _low_hint
+                        ),
+                    },
+                    ensure_ascii=False,
+                )
+            _ledger_prev = (parsed_payload.get("label_ledger") or parsed_payload.get("vision_summary") or "")
+            _prev_cap = int(os.environ.get("PHA_CHAT_ATTACH_PREVIEW_MAX", "2200"))
+            preview = _ledger_prev[:_prev_cap] if _ledger_prev else ""
             if preview:
-                msg = f"{msg}\n\n【附件视觉解析摘要】\n{preview}"
+                msg = f"{msg}\n\n【附件定账摘要 · 供核对】\n{preview}"
         except Exception as exc:
             logger.exception("chat attachment vision parse failed")
             attach_parse_failed = True
+            ocr_text = ""
+            try:
+                from pha.vision_engine import image_file_to_png_list
+                from pha.vision_ocr import tesseract_ocr_png
+                from pha.vision_supplement import (
+                    extraction_from_ocr_fallback,
+                    parsed_payload_from_extraction,
+                )
+
+                pages = image_file_to_png_list(Path(att_path).read_bytes(), filename=att_name)
+                if pages:
+                    ocr_text = tesseract_ocr_png(pages[0])
+                fb_ext = extraction_from_ocr_fallback(ocr_text, raw_model_snippet=str(exc)[:2000])
+                parsed_payload = parsed_payload_from_extraction(
+                    fb_ext,
+                    filename=att_name or Path(att_path).name,
+                    parse_channel="ocr_fallback",
+                )
+                update_message_parsed_json(
+                    user_row.id,
+                    json.dumps(parsed_payload, ensure_ascii=False),
+                )
+                preview = (parsed_payload.get("vision_summary") or "")[:800]
+                if preview:
+                    msg = f"{msg}\n\n【附件 OCR 兜底摘要 · 未写入化验指标】\n{preview}"
+                attach_parse_failed = False
+            except Exception:
+                logger.exception("chat attachment OCR fallback failed")
+            try:
+                from pha.chat_background import store_unstructured_vision_note
+
+                store_unstructured_vision_note(
+                    uid,
+                    ocr_text=ocr_text,
+                    error=str(exc),
+                    source_message_id=user_row.id,
+                    session_id=sid or "",
+                )
+            except Exception:
+                logger.exception("store_unstructured_vision_note failed")
             try:
                 record_chat_attachment_parse_failure(
                     uid,
@@ -977,18 +1602,66 @@ def stream_pha_chat_events(
                 )
             except Exception:
                 logger.exception("record_chat_attachment_parse_failure failed")
-            yield json.dumps(
-                {
-                    "event": "attach_error",
-                    "code": "vision_parse_failed",
-                    "message": str(exc)[:800],
-                },
-                ensure_ascii=False,
-            )
-            yield json.dumps(
-                {"event": "status", "message": f"附件解析失败（已保留原文件）: {exc}"},
-                ensure_ascii=False,
-            )
+            if attach_parse_failed:
+                yield json.dumps(
+                    {
+                        "event": "attach_error",
+                        "code": "vision_parse_failed",
+                        "message": str(exc)[:800],
+                    },
+                    ensure_ascii=False,
+                )
+                yield json.dumps(
+                    {
+                        "event": "status",
+                        "message": f"附件解析失败（已保留原文件）: {exc}",
+                    },
+                    ensure_ascii=False,
+                )
+            else:
+                yield json.dumps(
+                    {
+                        "event": "status",
+                        "message": "⚠️ Vision JSON 失败，已用 OCR 兜底写入背景（未污染化验菜单）",
+                    },
+                    ensure_ascii=False,
+                )
+
+    if not parsed_payload and not _paths_in and sid:
+        from pha.chat_storage import get_latest_session_attachment_parse
+        from pha.perception_family import ocr_suggests_wearable_ui
+
+        if user_message_needs_wearable_query(raw_user_msg) or user_message_needs_attachment_recall(
+            raw_user_msg,
+        ):
+            _prev_parse = get_latest_session_attachment_parse(sid or "")
+            if _prev_parse:
+                parsed_payload = _prev_parse
+                if not (parsed_payload.get("wearable_metrics") or []):
+                    _ocr = str(parsed_payload.get("ocr_text") or "")
+                    if _ocr and ocr_suggests_wearable_ui(_ocr):
+                        from pha.wearable_snapshot_v1 import finalize_wearable_attachment
+
+                        parsed_payload = finalize_wearable_attachment(
+                            {
+                                "ocr_text": _ocr,
+                                "document_family": "wearable",
+                                "document_type": "apple_watch",
+                            },
+                            attachment_count=max(
+                                1,
+                                int(parsed_payload.get("attachment_count") or 1),
+                            ),
+                            user_message=raw_user_msg,
+                        )
+                attach_status_suffix = "复用上一轮附件解析"
+                yield json.dumps(
+                    {
+                        "event": "status",
+                        "message": "📎 本轮未附带图片，已复用本会话最近一次附件解析结果",
+                    },
+                    ensure_ascii=False,
+                )
 
     audit_md = ""
     audit_json: Dict[str, Any] = {}
@@ -1018,14 +1691,113 @@ def stream_pha_chat_events(
 
         provider = OllamaProvider(model=model.strip())
 
-        plan = build_turn_evidence_plan(msg, is_temporal_dynamic=is_temporal_dynamic)
+        from pha.attachment_asset_qa import (
+            build_lipid_bridge_snapshot_block,
+            focus_tokens_from_text,
+            is_attachment_qa_profile,
+            resolve_attachment_qa_mode,
+        )
+        from pha.session_turn_focus import (
+            consume_session_turn_focus,
+            focus_summary_from_parsed,
+            get_session_turn_focus,
+            revive_session_turn_focus_for_message,
+            save_session_turn_focus,
+        )
+
+        _has_parse = False
+        from pha.perception_family import attachment_parse_is_actionable, family_from_parsed
+
+        if parsed_payload:
+            _has_parse = attachment_parse_is_actionable(parsed_payload)
+        _existing_focus = get_session_turn_focus(sid or "")
+        _route_focus = revive_session_turn_focus_for_message(sid or "", raw_user_msg) or _existing_focus
+        _focus_tokens = list(_route_focus.focus_tokens) if _route_focus else []
+        _attach_family = family_from_parsed(parsed_payload) if parsed_payload else ""
+        if user_message_needs_wearable_query(raw_user_msg) and _route_focus and _route_focus.active:
+            _prev_doc = str(_route_focus.document_type or "").strip().lower()
+            if _prev_doc in ("supplement", "supplement_label", ""):
+                from pha.session_turn_focus import clear_session_turn_focus
+
+                clear_session_turn_focus(sid or "")
+                _route_focus = None
+                _focus_tokens = []
+        _qa_mode = resolve_attachment_qa_mode(
+            raw_user_msg,
+            has_parsed_attachment=_has_parse,
+            session_focus_active=bool(_route_focus and _route_focus.active),
+            focus_tokens=_focus_tokens,
+            document_family=_attach_family,
+        )
+        from pha.wearable_harness import (
+            is_wearable_screenshot_profile,
+            should_use_wearable_screenshot_review,
+        )
+
+        wearable_screenshot_review = should_use_wearable_screenshot_review(
+            document_family=_attach_family,
+            has_parsed_attachment=_has_parse,
+            user_message=raw_user_msg,
+        )
+        attachment_asset_qa = (
+            not wearable_screenshot_review
+            and _qa_mode
+            in (
+                "initial",
+                "lipid_bridge",
+                "episodic_bridge",
+            )
+        )
+        session_focus_row = None
+        if _qa_mode in ("lipid_bridge", "episodic_bridge"):
+            session_focus_row = consume_session_turn_focus(sid or "")
+            if not session_focus_row and _route_focus:
+                session_focus_row = _route_focus
+        elif _has_parse and parsed_payload:
+            _fsum = focus_summary_from_parsed(parsed_payload)
+            _ftoks = focus_tokens_from_text(_fsum)
+            _doc_type = str(
+                parsed_payload.get("document_family")
+                or parsed_payload.get("document_type")
+                or "unknown",
+            )
+            if _doc_type not in ("wearable", "apple_watch") and _attach_family != "wearable":
+                if (
+                    _route_focus
+                    and _route_focus.active
+                    and _route_focus.document_type
+                    and _doc_type != _route_focus.document_type
+                    and _doc_type in ("wearable", "supplement", "lab")
+                ):
+                    from pha.session_turn_focus import clear_session_turn_focus
+
+                    clear_session_turn_focus(sid or "")
+                save_session_turn_focus(
+                    sid or "",
+                    focus_summary=_fsum,
+                    document_type=_doc_type,
+                    focus_tokens=_ftoks,
+                )
+            if attachment_asset_qa:
+                session_focus_row = get_session_turn_focus(sid or "")
+
+        plan = build_turn_evidence_plan(
+            msg,
+            is_temporal_dynamic=is_temporal_dynamic,
+            attachment_asset_qa=attachment_asset_qa,
+            attachment_qa_mode=_qa_mode if attachment_asset_qa else "initial",
+            wearable_screenshot_review=wearable_screenshot_review,
+        )
         qtype = plan.legacy_question_type
 
         ldl_authority = ""
         if "LDL_AUTHORITY" in plan.all_slots:
-            ldl_years = resolve_ldl_authority_years(uid, msg, temporal_intent)
-            if ldl_years:
-                ldl_authority = build_ldl_authority_system_block(uid, ldl_years)
+            if _qa_mode == "lipid_bridge":
+                ldl_authority = build_lipid_bridge_snapshot_block(uid)
+            else:
+                ldl_years = resolve_ldl_authority_years(uid, msg, temporal_intent)
+                if ldl_years:
+                    ldl_authority = build_ldl_authority_system_block(uid, ldl_years)
 
         forced_dossier = ""
         build_forced_dossier = (
@@ -1056,16 +1828,99 @@ def stream_pha_chat_events(
                 ensure_ascii=False,
             )
 
-        background_block = build_user_background_block(uid, user_message=msg)
+        session_focus_summary = ""
+        attachment_label_block = ""
+        wearable_snapshot_block = ""
+        wearable_compare_table_block = ""
+        wearable_compare_table_obj = None
+        wearable_metric_probe_payload: Optional[Dict[str, Any]] = None
+        data_availability_block = ""
+        if parsed_payload and is_wearable_screenshot_profile(plan.profile):
+            from pha.wearable_snapshot_v1 import build_wearable_snapshot_tier0_block
+            from pha.wearable_compare_table_v1 import (
+                build_wearable_compare_table_v1,
+                persist_compare_table_to_parsed,
+            )
 
-        _context_unused, recalled_rows = build_chat_context_block(
-            uid,
-            sid,
-            msg,
-            extra_system_context="",
-            suppress_stale_assistant_recall=should_strip_polluted_assistant_history(msg),
+            wearable_snapshot_block = build_wearable_snapshot_tier0_block(parsed_payload)
+            if "WEARABLE_COMPARE_TABLE" in plan.slots_tier0:
+                wearable_compare_table_obj = build_wearable_compare_table_v1(
+                    parsed_payload,
+                    user_id=uid,
+                    user_message=raw_user_msg,
+                )
+                wearable_compare_table_block = wearable_compare_table_obj.to_llm_markdown()
+                persist_compare_table_to_parsed(parsed_payload, wearable_compare_table_obj)
+                if user_row.id and (_paths_in or parsed_payload.get("wearable_metrics")):
+                    update_message_parsed_json(
+                        user_row.id,
+                        json.dumps(parsed_payload, ensure_ascii=False),
+                    )
+                from dataclasses import replace
+                from pha.wearable_harness import build_wearable_screenshot_review_task
+
+                plan = replace(
+                    plan,
+                    task_text=build_wearable_screenshot_review_task(wearable_compare_table_obj),
+                )
+        elif parsed_payload:
+            attachment_label_block = focus_summary_from_parsed(parsed_payload)
+        from pha.intent_gates import user_message_needs_wearable_query
+        from pha.wearable_metric_probe import (
+            infer_requested_compare_metric_ids,
+            probe_wearable_metric_needs,
         )
-        recalled_snippets = _format_recalled_snippets(recalled_rows)
+
+        _probe_compare = wearable_screenshot_review or (
+            bool(infer_requested_compare_metric_ids(raw_user_msg))
+            and user_message_needs_wearable_query(raw_user_msg)
+        )
+        if _probe_compare:
+            wearable_metric_probe_payload = probe_wearable_metric_needs(uid, raw_user_msg)
+            _probe_msg = str(wearable_metric_probe_payload.get("user_message_zh") or "").strip()
+            if _probe_msg and not wearable_metric_probe_payload.get("all_ready"):
+                yield json.dumps(
+                    {
+                        "event": "status",
+                        "message": f"📦 数据探针：{_probe_msg}",
+                        "open_data_drawer": bool(
+                            wearable_metric_probe_payload.get("ingest_modules"),
+                        ),
+                    },
+                    ensure_ascii=False,
+                )
+        if is_attachment_qa_profile(plan.profile):
+            from pha.attachment_asset_qa import build_attachment_supplement_context
+
+            focus_text = attachment_label_block or raw_user_msg
+            from pha.data_availability import build_data_availability_block
+            from pha.attachment_asset_qa import attachment_evidence_scope_enabled
+
+            background_block = build_attachment_supplement_context(
+                uid,
+                focus_text=focus_text,
+                session_focus_summary="",
+                include_causal_anchor=(_qa_mode == "lipid_bridge"),
+                user_message=msg,
+            )
+            data_availability_block = (
+                build_data_availability_block(uid, user_message=msg)
+                if attachment_evidence_scope_enabled()
+                else ""
+            )
+        else:
+            background_block = build_user_background_block(uid, user_message=msg)
+
+        recalled_snippets = ""
+        if not is_attachment_qa_profile(plan.profile):
+            _context_unused, recalled_rows = build_chat_context_block(
+                uid,
+                sid,
+                msg,
+                extra_system_context="",
+                suppress_stale_assistant_recall=should_strip_polluted_assistant_history(msg),
+            )
+            recalled_snippets = _format_recalled_snippets(recalled_rows)
 
         audit_md, audit_json, audit_warn = build_chat_audit_payload(
             uid,
@@ -1075,7 +1930,12 @@ def stream_pha_chat_events(
 
         wearable_summary = ""
         if "WEARABLE_90D_SUMMARY" in plan.slots_tier0:
-            wearable_summary = build_wearable_90d_summary_block(uid, msg)
+            if is_wearable_screenshot_profile(plan.profile):
+                from pha.harness_plan import build_wearable_90d_macro_summary_block
+
+                wearable_summary = build_wearable_90d_macro_summary_block(uid, msg)
+            else:
+                wearable_summary = build_wearable_90d_summary_block(uid, msg)
 
         catalog_block = ""
         if "EVIDENCE_CATALOG" in plan.slots_tier0:
@@ -1094,7 +1954,7 @@ def stream_pha_chat_events(
                 user_message=msg,
                 include_wearable=not catalog_turn,
             )
-            manifest_block = format_manifest_tier0_block(numerics_manifest)
+            manifest_block = format_manifest_tier0_block(numerics_manifest, profile=plan.profile)
 
         supplement_slot = background_block
         if extra_system_context.strip():
@@ -1112,6 +1972,10 @@ def stream_pha_chat_events(
 
         slot_contents: Dict[str, str] = {
             "TASK": plan.task_text,
+            "ATTACHMENT_LABEL": attachment_label_block,
+            "WEARABLE_SNAPSHOT": wearable_snapshot_block,
+            "WEARABLE_COMPARE_TABLE": wearable_compare_table_block,
+            "DATA_AVAILABILITY": data_availability_block if is_attachment_qa_profile(plan.profile) else "",
             "EVIDENCE_CATALOG": catalog_block,
             "NUMERICS_MANIFEST": manifest_block,
             "METADATA_CATALOG": metadata_block,
@@ -1123,10 +1987,50 @@ def stream_pha_chat_events(
             "AUDIT": audit_warn,
             "RECALL": recalled_snippets,
         }
+
+        recall_focus_block = ""
+        _focus_active = bool(
+            attachment_asset_qa
+            or wearable_screenshot_review
+            or (_route_focus and _route_focus.active)
+            or (session_focus_row and session_focus_row.active),
+        )
+        if sid and _focus_active:
+            from pha.active_recall_ledger import (
+                build_recall_focus_block,
+                sync_ledger_after_turn,
+            )
+
+            _ledger = sync_ledger_after_turn(
+                sid,
+                parsed_payload=parsed_payload if _has_parse else None,
+                slot_contents=slot_contents,
+                user_message=msg,
+                profile=plan.profile,
+                focus_tokens=_focus_tokens,
+                source_turn=2 if _qa_mode in ("episodic_bridge", "lipid_bridge") else 1,
+                focus_active=True,
+            )
+            recall_focus_block = build_recall_focus_block(
+                _ledger,
+                parse_confidence=str(
+                    (parsed_payload or {}).get("parse_confidence") or "",
+                ),
+            )
+            slot_contents["RECALL_FOCUS"] = recall_focus_block
+
         tier0_supp, tier1_supp, _missing_slots, tier0_integrity = assemble_tiered_supplemental(
             plan=plan,
             slot_contents=slot_contents,
         )
+        if is_attachment_qa_profile(plan.profile):
+            from pha.attachment_asset_qa import ATTACHMENT_QA_SOUL_ADDENDUM
+
+            tier1_supp = (
+                f"{ATTACHMENT_QA_SOUL_ADDENDUM.strip()}\n\n---\n\n{tier1_supp}".strip()
+                if tier1_supp
+                else ATTACHMENT_QA_SOUL_ADDENDUM.strip()
+            )
         supplemental_raw_for_report = f"{tier0_supp}\n\n---\n\n{tier1_supp}".strip()
 
         shadow_handle = None
@@ -1192,24 +2096,34 @@ def stream_pha_chat_events(
 
         patient_state = ""
         if "PATIENT_STATE_LAB" in plan.all_slots or "PATIENT_STATE_WEARABLE" in plan.all_slots:
-            from pha.evidence_lane import wearable_block_has_user_snapshot
+            if not is_wearable_screenshot_profile(plan.profile):
+                from pha.evidence_lane import wearable_block_has_user_snapshot
 
-            patient_state = build_patient_state_evidence_slice(
-                uid,
-                msg,
-                question_type=qtype,
-                has_wearable_user_snapshot=wearable_block_has_user_snapshot(
-                    wearable_summary,
-                ),
-                parsed_overlay=parsed_payload,
-                reference_date=effective_query_reference_date(),
+                patient_state = build_patient_state_evidence_slice(
+                    uid,
+                    msg,
+                    question_type=qtype,
+                    has_wearable_user_snapshot=wearable_block_has_user_snapshot(
+                        wearable_summary,
+                    ),
+                    parsed_overlay=parsed_payload,
+                    reference_date=effective_query_reference_date(),
+                )
+
+        if is_attachment_qa_profile(plan.profile):
+            from pha.attachment_asset_qa import PHA_ATTACHMENT_SOUL_MINIMAL
+
+            soul_base = PHA_ATTACHMENT_SOUL_MINIMAL
+        elif is_wearable_screenshot_profile(plan.profile):
+            from pha.wearable_harness import PHA_WEARABLE_SOUL_MINIMAL
+
+            soul_base = PHA_WEARABLE_SOUL_MINIMAL
+        else:
+            soul_base = (
+                PHA_MEDICAL_SOUL_LITE_SYSTEM_PROMPT
+                if qtype == QuestionType.CASUAL
+                else None
             )
-
-        soul_base = (
-            PHA_MEDICAL_SOUL_LITE_SYSTEM_PROMPT
-            if qtype == QuestionType.CASUAL
-            else None
-        )
         soul = (soul_base or PHA_MEDICAL_SOUL_SYSTEM_PROMPT).strip()
         ref = effective_query_reference_date()
         tiered_system = _cap_system_tiered(
@@ -1236,6 +2150,7 @@ def stream_pha_chat_events(
             raw_user_message=msg,
             medical_soul_base=soul_base,
             tiered_system=tiered_system,
+            recall_focus_user_block=recall_focus_block,
         )
 
         log_harness_payload(
@@ -1273,6 +2188,32 @@ def stream_pha_chat_events(
                 plan_profile=plan.profile,
                 background_block_nonempty=bool(background_block.strip()),
             )
+            telemetry["intent_route"]["attachment_qa_mode"] = (
+                _qa_mode if attachment_asset_qa else "none"
+            )
+            if session_focus_row is not None:
+                telemetry["intent_route"]["session_focus_turns_remaining"] = int(
+                    session_focus_row.turns_remaining,
+                )
+            if parsed_payload:
+                from pha.telemetry_attachment import build_attachment_route_telemetry
+
+                telemetry["intent_route"].update(
+                    build_attachment_route_telemetry(
+                        parsed_payload,
+                        attachment_path_count=len(_paths_in) if _paths_in else 0,
+                        client_parse_reuse=bool(
+                            parsed_payload.get("client_parse_reuse") or attach_client_reuse
+                        ),
+                        attachment_qa_mode=_qa_mode if attachment_asset_qa else "none",
+                    ),
+                )
+                telemetry["intent_route"]["vision_parse_confidence"] = str(
+                    parsed_payload.get("parse_confidence") or "",
+                )
+                telemetry["intent_route"]["document_type"] = str(
+                    parsed_payload.get("document_type") or "",
+                )
             h_in = HarnessTurnInputs(
                 user_id=uid,
                 session_id=sid or "",
@@ -1317,10 +2258,50 @@ def stream_pha_chat_events(
         full_parts: List[str] = []
         tool_results: List[Dict[str, Any]] = pre_results
         tool_status: List[str] = []
+        skip_llm = False
+        _det = ""
+        if attachment_asset_qa and parsed_payload:
+            from pha.attachment_asset_qa import maybe_deterministic_attachment_reply
+
+            _det = maybe_deterministic_attachment_reply(
+                parsed_payload,
+                qa_mode=_qa_mode,
+                attachment_path_count=len(_paths_in),
+                raw_user_message=raw_user_msg,
+            )
+            if _det:
+                skip_llm = True
+                yield json.dumps(
+                    {
+                        "event": "status",
+                        "message": "定账置信度偏低：已跳过模型臆测，返回核对指引",
+                    },
+                    ensure_ascii=False,
+                )
+        elif wearable_screenshot_review and parsed_payload:
+            from pha.wearable_harness import maybe_deterministic_wearable_reply
+
+            _det = maybe_deterministic_wearable_reply(
+                parsed_payload,
+                raw_user_message=raw_user_msg,
+            )
+            if _det:
+                skip_llm = True
+                yield json.dumps(
+                    {
+                        "event": "status",
+                        "message": "穿戴截图定账不足：已跳过模型臆测，返回核对指引",
+                    },
+                    ensure_ascii=False,
+                )
 
         use_tools = runtime_mode == "tool_loop"
         use_catalog = runtime_mode == "catalog_tool_loop"
-        if fast_path:
+        if skip_llm:
+            _det_text = _det
+            full_parts.append(_det_text)
+            yield json.dumps({"event": "delta", "delta": _det_text}, ensure_ascii=False)
+        elif fast_path:
             yield json.dumps({"event": "status", "message": FAST_MODE_STATUS}, ensure_ascii=False)
             for delta in provider.stream_chat_messages(messages=chat_messages):
                 full_parts.append(delta)
@@ -1351,7 +2332,7 @@ def stream_pha_chat_events(
                 include_lipid=include_lipid,
                 include_wearable=include_wearable,
             )
-            post_manifest_block = format_manifest_tier0_block(numerics_manifest)
+            post_manifest_block = format_manifest_tier0_block(numerics_manifest, profile=plan.profile)
             stream_messages = _catalog_stream_messages(
                 chat_messages,
                 fetch_payload=fetch_payload,
@@ -1389,7 +2370,11 @@ def stream_pha_chat_events(
                     full_parts.append(delta)
                     yield json.dumps({"event": "delta", "delta": delta}, ensure_ascii=False)
         else:
-            status_msg = _runtime_status_message(runtime_mode)
+            status_msg = _runtime_status_message(
+                runtime_mode,
+                attachment_qa=attachment_asset_qa,
+                attach_status_suffix=attach_status_suffix,
+            )
             if status_msg:
                 yield json.dumps({"event": "status", "message": status_msg}, ensure_ascii=False)
             for delta in provider.stream_chat_messages(messages=chat_messages):
@@ -1398,9 +2383,47 @@ def stream_pha_chat_events(
 
         raw = "".join(full_parts)
         answer_text, cited = _parse_cited_refs(raw)
+        if is_attachment_qa_profile(plan.profile):
+            from pha.presentation_filter import polish_user_visible_reply
+
+            polished = polish_user_visible_reply(answer_text or raw)
+            if polished:
+                answer_text = polished
 
         numerics_audit: Dict[str, Any] = {}
-        if numerics_manifest is not None:
+        compare_table_audit: Dict[str, Any] = {}
+        if wearable_screenshot_review and wearable_compare_table_obj is not None:
+            from pha.wearable_compare_table_v1 import apply_compare_table_fallback_if_needed
+            from pha.wearable_presentation import polish_wearable_user_visible_reply
+
+            answer_text, compare_table_audit = apply_compare_table_fallback_if_needed(
+                answer_text or raw,
+                wearable_compare_table_obj,
+                user_message=raw_user_msg,
+            )
+            answer_text = polish_wearable_user_visible_reply(answer_text or raw)
+            if compare_table_audit.get("fallback_applied"):
+                logger.info(
+                    "[Wearable Compare Audit] fallback violations=%s tier0_chars=%s advisory_chars=%s",
+                    compare_table_audit.get("violations"),
+                    len(compare_table_audit.get("tier0_markdown") or ""),
+                    compare_table_audit.get("advisory_chars"),
+                )
+                _fb_mode = compare_table_audit.get("fallback_mode") or "replace"
+                _fb_msg = (
+                    "穿戴对比审计：对比数字已对齐系统表，并保留基于事实的健康建议"
+                    if int(compare_table_audit.get("advisory_chars") or 0) > 0
+                    else "穿戴对比审计：答复偏离 CompareTable，已回退至系统定账摘要"
+                )
+                if _fb_mode == "hybrid" and int(compare_table_audit.get("advisory_chars") or 0) > 0:
+                    _fb_msg = (
+                        "穿戴对比审计：对比数字已对齐系统表，并保留模型健康建议"
+                    )
+                yield json.dumps(
+                    {"event": "status", "message": _fb_msg},
+                    ensure_ascii=False,
+                )
+        elif numerics_manifest is not None:
             numerics_audit = audit_response_numerics(
                 answer_text or raw,
                 numerics_manifest,
@@ -1419,6 +2442,15 @@ def stream_pha_chat_events(
                     },
                     ensure_ascii=False,
                 )
+
+        l3_focus_violation = False
+        if attachment_asset_qa:
+            from pha.telemetry_attachment import detect_l3_focus_violation
+
+            l3_focus_violation = detect_l3_focus_violation(
+                answer_text or raw,
+                attachment_qa_mode=_qa_mode,
+            )
 
         assistant_row = append_message(sid, "assistant", answer_text or raw)
 
@@ -1443,6 +2475,10 @@ def stream_pha_chat_events(
             done_payload["data_pipeline_audit"] = audit_json
         if numerics_audit:
             done_payload["numerics_audit"] = numerics_audit
+        if compare_table_audit:
+            done_payload["compare_table_audit"] = compare_table_audit
+        if wearable_metric_probe_payload:
+            done_payload["wearable_metric_probe"] = wearable_metric_probe_payload
 
         def _emit_turn_complete() -> None:
             shadow_payload: Dict[str, Any] = {}
@@ -1467,6 +2503,33 @@ def stream_pha_chat_events(
                 plan_profile=plan.profile,
                 background_block_nonempty=bool(background_block.strip()),
             )
+            telemetry["intent_route"]["attachment_qa_mode"] = (
+                _qa_mode if attachment_asset_qa else "none"
+            )
+            if session_focus_row is not None:
+                telemetry["intent_route"]["session_focus_turns_remaining"] = int(
+                    session_focus_row.turns_remaining,
+                )
+            if parsed_payload:
+                from pha.telemetry_attachment import build_attachment_route_telemetry
+
+                telemetry["intent_route"].update(
+                    build_attachment_route_telemetry(
+                        parsed_payload,
+                        attachment_path_count=len(_paths_in) if _paths_in else 0,
+                        client_parse_reuse=bool(
+                            parsed_payload.get("client_parse_reuse") or attach_client_reuse
+                        ),
+                        attachment_qa_mode=_qa_mode if attachment_asset_qa else "none",
+                    ),
+                )
+                telemetry["intent_route"]["vision_parse_confidence"] = str(
+                    parsed_payload.get("parse_confidence") or "",
+                )
+                telemetry["intent_route"]["document_type"] = str(
+                    parsed_payload.get("document_type") or "",
+                )
+            telemetry["intent_route"]["l3_focus_violation"] = l3_focus_violation
             h_done = HarnessTurnInputs(
                 user_id=uid,
                 session_id=sid or "",
@@ -1516,6 +2579,10 @@ def stream_pha_chat_events(
         if parsed_payload:
             done_payload["ingest_payload"] = parsed_payload
             done_payload["user_message_id"] = user_row.id
+            done_payload["ingest_status"] = compute_attachment_ingest_status(parsed_payload)
+            done_payload["ingest_metrics_stored"] = int(
+                (parsed_payload.get("ingest") or {}).get("metrics_stored") or 0,
+            )
         yield json.dumps(done_payload, ensure_ascii=False)
     except Exception as exc:
         logger.exception("stream_pha_chat failed")

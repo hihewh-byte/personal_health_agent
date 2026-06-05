@@ -1,5 +1,25 @@
 # PHA 变更日志
 
+## pha-v2.3.28（Wave 3d 收尾 + 开源 / Docker 就绪）
+
+- **C-19** Dashboard Registry 驱动 sync-modules 下拉 + 泛化增量同步上传
+- **C-20** `wearable_metric_probe` + `GET /api/wearable/metric-probe` + 对话探针 SSE
+- **C-18** CompareTable 驱动 TASK · 禁止 comparable 分期虚假「无 90 天历史」
+- **C-17** `wearable_metric_registry.json` + `GET/POST /data/sync-module*`
+- **C-10~16** CompareTable SSO · 混合 Fallback · 睡眠分期 / HKWorkout L1 · 呼吸率
+- **开源**：README · LICENSE (Apache-2.0) · CONTRIBUTING · SECURITY · INSTALL
+- **Docker**：`docker compose up`（宿主 Ollama）/ `--profile bundled`（内置 Ollama CPU）
+- **工程化**：`pyproject.toml` · `scripts/doctor.py` · `scripts/run_selfchecks.sh` · GitHub Actions CI
+
+## pha-v2.3.3 ~ v2.3.27（Stage 3 — 附件 QA / 穿戴 / Compare）
+
+- **Stage 3A** 附件资产 QA · episodic focus · vision guard · inline preview
+- **Stage 3B** Perception worker · layout region · media arbitration
+- **Stage 3C** Active recall · wearable snapshot bridge · async attachment orchestrator
+- **Stage 3D-γ** CompareTable v1 · audit · golden OCR fixtures
+- **Stage 3D-δ/ε** Metric Registry · interpretation policy · fact pipeline
+- **E2E** 6-panel realdevice script · pre-e2e gate E1 pass (2026-06-04)
+
 ## pha-v2.2.7（Catalog 行为模式 + 审计封板）
 
 - **C 层审计**：中文日期 `YYYY年MM月DD日` 标准化；数值子串匹配（无 `\b` 依赖）

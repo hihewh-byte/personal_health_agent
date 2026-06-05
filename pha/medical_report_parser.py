@@ -251,7 +251,9 @@ def _ocr_image_upload(
         except Exception:
             logger.exception("Vision image OCR failed; trying tesseract")
 
-    tess = _tesseract_ocr_png(pages[0])
+    from pha.vision_ocr import tesseract_ocr_png
+
+    tess = tesseract_ocr_png(pages[0])
     if tess.strip():
         return tess, "tesseract_ocr", "", unloaded
 

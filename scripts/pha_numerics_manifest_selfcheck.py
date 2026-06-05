@@ -158,6 +158,53 @@ def main() -> int:
     os.environ.pop("PHA_NUMERICS_AUDIT_SCOPE", None)
     os.environ.pop("PHA_NUMERICS_T1_M4_MODE", None)
 
+    wear_manifest = build_numerics_manifest(
+        "default",
+        profile="wearable_screenshot_review",
+        user_message="对比过去90天睡眠是否正常",
+    )
+    wear_bad = (
+        "深睡时长 sleep_deep 1hr9min 比 User Data Snapshot 近90天平均值 1hr52min 稍低。"
+        "REM 2hr17min 比 REM 睡眠均值45.2 min 有所减少。"
+    )
+    from pha.wearable_compare_table_v1 import (
+        CompareRowV1,
+        CompareTableV1,
+        apply_compare_table_fallback_if_needed,
+        audit_wearable_compare_table,
+    )
+
+    wear_table = CompareTableV1(
+        reference_date="2026-05-31",
+        rows=[
+            CompareRowV1(
+                metric_id="sleep_deep",
+                row_kind="snapshot_only",
+                snapshot_value="1hr9min",
+                baseline_90d_value="NO_BASELINE",
+                verdict="snapshot_only",
+            ),
+        ],
+    )
+    wear_audit = audit_wearable_compare_table(wear_bad, wear_table)
+    if wear_audit.get("passed"):
+        print("FAIL W-wearable-stage-90d compare audit should fail")
+        failed += 1
+    else:
+        print("OK W-wearable-stage-90d compare audit")
+    fixed, fb = apply_compare_table_fallback_if_needed(wear_bad, wear_table)
+    if "1hr52" in fixed:
+        print("FAIL W-wearable fallback still has fabrication")
+        failed += 1
+    else:
+        print("OK W-wearable fallback")
+    wear_block = format_manifest_tier0_block(wear_manifest, profile="wearable_screenshot_review")
+    if "FORBIDDEN_90D" not in wear_block:
+        print("FAIL W-manifest-forbidden footer missing")
+        failed += 1
+    else:
+        print("OK W-manifest-forbidden footer")
+
     print("\n" + ("OK all" if not failed else f"FAILED {failed} case(s)"))
     return failed
 

@@ -67,8 +67,132 @@ def build_turn_evidence_plan(
     *,
     question_type: Optional[QuestionType] = None,
     is_temporal_dynamic: bool = False,
+    attachment_asset_qa: bool = False,
+    attachment_qa_mode: str = "initial",
+    wearable_screenshot_review: bool = False,
 ) -> TurnEvidencePlan:
     msg = (user_message or "").strip()
+    if wearable_screenshot_review:
+        from pha.wearable_harness import WEARABLE_SCREENSHOT_REVIEW_TASK
+
+        return TurnEvidencePlan(
+            profile="wearable_screenshot_review",
+            slots_tier0=[
+                "MASTER_ANCHOR",
+                "WEARABLE_SNAPSHOT",
+                "WEARABLE_COMPARE_TABLE",
+                "WEARABLE_90D_SUMMARY",
+                "TASK",
+            ],
+            slots_tier1=[],
+            forbidden=[
+                "USER_SNAPSHOT",
+                "ATTACHMENT_LABEL",
+                "GET_HEALTH_DATA",
+                "GET_TEMPORAL_HISTORY_DOSSIER",
+                "DOSSIER_CLINICAL_COMPACT",
+                "DOSSIER_LAB",
+                "EVIDENCE_CATALOG",
+                "METADATA_CATALOG",
+                "SUPPLEMENT_BG",
+                "LDL_AUTHORITY",
+                "NUMERICS_MANIFEST",
+                "fetch_evidence_by_id",
+                "PATIENT_STATE_WEARABLE",
+                "PATIENT_STATE_LAB",
+            ],
+            tools_allowed=[],
+            task_text=WEARABLE_SCREENSHOT_REVIEW_TASK,
+            legacy_question_type=QuestionType.WEARABLE,
+        )
+
+    if attachment_asset_qa:
+        from pha.attachment_asset_qa import (
+            ATTACHMENT_ASSET_QA_TASK,
+            ATTACHMENT_LIPID_BRIDGE_TASK,
+            build_episodic_bridge_task,
+        )
+
+        mode = (attachment_qa_mode or "initial").strip()
+        if mode == "episodic_bridge":
+            task = build_episodic_bridge_task(msg)
+            slots_t0 = [
+                "MASTER_ANCHOR",
+                "ATTACHMENT_LABEL",
+                "DATA_AVAILABILITY",
+                "TASK",
+                "NUMERICS_MANIFEST",
+                "WEARABLE_90D_SUMMARY",
+                "SUPPLEMENT_BG",
+            ]
+            forbidden_ldl = False
+        elif mode == "lipid_bridge":
+            task = ATTACHMENT_LIPID_BRIDGE_TASK
+            slots_t0 = [
+                "MASTER_ANCHOR",
+                "ATTACHMENT_LABEL",
+                "TASK",
+                "SUPPLEMENT_BG",
+                "LDL_AUTHORITY",
+            ]
+            forbidden_ldl = False
+        else:
+            task = ATTACHMENT_ASSET_QA_TASK
+            slots_t0 = ["MASTER_ANCHOR", "ATTACHMENT_LABEL", "TASK", "SUPPLEMENT_BG"]
+            from pha.attachment_asset_qa import attachment_evidence_scope_enabled
+
+            if attachment_evidence_scope_enabled():
+                slots_t0 = [
+                    "MASTER_ANCHOR",
+                    "ATTACHMENT_LABEL",
+                    "DATA_AVAILABILITY",
+                    "TASK",
+                    "SUPPLEMENT_BG",
+                ]
+            forbidden_ldl = True
+
+        forbidden = [
+            "USER_SNAPSHOT",
+            "GET_HEALTH_DATA",
+            "GET_TEMPORAL_HISTORY_DOSSIER",
+            "DOSSIER_CLINICAL_COMPACT",
+            "DOSSIER_LAB",
+            "EVIDENCE_CATALOG",
+            "METADATA_CATALOG",
+            "RECALL",
+            "fetch_evidence_by_id",
+        ]
+        if mode != "episodic_bridge":
+            forbidden.extend(
+                [
+                    "WEARABLE_90D_SUMMARY",
+                    "NUMERICS_MANIFEST",
+                    "PATIENT_STATE_LAB",
+                    "PATIENT_STATE_WEARABLE",
+                ],
+            )
+        if forbidden_ldl:
+            forbidden.append("LDL_AUTHORITY")
+
+        profile_name = (
+            "attachment_episodic_bridge" if mode == "episodic_bridge" else "attachment_asset_qa"
+        )
+        slots_t1 = (
+            ["PATIENT_STATE_LAB", "PATIENT_STATE_WEARABLE"]
+            if mode == "episodic_bridge"
+            else []
+        )
+
+        return TurnEvidencePlan(
+            profile=profile_name,
+            slots_tier0=slots_t0,
+            slots_tier1=slots_t1,
+            forbidden=forbidden,
+            tools_allowed=[],
+            task_text=task,
+            legacy_question_type=QuestionType.LIFESTYLE,
+        )
+
     route = resolve_schema_intent(msg)
     qtype = question_type or classify_question_type(msg)
 
@@ -213,7 +337,44 @@ def build_wearable_90d_summary_block(user_id: str, user_message: str) -> str:
         )
     return (
         f"【Evidence · 近90日穿戴摘要 · {window.start.isoformat()}～{window.end.isoformat()}】\n"
-        f"{snap}"
+        f"{snap}\n"
+        f"（宏观趋势参考；90 天对比数字见 WEARABLE_COMPARE_TABLE。）"
+    )
+
+
+def build_wearable_90d_macro_summary_block(user_id: str, user_message: str) -> str:
+    """Macro-only wearable context for screenshot-compare turns (no means/ranges)."""
+    from pha.health_analytics import build_wearable_macro_analytics_snapshot
+    from pha.sqlite_storage import query_wearable_daily_range
+    from pha.store import store
+
+    uid = (user_id or "default").strip() or "default"
+    ref = effective_query_reference_date()
+    window = default_wearable_window(user_message, reference=ref)
+    metrics = infer_wearable_metrics(user_message)
+    if not metrics:
+        metrics = ["hrv", "activity_kcal"]
+    rows = list(query_wearable_daily_range(uid, window.start, window.end) or [])
+    if not rows:
+        rows = [r for r in store.list_wearable_rows(uid) if window.start <= r.day <= window.end]
+    snap = build_wearable_macro_analytics_snapshot(
+        rows,
+        start_date=window.start,
+        end_date=window.end,
+        reference_date=ref,
+        user_message=user_message,
+        metrics=metrics,
+    )
+    if not snap:
+        return (
+            f"【Evidence · 近90日穿戴宏观趋势 · {window.start.isoformat()}～{window.end.isoformat()}】\n"
+            f"无本地日聚合数据。\n"
+            f"（不含 90 天均值/区间；截图对比数字见 WEARABLE_COMPARE_TABLE。）"
+        )
+    return (
+        f"【Evidence · 近90日穿戴宏观趋势 · {window.start.isoformat()}～{window.end.isoformat()}】\n"
+        f"{snap}\n"
+        f"（不含 90 天均值/区间；截图对比数字见 WEARABLE_COMPARE_TABLE。）"
     )
 
 

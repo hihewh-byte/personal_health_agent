@@ -1,0 +1,33 @@
+.venv/
+.git/
+.gitignore
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.DS_Store
+.env
+.env.local
+.env.*
+!.env.example
+
+# User / runtime data — never bake into image
+data/
+storage/users/
+storage/attachments/
+*.db
+*.sqlite
+*.sqlite3
+*.log
+/tmp/
+
+.pha-versions/
+.cursor/
+macos-apps/
+
+# Docs / dev-only (keep image lean)
+docs/
+tests/fixtures/e2e-failures-2026-05/
+pha_backend_skeleton.md
+pha_vision_upload_flow.md
+repair_medical_rows.py
