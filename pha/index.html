@@ -613,6 +613,67 @@
     .pha-audit-panel table { font-size: 0.68rem; width: 100%; }
     .pha-audit-panel th, .pha-audit-panel td { padding: 0.2rem 0.35rem; border-bottom: 1px solid rgba(55,65,81,0.6); }
     .pha-audit-warn { color: #fbbf24; font-weight: 700; margin-bottom: 0.35rem; }
+    .pha-onboarding-card {
+      display: none;
+      margin: 0 0 1rem;
+      padding: 1rem 1.1rem;
+      border-radius: 0.65rem;
+      border: 1px dashed rgba(59, 130, 246, 0.45);
+      background: linear-gradient(135deg, rgba(30, 58, 95, 0.35) 0%, rgba(15, 23, 42, 0.6) 100%);
+    }
+    .pha-onboarding-card.visible { display: block; }
+    .pha-onboarding-card h3 { margin: 0 0 0.5rem; font-size: 0.95rem; color: #f1f5f9; }
+    .pha-onboarding-card p { margin: 0.25rem 0; font-size: 0.8rem; color: #94a3b8; line-height: 1.5; }
+    .pha-onboarding-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.65rem; }
+    .pha-onboarding-actions button {
+      padding: 0.4rem 0.75rem; border-radius: 0.4rem; font-size: 0.78rem; cursor: pointer;
+      border: 1px solid rgba(59, 130, 246, 0.5); background: rgba(37, 99, 235, 0.25); color: #dbeafe;
+    }
+    .pha-onboarding-actions button:hover { background: rgba(37, 99, 235, 0.4); }
+    .pha-card-value.is-loading {
+      color: transparent !important;
+      background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+      background-size: 200% 100%;
+      animation: pha-shimmer 1.2s ease-in-out infinite;
+      border-radius: 0.25rem;
+      min-width: 3rem;
+      min-height: 1.5rem;
+      display: inline-block;
+    }
+    @keyframes pha-shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .pha-attach-preview {
+      display: none;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+      align-items: flex-start;
+    }
+    .pha-attach-preview.visible { display: flex; }
+    .pha-attach-thumb {
+      position: relative;
+      width: 4.5rem;
+      height: 4.5rem;
+      border-radius: 0.4rem;
+      overflow: hidden;
+      border: 1px solid rgba(55, 65, 81, 0.85);
+      background: #0f172a;
+      flex-shrink: 0;
+    }
+    .pha-attach-thumb img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .pha-attach-thumb .pha-attach-pdf {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; height: 100%; font-size: 1.5rem; color: #f87171;
+    }
+    .pha-attach-thumb span {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      padding: 0.15rem 0.25rem; font-size: 0.55rem; color: #e2e8f0;
+      background: rgba(0, 0, 0, 0.72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
     #chat-stream {
       flex: 1 1 auto; min-height: 220px; overflow-y: auto; scroll-behavior: smooth;
       display: flex; flex-direction: column; gap: 0.65rem; padding: 0.25rem 0;
@@ -951,6 +1012,14 @@
         <input id="user-id" type="text" value="default" placeholder="user_id" />
         <p id="model-hint"></p>
       </div>
+      <div id="pha-onboarding-card" class="pha-onboarding-card" role="region" aria-label="首次使用引导">
+        <h3>👋 欢迎使用 PHA — 本地个人健康智能体</h3>
+        <p>当前数仓为空。导入 Apple Health <code>export.zip</code> 后，即可查看步数/HRV/睡眠趋势，并用 AI 对话做 90 天指标对比。</p>
+        <div class="pha-onboarding-actions">
+          <button type="button" id="onboarding-open-import">打开数据导入</button>
+          <button type="button" id="onboarding-sample-prompt">试试示例提问</button>
+        </div>
+      </div>
       <div class="pha-hero-grid">
         <div class="pha-card"><p class="pha-card-label">今日步数</p><p id="today-steps" class="pha-card-value">—</p><p class="pha-card-desc">近 7 日</p></div>
         <div class="pha-card"><p class="pha-card-label">平均 HRV</p><p id="avg-hrv" class="pha-card-value">—</p><p class="pha-card-desc">RMSSD · ms</p></div>
@@ -1001,6 +1070,7 @@
           <input id="chat-attach-file" type="file" accept=".pdf,image/*" multiple class="pha-hidden-file-input" />
           <span id="chat-attach-label" style="font-size:0.75rem;color:#94a3b8"></span>
         </div>
+        <div id="chat-attach-preview" class="pha-attach-preview" aria-label="附件预览"></div>
         <textarea id="q" placeholder="向 PHA 提问：趋势解读、指标对比、训练建议…"></textarea>
         <button type="button" id="send" disabled>发送</button>
       </div>

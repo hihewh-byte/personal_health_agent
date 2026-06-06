@@ -46,6 +46,9 @@ window.pdfParsing = false;
   var parseToastText = document.getElementById('parse-toast-text');
   var chatAttachFile = document.getElementById('chat-attach-file');
   var chatAttachLabel = document.getElementById('chat-attach-label');
+  var chatAttachPreview = document.getElementById('chat-attach-preview');
+  var onboardingCard = document.getElementById('pha-onboarding-card');
+  var attachPreviewUrls = [];
   var pendingChatAttachment = null;
   var pendingAttachMeta = null;
   var pendingAttachBundle = null;
@@ -1173,6 +1176,64 @@ window.pdfParsing = false;
     } catch (e) { return String(iso).slice(0, 19); }
   }
 
+  function setHeroLoading(on) {
+    ['today-steps', 'avg-hrv', 'sleep-duration', 'stat-medical'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.classList.toggle('is-loading', !!on);
+    });
+  }
+
+  function updateOnboardingCard(syncData) {
+    if (!onboardingCard) return;
+    var c = (syncData && syncData.counts) || {};
+    var hasData = (c.daily_days || 0) > 0 || (c.sleep_segments || 0) > 0 || (c.steps_samples || 0) > 0;
+    onboardingCard.classList.toggle('visible', !hasData);
+  }
+
+  function clearAttachPreview() {
+    attachPreviewUrls.forEach(function (u) {
+      try { URL.revokeObjectURL(u); } catch (e) { /* ignore */ }
+    });
+    attachPreviewUrls = [];
+    if (chatAttachPreview) {
+      chatAttachPreview.innerHTML = '';
+      chatAttachPreview.classList.remove('visible');
+    }
+  }
+
+  function renderAttachPreview(files) {
+    clearAttachPreview();
+    if (!chatAttachPreview || !files || !files.length) return;
+    files.forEach(function (f) {
+      var box = document.createElement('div');
+      box.className = 'pha-attach-thumb';
+      var isPdf = /\.pdf$/i.test(f.name || '');
+      if (isPdf) {
+        var pdfIcon = document.createElement('div');
+        pdfIcon.className = 'pha-attach-pdf';
+        pdfIcon.textContent = 'PDF';
+        box.appendChild(pdfIcon);
+      } else if ((f.type || '').indexOf('image/') === 0) {
+        var url = URL.createObjectURL(f);
+        attachPreviewUrls.push(url);
+        var img = document.createElement('img');
+        img.src = url;
+        img.alt = f.name || 'attachment';
+        box.appendChild(img);
+      } else {
+        var generic = document.createElement('div');
+        generic.className = 'pha-attach-pdf';
+        generic.textContent = '📎';
+        box.appendChild(generic);
+      }
+      var cap = document.createElement('span');
+      cap.textContent = f.name || 'file';
+      box.appendChild(cap);
+      chatAttachPreview.appendChild(box);
+    });
+    chatAttachPreview.classList.add('visible');
+  }
+
   async function loadSyncStatus() {
     var uid = (userIdInput.value || 'default').trim() || 'default';
     try {
@@ -1215,11 +1276,13 @@ window.pdfParsing = false;
           syncJobProgress.classList.add('hidden');
         }
       }
+      updateOnboardingCard(d);
     } catch (e) { /* ignore */ }
   }
 
   async function loadHeroStats() {
     var uid = (userIdInput.value || 'default').trim() || 'default';
+    setHeroLoading(true);
     try {
       var res = await fetch('/dashboard/hero-stats?user_id=' + encodeURIComponent(uid));
       if (!res.ok) return;
@@ -1240,6 +1303,9 @@ window.pdfParsing = false;
         dbBadge.title = '最新: ' + d.db_max_timestamp.slice(0, 10);
       }
     } catch (e) { /* ignore */ }
+    finally {
+      setHeroLoading(false);
+    }
   }
 
   async function loadHealth() {
@@ -3017,7 +3083,9 @@ window.pdfParsing = false;
       pendingAttachBundle = null;
       attachParseInFlight = false;
       if (chatAttachLabel) chatAttachLabel.textContent = '';
+      clearAttachPreview();
       if (!files.length) return;
+      renderAttachPreview(files);
       var uid = (userIdInput.value || 'default').trim() || 'default';
       try {
         showChatStatus('📎 正在上传 ' + files.length + ' 个附件…', { pin: false });
@@ -3079,6 +3147,7 @@ window.pdfParsing = false;
       pendingAttachMeta = null;
       if (chatAttachFile) chatAttachFile.value = '';
       if (chatAttachLabel) chatAttachLabel.textContent = '';
+      clearAttachPreview();
       var body = {
         user_id: uid,
         message: msg,
@@ -3165,6 +3234,23 @@ window.pdfParsing = false;
     showToast('已注入审计报告上下文，请继续提问', 'success');
   }
 
+  var onboardingOpenImport = document.getElementById('onboarding-open-import');
+  var onboardingSamplePrompt = document.getElementById('onboarding-sample-prompt');
+  if (onboardingOpenImport) {
+    onboardingOpenImport.addEventListener('click', function () {
+      if (dataDrawerCheckbox) dataDrawerCheckbox.checked = true;
+    });
+  }
+  if (onboardingSamplePrompt) {
+    onboardingSamplePrompt.addEventListener('click', function () {
+      if (q) {
+        q.value = '帮我看看最近一周的步数和睡眠趋势，并给出可执行建议';
+        q.focus();
+      }
+    });
+  }
+
+  setHeroLoading(true);
   loadHealth();
   loadModels();
   loadPdfTextModels();

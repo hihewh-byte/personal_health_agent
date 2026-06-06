@@ -1,5 +1,12 @@
 # PHA 变更日志
 
+## pha-v2.3.29（S5 首发 UI + 运维）
+
+- **空状态引导卡**：数仓为空时提示导入 export.zip
+- **Hero 卡 shimmer 加载态**
+- **聊天附件缩略图预览**（发送前本地预览）
+- build: `pha-v2.3.29-wave4a-onboarding-ui-docker`
+
 ## pha-v2.3.28（Wave 3d 收尾 + 开源 / Docker 就绪）
 
 - **C-19** Dashboard Registry 驱动 sync-modules 下拉 + 泛化增量同步上传
