@@ -145,6 +145,7 @@ def stream_pha_chat_events(
     attachment_names: Optional[List[str]] = None,
     attachment_parsed_parts: Optional[List[Dict[str, Any]]] = None,
     clarify_choice_id: Optional[str] = None,
+    response_locale: Optional[str] = None,
 ) -> Iterator[str]:
     """Yield SSE payloads; delegates to P0 turn orchestrator state machine."""
     from pha.chat_turn_orchestrator import orchestrate_chat_turn_events
@@ -161,4 +162,5 @@ def stream_pha_chat_events(
         attachment_names=attachment_names,
         attachment_parsed_parts=attachment_parsed_parts,
         clarify_choice_id=clarify_choice_id,
+        response_locale=response_locale,
     )

@@ -6,6 +6,9 @@ window.pdfParsing = false;
   var localeTag = function () {
     return (window.phaI18n && window.phaI18n.localeTag()) || 'en-US';
   };
+  var chatResponseLocale = function () {
+    return (window.phaI18n && window.phaI18n.getLocale()) || 'en';
+  };
   var COLORS = { steps: '#2ecc71', hrv: '#3498db', sleep: '#9b59b6', rhr: '#e67e22' };
   var chat = document.getElementById('chat-stream');
   var chatStatusBar = document.getElementById('chat-status-bar');
@@ -3241,7 +3244,8 @@ window.pdfParsing = false;
         model: model,
         session_id: currentChatSessionId,
         extra_system_context: chatExtraSystemContext || '',
-        clarify_choice_id: choiceId
+        clarify_choice_id: choiceId,
+        response_locale: chatResponseLocale()
       };
       var res = await fetch('/api/chat', {
         method: 'POST',
@@ -3316,7 +3320,8 @@ window.pdfParsing = false;
         message: msg,
         model: model,
         session_id: currentChatSessionId,
-        extra_system_context: chatExtraSystemContext || ''
+        extra_system_context: chatExtraSystemContext || '',
+        response_locale: chatResponseLocale()
       };
       if (bundleSend && bundleSend.paths && bundleSend.paths.length) {
         body.attachment_paths = bundleSend.paths;

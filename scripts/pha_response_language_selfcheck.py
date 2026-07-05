@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+"""P0 selfcheck: Response Language Policy (RLP) resolution + directive injection."""
+
+from __future__ import annotations
+
+import os
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
+from pha.chat_message_stack import PHA_MEDICAL_SOUL_SYSTEM_PROMPT
+from pha.response_language import (
+    append_language_directive,
+    build_language_directive,
+    detect_explicit_locale_request,
+    detect_message_locale_heuristic,
+    resolve_response_locale,
+)
+
+
+def main() -> int:
+    ok = True
+
+    if resolve_response_locale("hello", request_locale=None) != "en":
+        print("FAIL default locale should be en")
+        ok = False
+
+    os.environ["PHA_RESPONSE_LOCALE"] = "zh"
+    if resolve_response_locale("hi", request_locale=None) != "zh":
+        print("FAIL PHA_RESPONSE_LOCALE=zh")
+        ok = False
+    os.environ.pop("PHA_RESPONSE_LOCALE", None)
+
+    if resolve_response_locale("我的 HRV 正常吗", request_locale="en") != "en":
+        print("FAIL request_locale=en should beat heuristic zh")
+        ok = False
+
+    if resolve_response_locale("Analyze this report", request_locale="zh") != "zh":
+        print("FAIL request_locale=zh should beat heuristic en")
+        ok = False
+
+    if detect_explicit_locale_request("reply in English please") != "en":
+        print("FAIL explicit en")
+        ok = False
+    if detect_explicit_locale_request("请用中文回答") != "zh":
+        print("FAIL explicit zh")
+        ok = False
+    if resolve_response_locale("请用英文回答我的血脂", request_locale="zh") != "en":
+        print("FAIL explicit should beat request_locale")
+        ok = False
+
+    if detect_message_locale_heuristic("What is my LDL trend?") != "en":
+        print("FAIL heuristic en")
+        ok = False
+    if detect_message_locale_heuristic("我的睡眠深睡比例正常吗") != "zh":
+        print("FAIL heuristic zh")
+        ok = False
+
+    en_dir = build_language_directive("en")
+    zh_dir = build_language_directive("zh")
+    if "English" not in en_dir or "简体中文" not in zh_dir:
+        print("FAIL directive content")
+        ok = False
+
+    soul = PHA_MEDICAL_SOUL_SYSTEM_PROMPT.strip()
+    assembled = append_language_directive(soul, "en")
+    if "默认使用中文" in soul or "请用中文" in soul:
+        print("FAIL soul still contains Chinese language mandate")
+        ok = False
+    if "RESPONSE LANGUAGE" not in assembled:
+        print("FAIL missing RESPONSE LANGUAGE block")
+        ok = False
+    expected_suffix = build_language_directive("en").strip()
+    if not assembled.endswith(expected_suffix):
+        print("FAIL directive should be appended at end")
+        ok = False
+
+    print("pha_response_language_selfcheck:", "PASS" if ok else "FAIL")
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

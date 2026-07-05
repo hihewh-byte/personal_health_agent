@@ -141,6 +141,7 @@ def orchestrate_chat_turn_events(
     attachment_names: Optional[List[str]] = None,
     attachment_parsed_parts: Optional[List[Dict[str, Any]]] = None,
     clarify_choice_id: Optional[str] = None,
+    response_locale: Optional[str] = None,
 ) -> Iterator[str]:
     """
     Yield SSE payloads (JSON per ``data:`` line content):
@@ -623,6 +624,7 @@ def orchestrate_chat_turn_events(
             health_turn_scope=_health_turn_scope,
             health_episodic_focus=_health_episodic_focus,
             episodic_bridge_block=_episodic_bridge_block,
+            request_locale=response_locale,
         )
         yield from iter_turn_harness_assembly_phase(_slot_ctx, _phase_rec)
         plan = _slot_ctx.plan

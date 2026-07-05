@@ -891,6 +891,10 @@ class ChatRequest(BaseModel):
         default=None,
         description="Stage 3C-δ: chip selection id from prior clarify SSE event",
     )
+    response_locale: Optional[str] = Field(
+        default=None,
+        description="Preferred reply language: en | zh (synced with dashboard UI; heuristic may apply when omitted)",
+    )
 
 
 class ChatAttachmentParseRequest(BaseModel):
@@ -1157,6 +1161,7 @@ async def api_chat_stream(body: ChatRequest) -> StreamingResponse:
             attachment_names=body.attachment_names,
             attachment_parsed_parts=body.attachment_parsed_parts,
             clarify_choice_id=body.clarify_choice_id,
+            response_locale=body.response_locale,
         ):
             yield f"data: {payload}\n\n"
             await asyncio.sleep(0)

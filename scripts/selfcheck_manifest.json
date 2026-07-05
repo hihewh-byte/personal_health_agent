@@ -24,6 +24,7 @@
     {"id": "clarify_turns", "script": "scripts/pha_clarify_turns_selfcheck.py", "tags": ["stage3c", "multi-turn"]},
     {"id": "grounded_composer", "script": "scripts/pha_grounded_composer_selfcheck.py", "tags": ["stage3c", "multi-turn"]},
     {"id": "chat_turn_fsm", "script": "scripts/pha_chat_turn_fsm_selfcheck.py", "tags": ["p0", "harness"]},
+    {"id": "response_language", "script": "scripts/pha_response_language_selfcheck.py", "tags": ["p0", "i18n", "harness"]},
     {"id": "sqlite_connection", "script": "scripts/pha_sqlite_connection_selfcheck.py", "tags": ["storage"]},
     {"id": "wearable_daily_aggregator", "script": "scripts/pha_wearable_daily_aggregator_selfcheck.py", "tags": ["storage"]},
     {"id": "wearable_registry", "script": "scripts/pha_wearable_registry_selfcheck.py"},

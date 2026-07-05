@@ -110,6 +110,8 @@ class TurnSlotContext:
     soul_base: Optional[str] = None
     fast_path: bool = False
     chat_messages: List[Dict[str, Any]] = field(default_factory=list)
+    request_locale: Optional[str] = None
+    response_locale: str = "en"
     grounded_fallback_applied: bool = False
     grounded_fallback_from_profile: str = ""
 
@@ -544,6 +546,14 @@ def iter_turn_harness_assembly_phase(
     )
     if ctx.fast_path:
         tiered_system = f"{tiered_system}\n\n{FAST_PATH_SYSTEM_ADDENDUM}".strip()
+
+    from pha.response_language import append_language_directive, resolve_response_locale
+
+    ctx.response_locale = resolve_response_locale(
+        ctx.raw_user_msg,
+        request_locale=ctx.request_locale,
+    )
+    tiered_system = append_language_directive(tiered_system, ctx.response_locale)
 
     ctx.chat_messages = build_pha_chat_message_stack(
         supplemental_system="",
