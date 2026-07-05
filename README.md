@@ -21,6 +21,7 @@
 - **Harness evidence engine** — TurnEvidencePlan, Catalog fetch, Tier0 budget assembly
 - **Metric Registry** — config-driven compare rows + wearable metric catalog
 - **Dashboard UI i18n** — default **English** (`PHA_UI_LANG=en`); switch to 中文 in the top bar
+- **Adaptive reply language (RLP)** — chat replies follow UI locale / user language (`PHA_RESPONSE_LOCALE`, `response_locale` API); no hardcoded Chinese in harness souls
 - **Dashboard** — hero stats, dynamic metric charts, SSE chat, data import drawer
 
 ---
@@ -30,8 +31,8 @@
 **Prerequisites:** Docker Desktop, Ollama on the host (for GPU on macOS).
 
 ```bash
-git clone https://github.com/YOUR_ORG/personal-health-agent.git
-cd personal-health-agent
+git clone https://github.com/hihewh-byte/personal_health_agent.git
+cd personal_health_agent
 cp .env.example .env
 bash scripts/pull-models.sh          # pull models into host Ollama
 docker compose up -d --build
@@ -77,6 +78,7 @@ Open http://127.0.0.1:8788
 | `OLLAMA_MEDICAL_MODEL` | `qwen2.5:7b-instruct` | Vision / medical parse |
 | `PHA_ENV_DEMO_ANCHOR` | _(unset)_ | Optional demo “today” floor (YYYY-MM-DD) |
 | `PHA_UI_LANG` | `en` | Dashboard UI locale: `en` or `zh` (user can override in UI) |
+| `PHA_RESPONSE_LOCALE` | `en` | LLM reply language default when API omits `response_locale` (usually matches UI) |
 
 Full list: [.env.example](.env.example)
 
@@ -158,4 +160,4 @@ Security: [SECURITY.md](SECURITY.md)
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md). Release tags: `v2.3.x` (build marker in `pha/build_marker.py`).
+See [CHANGELOG.md](CHANGELOG.md). Release tags: `v0.4.0-beta.x` (build marker in `pha/build_marker.py`).

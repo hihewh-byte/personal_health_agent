@@ -1,5 +1,12 @@
 # PHA 变更日志
 
+## v0.4.0-beta.1（全链路国际化 · 2026-07-05）
+
+- **Response Language Policy (RLP P0)**：`pha/response_language.py` · `response_locale` API · 前端随 UI 传参 · Soul 末尾动态语言指令块
+- **语言优先级**：用户显式指令 > `response_locale` > 消息 CJK 启发式 > `.env` 默认 `en`
+- **自检**：`pha_response_language_selfcheck.py`（47/47 offline suite）
+- **文档**：README clone URL 修正 · `PHA_RESPONSE_LOCALE` 环境变量说明
+
 ## v0.4.0-beta（Wave 4a · 开源发行版整备 · 2026-07-05）
 
 - **Dashboard UI i18n**：默认 **英文**（`PHA_UI_LANG=en`）；顶栏 English/中文 切换 · `pha/static/js/i18n.js`
