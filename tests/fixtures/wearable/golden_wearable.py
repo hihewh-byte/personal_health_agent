@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence
 
-from pha.wearable_snapshot_v1 import extract_metrics_from_ocr, finalize_wearable_attachment
+from pha.wearable_snapshot_v1 import extract_metrics_from_ocr, finalize_wearable_attachment, merge_wearable_parts
 
 _FIXTURE_DIR = Path(__file__).resolve().parent
 
@@ -134,6 +134,29 @@ def golden_compare_table_shape(expected: Mapping[str, Any]) -> List[str]:
     return fails
 
 
+def golden_match_hrv_regression(cases: Sequence[Mapping[str, Any]]) -> List[str]:
+    fails: List[str] = []
+    for case in cases:
+        fid = str(case.get("fixture_id") or "?")
+        want = str(case.get("expected_hrv") or "").strip()
+        if not want:
+            continue
+        sub_panels = case.get("panels")
+        if sub_panels:
+            parts = [{"ocr_text": str(p.get("ocr_text") or ""), "document_family": "wearable"} for p in sub_panels]
+            ledger = merge_wearable_parts(parts)
+            got = next((m.value for m in ledger.metrics if m.metric_id == "hrv_rmssd_ms"), None)
+        else:
+            ocr = str(case.get("ocr_text") or "")
+            got = next(
+                (m.value for m in extract_metrics_from_ocr(ocr) if m.metric_id == "hrv_rmssd_ms"),
+                None,
+            )
+        if got != want:
+            fails.append(f"hrv_regression[{fid}]: want={want!r} got={got!r}")
+    return fails
+
+
 def golden_match_all() -> List[str]:
     ocr_fix = load_golden_ocr()
     cmp_fix = load_golden_compare_table()
@@ -141,6 +164,7 @@ def golden_match_all() -> List[str]:
     fails: List[str] = []
     fails.extend(golden_match_panel_metrics(panels))
     fails.extend(golden_match_merged_finalize(panels, ocr_fix.get("merged_expected") or {}))
+    fails.extend(golden_match_hrv_regression(ocr_fix.get("hrv_regression_cases") or []))
 
     for neg in ocr_fix.get("negative_panels") or []:
         omit = neg.get("omit_panel_indices") or []
@@ -160,6 +184,7 @@ def golden_match_all() -> List[str]:
 __all__ = [
     "golden_compare_table_shape",
     "golden_match_all",
+    "golden_match_hrv_regression",
     "golden_match_merged_finalize",
     "golden_match_panel_metrics",
     "golden_match_spo2_absent",

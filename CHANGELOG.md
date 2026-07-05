@@ -1,5 +1,21 @@
 # PHA 变更日志
 
+## v0.4.0-beta（Wave 4a · 开源发行版整备 · 2026-07-05）
+
+- **PII 绝育**：`reports/chb/**/brief_*.json` 移出仓库；`.gitignore` 加固；合成 CHB fixture `tests/fixtures/chb/`
+- **Wave 4a Spec**：[`docs/wave4a-open-source-readiness-spec.md`](docs/wave4a-open-source-readiness-spec.md) v1.0
+- **Enterprise Future RFC**：device ingestion adapter · multi-tenant gateway（DOC-only，零厂商硬编码）
+- **Stage 4-β 完整闭环**：4-β-2a/b 读侧 · P1 金标 · P2 compile loop（功能已在 pha-v2.3.32 build marker）
+
+## pha-v2.3.32（Stage 3C 多轮续焦 · clarify + Composer SSE）
+
+- **3C-ε**：`PHA_GROUNDED_COMPOSER=1` 时 SSE 序列 `meta → fact_card → delta → follow_ups → done`；fact_card 数字严格来自 Numerics Manifest
+
+- **3C-δ**：多年化验歧义句（如「血脂怎么样」）触发 SSE `clarify` + 前端年份 chips；点选后以 `clarify_choice_id` 显式指定年份，短路轮不调用 LLM、不消耗 episodic TTL
+- **Flag**：`PHA_CLARIFY_TURNS=1`（依赖 `PHA_HEALTH_TURN_RESOLVER=1`）
+- **自检**：`pha_clarify_turns_selfcheck.py` H-δ1–δ7（对齐 RFC §6.4/§7）
+- **P0 E2E 修复**：wearable `fact_card`（composer 单独构建 manifest）；clarify chip 后续 `turn_scope` 强制 `lab_cross_year` harness
+
 ## pha-v2.3.29（S5 首发 UI + 运维）
 
 - **空状态引导卡**：数仓为空时提示导入 export.zip

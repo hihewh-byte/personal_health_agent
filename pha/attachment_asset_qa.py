@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import re
-from typing import List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 # User-visible output (no harness arrow literals).
 _GROUNDED_USER = (
@@ -83,6 +83,34 @@ CAUSAL_ANCHOR_BLOCK = """【时空因果审查 · 必读】
 
 PHA_ATTACHMENT_SOUL_MINIMAL = """Role: 你是 PHA 个人健康助理。本轮仅讨论用户上传的标签资产与档案片段。
 规则：自然中文；不要三步看诊结构；不要「账本缺乏基线/静态解构」套话；不要编造化验数字。"""
+
+# Stage 3H · 通用兜底车道防御性 TASK（就图论事 Grounded）。来源 RFC §4.5。
+ATTACHMENT_GROUNDED_REVIEW_TASK = """【本轮任务 · 附件就图论事（Grounded）】
+用户上传了一份健康相关截图，已解析为「附件解析事实」块（见 Tier0 ATTACHMENT_LABEL）。请用中文自然作答。
+
+必须：
+1) 先 1–2 句复述这是什么（依据解析事实/标题，勿臆断报告类型）。
+2) 仅依据「附件解析事实」块中的 results/narratives 行作答：逐项给出数值、单位、参考区间，
+   并指出明显偏离参考区间的项；每条数字须能对应事实块某一行。
+3) 若用户问到事实块中不存在的指标：明说「本张截图未见该项」，禁止编造。
+
+严禁：
+- 引用或推断任何**数仓历史数据**（历史血脂/HRV/睡眠/步数/补剂时间表）——本轮上下文已物理移除这些块。
+- 使用「纵向趋势对账 / 多指标横向联动 / 硬核非药物干预」三步看诊模板标题。
+- 把本张截图的指标归因到无关历史，或反向把历史数字套到本张图。
+- 编造未在事实块中出现的数值、诊断或参考区间。
+
+全文约 450 字以内。如需历史趋势对比，提示用户「先归档此报告后再问跨期趋势」。"""
+
+
+def universal_attachment_lane_enabled() -> bool:
+    """Stage 3H flag — universal grounded fallback lane for non-wearable attachments."""
+    return (os.environ.get("PHA_UNIVERSAL_ATTACHMENT_LANE") or "0").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
 
 ATTACHMENT_QA_SOUL_ADDENDUM = """
 【附件单资产问答 · 输出宪法】
@@ -176,16 +204,36 @@ def resolve_attachment_qa_mode(
     session_focus_active: bool,
     focus_tokens: Optional[List[str]] = None,
     document_family: str = "",
+    has_attachment_paths: bool = False,
+    parsed_payload: Optional[Dict[str, Any]] = None,
 ) -> str:
-    """Return ``initial`` | ``lipid_bridge`` | ``episodic_bridge`` | ``none``."""
+    """Return ``initial`` | ``lipid_bridge`` | ``episodic_bridge`` | ``grounded`` | ``none``.
+
+    Stage 3H: non-wearable actionable attachments that match no specialized supplement
+    lane fall into the universal ``grounded`` lane instead of being kicked out to ``none``
+    (which previously degraded to the lifestyle/warehouse path → 张冠李戴).
+    """
     from pha.intent_gates import user_message_needs_wearable_query
+
+    fam = (document_family or "").strip().lower()
+    # Wearable screenshots own a dedicated specialized lane (handled in routing).
+    if fam == "wearable":
+        return "none"
+
+    grounded_ok = universal_attachment_lane_enabled() and bool(has_parsed_attachment)
+
+    # 崩塌点 A 物理修复：lab/medication 不再一脚踢出，直接落通用兜底车道。
+    # 例外（RFC §4.1）：用户显式跨年化验意图 → 让位 lab_cross_year 专用增强车道。
+    if fam in ("lab", "medication"):
+        if not grounded_ok:
+            return "none"
+        if _HARD_LAB_PIVOT_RE.search(raw_user_message or ""):
+            return "none"
+        return "grounded"
 
     if user_message_needs_wearable_query(raw_user_message or ""):
         return "none"
 
-    fam = (document_family or "").strip().lower()
-    if fam in ("wearable", "lab", "medication"):
-        return "none"
     tokens = list(focus_tokens or [])
     anchored = has_focus_anchor(
         session_focus_active=session_focus_active,
@@ -210,6 +258,23 @@ def resolve_attachment_qa_mode(
         raw = (raw_user_message or "").strip()
         if raw and len(raw) <= 320:
             return "episodic_bridge"
+
+    # 长尾兜底：unknown/other 可执行附件 → 通用车道（绝不回落 lifestyle 数仓）。
+    if grounded_ok and fam in ("unknown", "other"):
+        return "grounded"
+
+    # Stage 3H 结构信号强接管：附件在途 + 可落地事实 → 通用兜底（corrupt/异形 family）。
+    from pha.perception_family import parsed_has_groundable_facts
+
+    if (
+        universal_attachment_lane_enabled()
+        and has_attachment_paths
+        and fam != "wearable"
+        and parsed_has_groundable_facts(parsed_payload)
+    ):
+        if _HARD_LAB_PIVOT_RE.search(raw_user_message or ""):
+            return "none"
+        return "grounded"
 
     return "none"
 
@@ -250,7 +315,7 @@ def maybe_deterministic_attachment_reply(
                 row_lines.append(f"- {nm}" + (f"：{amt}" if amt else ""))
 
     parts = [
-        "我这边**没能从您上传的标签得到可靠定账**（系统置信度偏低），因此**不会**根据模糊 OCR 猜测成分（例如把磷脂酰丝氨酸说成普通「苏氨酸」）。",
+        "我这边**没能从您上传的标签可靠读取成分**（识别置信度偏低），因此**不会**根据模糊 OCR 猜测成分（例如把磷脂酰丝氨酸说成普通「苏氨酸」）。",
     ]
     if attachment_path_count >= 2 and ac < attachment_path_count:
         parts.append(
@@ -281,8 +346,8 @@ def maybe_deterministic_attachment_reply(
     raw = (raw_user_message or "").strip()
     if qa_mode == "initial" and re.search(r"有什么帮助|有什么用", raw):
         parts.append(
-            "\n\n在定账可靠之前，我**无法**负责任地回答「对我有什么帮助」。"
-            "定账齐全后我会结合您的档案分点说明。"
+            "\n\n在成分读取可靠之前，我**无法**负责任地回答「对我有什么帮助」。"
+            "读取完整后我会结合您的档案分点说明。"
         )
 
     return "".join(parts).strip()
@@ -518,6 +583,11 @@ def is_attachment_qa_profile(profile: str) -> bool:
     return p.startswith("attachment_asset_qa") or p.startswith("attachment_episodic_bridge")
 
 
+def is_attachment_grounded_profile(profile: str) -> bool:
+    """Stage 3H universal grounded fallback lane."""
+    return (profile or "") == "attachment_grounded_review"
+
+
 def is_attachment_asset_followup_turn(raw_user_message: str) -> bool:
     """Deprecated: followup merged into ``episodic_bridge``; always False for L0 routing."""
     return False
@@ -527,8 +597,11 @@ __all__ = [
     "ATTACHMENT_ASSET_QA_FOLLOWUP_TASK",
     "ATTACHMENT_ASSET_QA_TASK",
     "ATTACHMENT_EPISODIC_BRIDGE_TASK",
+    "ATTACHMENT_GROUNDED_REVIEW_TASK",
     "ATTACHMENT_LIPID_BRIDGE_TASK",
     "ATTACHMENT_QA_SOUL_ADDENDUM",
+    "universal_attachment_lane_enabled",
+    "is_attachment_grounded_profile",
     "CAUSAL_ANCHOR_BLOCK",
     "EPISODIC_BRIDGE_NARROW_ADDENDUM",
     "PHA_ATTACHMENT_SOUL_MINIMAL",

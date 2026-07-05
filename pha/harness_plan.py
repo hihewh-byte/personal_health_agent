@@ -24,7 +24,6 @@ from pha.metadata_catalog import (
     should_inject_metadata_catalog,
 )
 
-
 def _append_metadata_catalog_slots(
     profile: str,
     *,
@@ -62,6 +61,186 @@ class TurnEvidencePlan:
         return list(self.slots_tier0) + list(self.slots_tier1)
 
 
+def _lab_cross_year_turn_plan(qtype: QuestionType) -> TurnEvidencePlan:
+    t0 = ["MASTER_ANCHOR", "TASK", "NUMERICS_MANIFEST", "LDL_AUTHORITY"]
+    t1 = ["DOSSIER_LAB", "PATIENT_STATE_LAB", "AUDIT", "RECALL"]
+    t0, t1 = _append_metadata_catalog_slots("lab_cross_year", slots_tier0=t0, slots_tier1=t1)
+    return TurnEvidencePlan(
+        profile="lab_cross_year",
+        slots_tier0=t0,
+        slots_tier1=t1,
+        forbidden=["USER_SNAPSHOT", "GET_HEALTH_DATA"],
+        tools_allowed=["get_temporal_history_dossier"],
+        task_text="【本轮任务】以 SQLite 卷宗与 LDL 权威表为准，完成历年/对比类化验对账。",
+        legacy_question_type=QuestionType.LAB,
+    )
+
+
+def _wearable_only_turn_plan(qtype: QuestionType) -> TurnEvidencePlan:
+    return TurnEvidencePlan(
+        profile="wearable_only",
+        slots_tier0=["MASTER_ANCHOR", "NUMERICS_MANIFEST", "WEARABLE_90D_SUMMARY", "TASK"],
+        slots_tier1=["PATIENT_STATE_WEARABLE"],
+        forbidden=["USER_SNAPSHOT_IN_RAW_USER"],
+        tools_allowed=["get_health_data"],
+        task_text=(
+            "【本轮任务】回答穿戴/睡眠/血氧/HRV 等问题；"
+            "必须引用 Tier0「近90日穿戴摘要 / User Data Snapshot」中的区间均值与 n 天数；"
+            "禁止引用已省略的近7日 Patient State 表；禁止向用户索要 export 原始数据。"
+        ),
+        legacy_question_type=qtype,
+    )
+
+
+def _combined_review_turn_plan(
+    qtype: QuestionType,
+    msg: str,
+) -> TurnEvidencePlan:
+    if catalog_mode_enabled():
+        t0 = ["MASTER_ANCHOR", "TASK", "EVIDENCE_CATALOG", "NUMERICS_MANIFEST"]
+        t1 = ["RECALL", "AUDIT", "USER_CONTEXT_BRIEF"]
+        t0, t1 = _append_metadata_catalog_slots("combined_review", slots_tier0=t0, slots_tier1=t1)
+        return TurnEvidencePlan(
+            profile="combined_review",
+            slots_tier0=t0,
+            slots_tier1=t1,
+            forbidden=["USER_SNAPSHOT", "GET_HEALTH_DATA"],
+            tools_allowed=["fetch_evidence_by_id"],
+            task_text=combined_catalog_task_text(msg),
+            legacy_question_type=qtype,
+        )
+    return TurnEvidencePlan(
+        profile="combined_review",
+        slots_tier0=[
+            "MASTER_ANCHOR",
+            "TASK",
+            "NUMERICS_MANIFEST",
+            "LDL_AUTHORITY",
+            "WEARABLE_90D_SUMMARY",
+            "SUPPLEMENT_BG",
+        ],
+        slots_tier1=["PATIENT_STATE_LAB", "DOSSIER_CLINICAL_COMPACT", "AUDIT", "RECALL", "USER_CONTEXT_BRIEF"],
+        forbidden=["USER_SNAPSHOT"],
+        tools_allowed=[],
+        task_text=(
+            "【本轮任务】结合 SQLite LDL 权威表、Numerics Manifest 机器白名单、"
+            "Patient State 化验、【Evidence·近90日穿戴摘要】与补剂背景，"
+            "回答血脂与近90日 HRV/活动消耗的关系，并给出补剂调整建议。"
+            "【数字引用契约】凡写出化验或穿戴数值，必须逐条对应 Manifest KV 或已注入证据中的"
+            "「指标名 + 报告日/区间 + 数值」三元组；禁止编造日期；禁止跨指标挪用数字。"
+            "必须引用 Manifest 或 system 证据块中的具体数值，或明确写「库内无该指标」；"
+            "禁止向用户索要 HRV/运动消耗/血脂原始数据、日期范围或上传报告；"
+            "禁止用无关穿戴大盘替代血脂。"
+        ),
+        legacy_question_type=qtype,
+    )
+
+
+def _plan_for_authoritative_profile(
+    profile: str,
+    msg: str,
+    *,
+    question_type: Optional[QuestionType] = None,
+) -> TurnEvidencePlan | None:
+    qtype = question_type or classify_question_type(msg)
+    name = (profile or "").strip()
+    if name == "combined_review":
+        return _combined_review_turn_plan(qtype, msg)
+    if name == "lab_cross_year":
+        return _lab_cross_year_turn_plan(qtype)
+    if name == "wearable_only":
+        return _wearable_only_turn_plan(qtype)
+    if name == "casual":
+        return TurnEvidencePlan(
+            profile="casual",
+            slots_tier0=["MASTER_ANCHOR", "TASK"],
+            slots_tier1=[],
+            forbidden=["USER_SNAPSHOT", "GET_HEALTH_DATA", "GET_TEMPORAL_HISTORY_DOSSIER"],
+            tools_allowed=[],
+            task_text="本轮为寒暄/短回复；勿展开化验或穿戴数据。",
+            legacy_question_type=qtype,
+        )
+    if name == "clarify":
+        return build_clarify_turn_plan()
+    return None
+
+
+def _plan_from_turn_scope(
+    turn_scope: Any,
+    user_message: str,
+    *,
+    question_type: Optional[QuestionType] = None,
+) -> TurnEvidencePlan | None:
+    """RFC §7: resolver scope overrides message-only routing (chip / episodic focus)."""
+    if turn_scope is None:
+        return None
+    if turn_scope.needs_clarification:
+        return build_clarify_turn_plan(turn_scope)
+    msg = (user_message or "").strip()
+    qtype = question_type or classify_question_type(msg)
+    hint = (turn_scope.profile_hint or turn_scope.focus_profile or "").strip()
+    if hint == "lab_cross_year" or (
+        turn_scope.lab_years
+        and (turn_scope.year_source or "") == "explicit"
+        and (turn_scope.metric_keys or ["ldl"])
+    ):
+        return _lab_cross_year_turn_plan(qtype)
+    if hint == "wearable_only":
+        return _wearable_only_turn_plan(qtype)
+    if hint == "combined_review":
+        return _combined_review_turn_plan(qtype, msg)
+    if hint == "wearable_screenshot_review":
+        from pha.wearable_harness import WEARABLE_SCREENSHOT_REVIEW_TASK
+
+        return TurnEvidencePlan(
+            profile="wearable_screenshot_review",
+            slots_tier0=[
+                "MASTER_ANCHOR",
+                "WEARABLE_SNAPSHOT",
+                "WEARABLE_COMPARE_TABLE",
+                "WEARABLE_90D_SUMMARY",
+                "TASK",
+            ],
+            slots_tier1=[],
+            forbidden=[
+                "USER_SNAPSHOT",
+                "ATTACHMENT_LABEL",
+                "GET_HEALTH_DATA",
+                "GET_TEMPORAL_HISTORY_DOSSIER",
+                "DOSSIER_CLINICAL_COMPACT",
+                "DOSSIER_LAB",
+                "EVIDENCE_CATALOG",
+                "METADATA_CATALOG",
+                "SUPPLEMENT_BG",
+                "LDL_AUTHORITY",
+                "NUMERICS_MANIFEST",
+                "fetch_evidence_by_id",
+                "PATIENT_STATE_WEARABLE",
+                "PATIENT_STATE_LAB",
+            ],
+            tools_allowed=[],
+            task_text=WEARABLE_SCREENSHOT_REVIEW_TASK,
+            legacy_question_type=QuestionType.WEARABLE,
+        )
+    return None
+
+
+def build_clarify_turn_plan(scope: Any = None) -> TurnEvidencePlan:
+    """Stage 3C-δ: clarify short-circuit — no Patient State injection."""
+    from pha.clarify_turns import CLARIFY_FORBIDDEN_SLOTS, CLARIFY_TASK
+
+    _ = scope
+    return TurnEvidencePlan(
+        profile="clarify",
+        slots_tier0=["MASTER_ANCHOR", "TASK"],
+        slots_tier1=[],
+        forbidden=list(CLARIFY_FORBIDDEN_SLOTS),
+        tools_allowed=[],
+        task_text=CLARIFY_TASK,
+        legacy_question_type=QuestionType.LAB,
+    )
+
+
 def build_turn_evidence_plan(
     user_message: str,
     *,
@@ -70,8 +249,47 @@ def build_turn_evidence_plan(
     attachment_asset_qa: bool = False,
     attachment_qa_mode: str = "initial",
     wearable_screenshot_review: bool = False,
+    attachment_grounded_review: bool = False,
+    turn_scope: Any = None,
+    authoritative_profile: str | None = None,
 ) -> TurnEvidencePlan:
     msg = (user_message or "").strip()
+    if attachment_grounded_review:
+        from pha.attachment_asset_qa import ATTACHMENT_GROUNDED_REVIEW_TASK
+
+        return TurnEvidencePlan(
+            profile="attachment_grounded_review",
+            slots_tier0=[
+                "MASTER_ANCHOR",
+                "ATTACHMENT_LABEL",
+                "DATA_AVAILABILITY",
+                "TASK",
+            ],
+            slots_tier1=[],
+            # 数仓物理隔离（RFC §4.3）：本轮唯一数字源 = 附件事实块。
+            forbidden=[
+                "USER_SNAPSHOT",
+                "GET_HEALTH_DATA",
+                "GET_TEMPORAL_HISTORY_DOSSIER",
+                "LDL_AUTHORITY",
+                "PATIENT_STATE_LAB",
+                "PATIENT_STATE_WEARABLE",
+                "WEARABLE_90D_SUMMARY",
+                "WEARABLE_COMPARE_TABLE",
+                "DOSSIER_LAB",
+                "DOSSIER_CLINICAL_COMPACT",
+                "EVIDENCE_CATALOG",
+                "METADATA_CATALOG",
+                "NUMERICS_MANIFEST",
+                "SUPPLEMENT_BG",
+                "RECALL",
+                "fetch_evidence_by_id",
+            ],
+            tools_allowed=[],
+            task_text=ATTACHMENT_GROUNDED_REVIEW_TASK,
+            legacy_question_type=QuestionType.LIFESTYLE,
+        )
+
     if wearable_screenshot_review:
         from pha.wearable_harness import WEARABLE_SCREENSHOT_REVIEW_TASK
 
@@ -105,6 +323,19 @@ def build_turn_evidence_plan(
             task_text=WEARABLE_SCREENSHOT_REVIEW_TASK,
             legacy_question_type=QuestionType.WEARABLE,
         )
+
+    if turn_scope is not None and turn_scope.needs_clarification:
+        return build_clarify_turn_plan(turn_scope)
+
+    forced = (authoritative_profile or "").strip()
+    if forced:
+        forced_plan = _plan_for_authoritative_profile(
+            forced,
+            msg,
+            question_type=question_type,
+        )
+        if forced_plan is not None:
+            return forced_plan
 
     if attachment_asset_qa:
         from pha.attachment_asset_qa import (
@@ -193,6 +424,14 @@ def build_turn_evidence_plan(
             legacy_question_type=QuestionType.LIFESTYLE,
         )
 
+    scoped = _plan_from_turn_scope(
+        turn_scope,
+        msg,
+        question_type=question_type,
+    )
+    if scoped is not None:
+        return scoped
+
     route = resolve_schema_intent(msg)
     qtype = question_type or classify_question_type(msg)
 
@@ -224,78 +463,18 @@ def build_turn_evidence_plan(
         )
 
     if route.profile == "combined_review" or qtype == QuestionType.COMBINED:
-        if catalog_mode_enabled():
-            t0 = ["MASTER_ANCHOR", "TASK", "EVIDENCE_CATALOG", "NUMERICS_MANIFEST"]
-            t1 = ["RECALL", "AUDIT"]
-            t0, t1 = _append_metadata_catalog_slots("combined_review", slots_tier0=t0, slots_tier1=t1)
-            return TurnEvidencePlan(
-                profile="combined_review",
-                slots_tier0=t0,
-                slots_tier1=t1,
-                forbidden=["USER_SNAPSHOT", "GET_HEALTH_DATA"],
-                tools_allowed=["fetch_evidence_by_id"],
-                task_text=combined_catalog_task_text(msg),
-                legacy_question_type=qtype,
-            )
-        return TurnEvidencePlan(
-            profile="combined_review",
-            slots_tier0=[
-                "MASTER_ANCHOR",
-                "TASK",
-                "NUMERICS_MANIFEST",
-                "LDL_AUTHORITY",
-                "WEARABLE_90D_SUMMARY",
-                "SUPPLEMENT_BG",
-            ],
-            slots_tier1=["PATIENT_STATE_LAB", "DOSSIER_CLINICAL_COMPACT", "AUDIT", "RECALL"],
-            forbidden=["USER_SNAPSHOT"],
-            tools_allowed=[],
-            task_text=(
-                "【本轮任务】结合 SQLite LDL 权威表、Numerics Manifest 机器白名单、"
-                "Patient State 化验、【Evidence·近90日穿戴摘要】与补剂背景，"
-                "回答血脂与近90日 HRV/活动消耗的关系，并给出补剂调整建议。"
-                "【数字引用契约】凡写出化验或穿戴数值，必须逐条对应 Manifest KV 或已注入证据中的"
-                "「指标名 + 报告日/区间 + 数值」三元组；禁止编造日期；禁止跨指标挪用数字。"
-                "必须引用 Manifest 或 system 证据块中的具体数值，或明确写「库内无该指标」；"
-                "禁止向用户索要 HRV/运动消耗/血脂原始数据、日期范围或上传报告；"
-                "禁止用无关穿戴大盘替代血脂。"
-            ),
-            legacy_question_type=qtype,
-        )
+        return _combined_review_turn_plan(qtype, msg)
 
     if route.profile == "lab_cross_year" or user_message_needs_lab_dossier(msg) or qtype == QuestionType.LAB:
-        t0 = ["MASTER_ANCHOR", "TASK", "NUMERICS_MANIFEST", "LDL_AUTHORITY"]
-        t1 = ["DOSSIER_LAB", "PATIENT_STATE_LAB", "AUDIT", "RECALL"]
-        t0, t1 = _append_metadata_catalog_slots("lab_cross_year", slots_tier0=t0, slots_tier1=t1)
-        return TurnEvidencePlan(
-            profile="lab_cross_year",
-            slots_tier0=t0,
-            slots_tier1=t1,
-            forbidden=["USER_SNAPSHOT", "GET_HEALTH_DATA"],
-            tools_allowed=["get_temporal_history_dossier"],
-            task_text="【本轮任务】以 SQLite 卷宗与 LDL 权威表为准，完成历年/对比类化验对账。",
-            legacy_question_type=QuestionType.LAB,
-        )
+        return _lab_cross_year_turn_plan(qtype)
 
     if route.profile == "wearable_only" or qtype == QuestionType.WEARABLE:
-        return TurnEvidencePlan(
-            profile="wearable_only",
-            slots_tier0=["MASTER_ANCHOR", "WEARABLE_90D_SUMMARY", "TASK"],
-            slots_tier1=["PATIENT_STATE_WEARABLE"],
-            forbidden=["USER_SNAPSHOT_IN_RAW_USER"],
-            tools_allowed=["get_health_data"],
-            task_text=(
-                "【本轮任务】回答穿戴/睡眠/血氧/HRV 等问题；"
-                "必须引用 Tier0「近90日穿戴摘要 / User Data Snapshot」中的区间均值与 n 天数；"
-                "禁止引用已省略的近7日 Patient State 表；禁止向用户索要 export 原始数据。"
-            ),
-            legacy_question_type=qtype,
-        )
+        return _wearable_only_turn_plan(qtype)
 
     return TurnEvidencePlan(
         profile="lifestyle",
         slots_tier0=["MASTER_ANCHOR", "TASK"],
-        slots_tier1=["SUPPLEMENT_BG", "PATIENT_STATE_LAB"],
+        slots_tier1=["SUPPLEMENT_BG", "PATIENT_STATE_LAB", "USER_CONTEXT_BRIEF"],
         forbidden=["USER_SNAPSHOT"],
         tools_allowed=[],
         task_text="【本轮任务】基于用户问题与 Patient State 作答；勿臆造未列出指标。",
@@ -307,10 +486,21 @@ def plan_allows_snapshot_in_user(plan: TurnEvidencePlan) -> bool:
     return "USER_SNAPSHOT" not in plan.forbidden and "USER_SNAPSHOT_IN_RAW_USER" in plan.forbidden
 
 
-def plan_allows_heuristic_snapshot(plan: TurnEvidencePlan) -> bool:
+def plan_allows_heuristic_snapshot(
+    plan: TurnEvidencePlan,
+    user_message: str = "",
+) -> bool:
     if "USER_SNAPSHOT" in plan.forbidden:
         return False
-    return plan.profile == "wearable_only"
+    if plan.profile != "wearable_only":
+        return False
+    msg = (user_message or "").strip()
+    if msg:
+        from pha.grounded_answer_composer import is_warehouse_metric_focus_turn
+
+        if is_warehouse_metric_focus_turn(msg):
+            return False
+    return True
 
 
 def build_wearable_90d_summary_block(user_id: str, user_message: str) -> str:

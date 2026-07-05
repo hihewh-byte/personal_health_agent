@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import gc
 import logging
 import sqlite3
 from dataclasses import dataclass
@@ -11,10 +10,11 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from pha.date_parser import safe_parse_datetime
 from pha.models import WearableDailySummary
+from pha.sqlite_connection import open_connection, release_connection
 from pha.sqlite_storage import (
     STREAM_COMMIT_EVERY,
     _connect,
-    configure_sqlite_for_bulk_import,
+    ensure_schema,
     init_schema,
     load_wearable_rows,
     upsert_wearable_rows,
@@ -88,16 +88,13 @@ def init_workout_schema(conn: Optional[sqlite3.Connection] = None) -> None:
         db.commit()
     finally:
         if own:
-            db.close()
+            release_connection(db)
 
 
 class WorkoutSessionBatchWriter:
     def __init__(self, user_id: str) -> None:
-        init_schema()
-        init_workout_schema()
         self.user_id = (user_id or "default").strip() or "default"
-        self._conn = _connect()
-        configure_sqlite_for_bulk_import(self._conn)
+        self._conn = open_connection(bulk_import=True)
         self._buffer: List[tuple] = []
         self.total_written = 0
 
@@ -136,7 +133,6 @@ class WorkoutSessionBatchWriter:
         inserted = self._conn.total_changes - before
         self.total_written += inserted
         self._buffer.clear()
-        gc.collect()
         return inserted
 
     def close(self) -> int:
@@ -144,11 +140,10 @@ class WorkoutSessionBatchWriter:
             self.flush()
             return self.total_written
         finally:
-            self._conn.close()
+            release_connection(self._conn)
 
 
 def clear_workout_sessions(user_id: Optional[str] = None) -> None:
-    init_workout_schema()
     conn = _connect()
     try:
         if user_id:
@@ -158,7 +153,7 @@ def clear_workout_sessions(user_id: Optional[str] = None) -> None:
             conn.execute("DELETE FROM wearable_workout_sessions")
         conn.commit()
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def count_workout_sessions_in_range(
@@ -166,7 +161,6 @@ def count_workout_sessions_in_range(
     start: date,
     end: date,
 ) -> int:
-    init_workout_schema()
     uid = (user_id or "default").strip() or "default"
     conn = _connect()
     try:
@@ -179,7 +173,7 @@ def count_workout_sessions_in_range(
         ).fetchone()
         return int(row["c"] or 0) if row else 0
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def query_workout_sessions_in_range(
@@ -187,7 +181,6 @@ def query_workout_sessions_in_range(
     start: date,
     end: date,
 ) -> List[Dict[str, Any]]:
-    init_workout_schema()
     uid = (user_id or "default").strip() or "default"
     conn = _connect()
     try:
@@ -203,7 +196,7 @@ def query_workout_sessions_in_range(
         )
         return [dict(r) for r in cur.fetchall()]
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def rolling_28d_workout_counts(
@@ -212,7 +205,6 @@ def rolling_28d_workout_counts(
     window_end: date,
 ) -> List[float]:
     """For each anchor day in [window_start, window_end], count sessions in prior 28 days."""
-    init_workout_schema()
     uid = (user_id or "default").strip() or "default"
     conn = _connect()
     try:
@@ -228,7 +220,7 @@ def rolling_28d_workout_counts(
             ),
         ).fetchall()
     finally:
-        conn.close()
+        release_connection(conn)
 
     by_day: Dict[date, int] = {}
     for row in rows:
@@ -280,48 +272,65 @@ def baseline_workout_hr_range_90d(
 
 
 def rebuild_workout_daily_rollup(user_id: str) -> int:
-    """Aggregate sessions → wearable_daily workout_* columns."""
-    init_workout_schema()
+    """Aggregate sessions → wearable_daily workout_* columns (single connection)."""
+    from collections import defaultdict
+
+    from pha.sqlite_storage import upsert_wearable_daily_batch
+
     uid = (user_id or "default").strip() or "default"
     conn = _connect()
     try:
-        days = [
-            date.fromisoformat(str(row[0]))
+        session_rows = conn.execute(
+            """
+            SELECT day, hr_min_bpm, hr_max_bpm
+            FROM wearable_workout_sessions
+            WHERE user_id = ?
+            """,
+            (uid,),
+        ).fetchall()
+        if not session_rows:
+            return 0
+
+        by_day: Dict[date, List[sqlite3.Row]] = defaultdict(list)
+        for row in session_rows:
+            d = date.fromisoformat(str(row["day"]))
+            by_day[d].append(row)
+
+        day_list = sorted(by_day.keys())
+        placeholders = ",".join("?" for _ in day_list)
+        daily_by_day: Dict[date, WearableDailySummary] = {}
+        if day_list:
+            from pha.sqlite_storage import _row_to_model
+
             for row in conn.execute(
-                "SELECT DISTINCT day FROM wearable_workout_sessions WHERE user_id = ?",
-                (uid,),
-            ).fetchall()
-        ]
+                f"""
+                SELECT * FROM wearable_daily
+                WHERE user_id = ? AND day IN ({placeholders})
+                """,
+                (uid, *[d.isoformat() for d in day_list]),
+            ).fetchall():
+                model = _row_to_model(row)
+                daily_by_day[model.day] = model
     finally:
-        conn.close()
+        release_connection(conn)
 
-    if not days:
-        return 0
-
-    rows = load_wearable_rows(uid)
-    by_day = {r.day: r for r in rows}
-    updated = 0
-
-    for d in sorted(days):
-        sessions = query_workout_sessions_in_range(uid, d, d)
-        if not sessions:
-            continue
+    updates: List[WearableDailySummary] = []
+    for d in sorted(by_day.keys()):
+        sessions = by_day[d]
         count = len(sessions)
-        mins = [float(s["hr_min_bpm"]) for s in sessions if s.get("hr_min_bpm") is not None]
-        maxs = [float(s["hr_max_bpm"]) for s in sessions if s.get("hr_max_bpm") is not None]
-        row = by_day.get(d)
+        mins = [float(s["hr_min_bpm"]) for s in sessions if s["hr_min_bpm"] is not None]
+        maxs = [float(s["hr_max_bpm"]) for s in sessions if s["hr_max_bpm"] is not None]
+        row = daily_by_day.get(d)
         if row is None:
             row = WearableDailySummary(user_id=uid, day=d)
-            rows.append(row)
-            by_day[d] = row
         row.workout_session_count = count
         row.workout_hr_min_bpm = min(mins) if mins else None
         row.workout_hr_max_bpm = max(maxs) if maxs else None
-        updated += 1
+        updates.append(row)
 
-    if rows:
-        upsert_wearable_rows(rows, sync_index_from_daily=True)
-    return updated
+    if updates:
+        upsert_wearable_daily_batch(updates)
+    return len(updates)
 
 
 def baselines_for_workout_compare(

@@ -106,6 +106,41 @@ python scripts/pha_telemetry_sample_export.py --days 7 --user default
 - 1 条典型失败 transcript（脱敏）  
 - 下周一条行动项  
 
+### 4.4 Stage 3F — goal / arbiter 字段（设计锁定 · 见 3F RFC）
+
+编码后 Harness report（v1.3+）应支持以下字段，用于 **under-specified 意图** 聚类（非单条 E2E 验收）：
+
+| 字段 | 说明 | 健康信号 |
+|------|------|----------|
+| `goalClass` | `holistic_assessment` / `metric_specific` / `casual` | holistic 句不应长期落 lifestyle |
+| `arbiterDecision.router_profile` | SchemaRouter 候选 | 与 authoritative 对比 |
+| `arbiterDecision.authoritative_profile` | 最终 profile | combined 升舱是否发生 |
+| `arbiterDecision.reason` | 如 `goal_holistic_upgrade` | 归因枚举 |
+| `arbiterDecision.existence_probe` | `{lab, wearable}` | 升舱门控 |
+| `episodic.focusGoal` | 会话合成目标续焦 | 多轮断档排查 |
+
+**每周额外一问**（3F 落地后）：
+
+7. `goalClass=holistic` 且 `authoritative_profile=lifestyle` 占比？ → 应 → 0（双域 probe 通过时）
+
+详述：[`stage3f-intent-resolution-completeness-rfc.md`](stage3f-intent-resolution-completeness-rfc.md) §7。
+
+### 4.5 Stage 3F-δ — Shadow Intent Scout 字段
+
+`PHA_SHADOW_ROUTING=1` 且 `PHA_GOAL_CLASSIFIER=1` 时，`shadow_routing` 块扩展：
+
+| 字段 | 说明 |
+|------|------|
+| `goal_class` | Shadow 侧 `classify_goal` 结果（telemetry only） |
+| `goal_source` | `catalog` / `explicit_metric` / … |
+| `suggested_domains` | holistic → `["lab","wearable"]`；metric → 推断域 |
+
+**每周额外一问**（3F-δ 落地后）：
+
+8. `authoritative_profile=lifestyle` 且 `goal_class=holistic_assessment` 占比？ → Shadow 仅 status 提示，**不得**改写 plan。
+
+**禁止**：Shadow `goal_class` / `suggested_domains` 写入 Arbiter 或 `TurnEvidencePlan`（zero-adopt）。
+
 ---
 
 ## 5. Golden 数据集（与轨三 T4）

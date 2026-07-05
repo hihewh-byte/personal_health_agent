@@ -9,7 +9,7 @@ import sys
 import time
 import urllib.request
 
-BASE = "http://127.0.0.1:8787"
+BASE = f"http://127.0.0.1:{os.environ.get('PHA_PORT', '8788')}"
 MODEL = os.environ.get("PHA_E2E_MODEL", "qwen2.5:7b-instruct")
 USER_ID = "default"
 MSG = "请分析最近90天我的睡眠时间的血氧数据是否正常"

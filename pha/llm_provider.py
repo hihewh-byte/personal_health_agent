@@ -15,6 +15,63 @@ from pha.ollama_payload import apply_keep_alive
 FALLBACK_TO_HEURISTIC = "FALLBACK_TO_HEURISTIC"
 
 
+def parse_ollama_tool_arguments(raw: Any) -> Dict[str, Any]:
+    """Normalize Ollama tool_calls.function.arguments (object or legacy JSON string)."""
+    if raw is None:
+        return {}
+    if isinstance(raw, dict):
+        return dict(raw)
+    if isinstance(raw, str):
+        s = raw.strip()
+        if not s:
+            return {}
+        try:
+            parsed = json.loads(s)
+            return dict(parsed) if isinstance(parsed, dict) else {}
+        except json.JSONDecodeError:
+            return {}
+    return {}
+
+
+def build_ollama_synthetic_tool_call(
+    name: str,
+    arguments: Dict[str, Any],
+    *,
+    call_id: str = "call_harness_fallback",
+) -> Dict[str, Any]:
+    """
+    Build a Harness-synthesized tool_call for Ollama /api/chat history.
+
+    Ollama expects ``function.arguments`` as a JSON object, not a stringified blob.
+    """
+    wire_args = {k: v for k, v in arguments.items() if not str(k).startswith("_")}
+    return {
+        "id": call_id,
+        "function": {
+            "index": 0,
+            "name": name,
+            "arguments": wire_args,
+        },
+    }
+
+
+def normalize_ollama_assistant_message(message: Dict[str, Any]) -> Dict[str, Any]:
+    """Ensure assistant tool_calls use object arguments before re-posting to Ollama."""
+    out = dict(message)
+    tool_calls = out.get("tool_calls")
+    if not tool_calls:
+        return out
+    normalized: List[Dict[str, Any]] = []
+    for tc in tool_calls:
+        tc_out = dict(tc)
+        fn = dict(tc_out.get("function") or {})
+        fn["arguments"] = parse_ollama_tool_arguments(fn.get("arguments"))
+        tc_out["function"] = fn
+        normalized.append(tc_out)
+    out["tool_calls"] = normalized
+    return out
+
+
 def load_dotenv_if_present() -> None:
     """Load ``.env`` from CWD without overriding already-exported variables."""
     load_dotenv(override=False)

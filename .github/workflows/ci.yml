@@ -31,5 +31,14 @@ jobs:
       - name: Offline selfcheck suite
         run: bash scripts/run_selfchecks.sh
 
+      - name: Harness profile registry manifest (P2)
+        run: PYTHONPATH=. python scripts/pha_harness_profile_registry_generate.py --check
+
+      - name: Startup consensus gate
+        run: python scripts/ci/check_startup_consensus.py
+
+      - name: Harness consensus gate
+        run: python scripts/ci/check_harness_consensus.py
+
       - name: Import smoke test
         run: PYTHONPATH=. python -c "from pha.main import create_app; create_app()"

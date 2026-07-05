@@ -123,6 +123,15 @@ def supplement_deterministic_reply_allowed(parsed: Dict[str, Any] | None) -> boo
     return requires_label_ledger_v1(parsed)
 
 
+def parsed_has_groundable_facts(parsed: Dict[str, Any] | None) -> bool:
+    """Structural facts for universal grounded lane (metrics[] or vision_summary only)."""
+    if not parsed:
+        return False
+    if parsed.get("metrics"):
+        return True
+    return bool((parsed.get("vision_summary") or "").strip())
+
+
 def attachment_parse_is_actionable(parsed: Dict[str, Any] | None) -> bool:
     """True when parsed attachment has enough structure for harness routing."""
     if not parsed:
@@ -134,6 +143,8 @@ def attachment_parse_is_actionable(parsed: Dict[str, Any] | None) -> bool:
     if parsed.get("narratives"):
         return True
     if parsed.get("wearable_metrics"):
+        return True
+    if parsed.get("metrics"):
         return True
     ocr = (parsed.get("ocr_text") or "").strip()
     if ocr and ocr_suggests_wearable_ui(ocr):
@@ -150,6 +161,7 @@ __all__ = [
     "UNKNOWN_FAMILY",
     "WEARABLE_FAMILY",
     "attachment_parse_is_actionable",
+    "parsed_has_groundable_facts",
     "coerce_wearable_family",
     "family_from_parsed",
     "ocr_suggests_wearable_ui",

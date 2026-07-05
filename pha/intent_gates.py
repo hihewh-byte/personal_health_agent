@@ -171,7 +171,7 @@ def should_inject_wearable_snapshot(user_message: str, *, is_temporal_dynamic: b
     from pha.harness_plan import build_turn_evidence_plan, plan_allows_heuristic_snapshot
 
     plan = build_turn_evidence_plan(user_message, is_temporal_dynamic=is_temporal_dynamic)
-    if not plan_allows_heuristic_snapshot(plan):
+    if not plan_allows_heuristic_snapshot(plan, user_message=user_message):
         return False
     if user_message_is_casual(user_message):
         return False

@@ -17,6 +17,15 @@ _STRIP_PHRASES: List[Tuple[re.Pattern[str], str]] = [
     (re.compile(r"###\s*硬核非药物干预与筛查建议\s*"), "### 建议\n"),
     (re.compile(r"Patient State", re.I), "健康记录"),
     (re.compile(r"Manifest", re.I), "指标清单"),
+    # 去 PHA 内部用语，面向用户改为自然专业措辞。
+    (re.compile(r"截图定账"), "本次截图"),
+    (re.compile(r"定账延伸参考"), "延伸参考"),
+    (re.compile(r"定账摘要"), "读数小结"),
+    (re.compile(r"定账"), "记录"),
+    (re.compile(r"数仓摘要"), "过去约 90 天的记录"),
+    (re.compile(r"数仓"), "历史记录"),
+    (re.compile(r"化验账本"), "化验记录"),
+    (re.compile(r"账本"), "记录"),
 ]
 
 
@@ -37,4 +46,18 @@ def polish_user_visible_reply(text: str) -> str:
     return out
 
 
-__all__ = ["polish_user_visible_reply", "presentation_filter_mode"]
+def polish_final_user_answer(text: str, *, profile: str = "") -> str:
+    """Last-mile polish for all user-visible chat answers."""
+    prof = (profile or "").strip()
+    if "wearable" in prof:
+        from pha.wearable_presentation import polish_wearable_user_visible_reply
+
+        return polish_wearable_user_visible_reply(text or "")
+    return polish_user_visible_reply(text or "")
+
+
+__all__ = [
+    "polish_user_visible_reply",
+    "polish_final_user_answer",
+    "presentation_filter_mode",
+]

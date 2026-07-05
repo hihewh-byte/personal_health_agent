@@ -1,0 +1,335 @@
+{
+  "profile_slot_invariants": {
+    "attachment_grounded_review": {
+      "forbidden_tools": [
+        "fetch_evidence_by_id"
+      ],
+      "required_tier0": [
+        "ATTACHMENT_LABEL",
+        "TASK"
+      ],
+      "required_tools": []
+    },
+    "combined_review": {
+      "forbidden_tools": [],
+      "required_tier0": [
+        "EVIDENCE_CATALOG",
+        "NUMERICS_MANIFEST",
+        "TASK"
+      ],
+      "required_tools": [
+        "fetch_evidence_by_id"
+      ]
+    },
+    "lab_cross_year": {
+      "forbidden_tools": [],
+      "required_tier0": [
+        "LDL_AUTHORITY",
+        "NUMERICS_MANIFEST",
+        "TASK"
+      ],
+      "required_tools": []
+    },
+    "wearable_only": {
+      "forbidden_tools": [
+        "fetch_evidence_by_id"
+      ],
+      "required_tier0": [
+        "NUMERICS_MANIFEST",
+        "TASK",
+        "WEARABLE_90D_SUMMARY"
+      ],
+      "required_tools": []
+    },
+    "wearable_screenshot_review": {
+      "forbidden_tools": [
+        "fetch_evidence_by_id"
+      ],
+      "required_tier0": [
+        "TASK",
+        "WEARABLE_90D_SUMMARY",
+        "WEARABLE_COMPARE_TABLE",
+        "WEARABLE_SNAPSHOT"
+      ],
+      "required_tools": []
+    }
+  },
+  "profiles": {
+    "attachment_asset_qa": {
+      "forbidden": [
+        "DOSSIER_CLINICAL_COMPACT",
+        "DOSSIER_LAB",
+        "EVIDENCE_CATALOG",
+        "GET_HEALTH_DATA",
+        "GET_TEMPORAL_HISTORY_DOSSIER",
+        "LDL_AUTHORITY",
+        "METADATA_CATALOG",
+        "NUMERICS_MANIFEST",
+        "PATIENT_STATE_LAB",
+        "PATIENT_STATE_WEARABLE",
+        "RECALL",
+        "USER_SNAPSHOT",
+        "WEARABLE_90D_SUMMARY",
+        "fetch_evidence_by_id"
+      ],
+      "legacy_question_type": "LIFESTYLE",
+      "slots_tier0": [
+        "ATTACHMENT_LABEL",
+        "DATA_AVAILABILITY",
+        "SUPPLEMENT_BG",
+        "TASK"
+      ],
+      "slots_tier1": [],
+      "tools_allowed": []
+    },
+    "attachment_episodic_bridge": {
+      "forbidden": [
+        "DOSSIER_CLINICAL_COMPACT",
+        "DOSSIER_LAB",
+        "EVIDENCE_CATALOG",
+        "GET_HEALTH_DATA",
+        "GET_TEMPORAL_HISTORY_DOSSIER",
+        "METADATA_CATALOG",
+        "RECALL",
+        "USER_SNAPSHOT",
+        "fetch_evidence_by_id"
+      ],
+      "legacy_question_type": "LIFESTYLE",
+      "slots_tier0": [
+        "ATTACHMENT_LABEL",
+        "DATA_AVAILABILITY",
+        "NUMERICS_MANIFEST",
+        "SUPPLEMENT_BG",
+        "TASK",
+        "WEARABLE_90D_SUMMARY"
+      ],
+      "slots_tier1": [
+        "PATIENT_STATE_LAB",
+        "PATIENT_STATE_WEARABLE"
+      ],
+      "tools_allowed": []
+    },
+    "attachment_grounded_review": {
+      "forbidden": [
+        "DOSSIER_CLINICAL_COMPACT",
+        "DOSSIER_LAB",
+        "EVIDENCE_CATALOG",
+        "GET_HEALTH_DATA",
+        "GET_TEMPORAL_HISTORY_DOSSIER",
+        "LDL_AUTHORITY",
+        "METADATA_CATALOG",
+        "NUMERICS_MANIFEST",
+        "PATIENT_STATE_LAB",
+        "PATIENT_STATE_WEARABLE",
+        "RECALL",
+        "SUPPLEMENT_BG",
+        "USER_SNAPSHOT",
+        "WEARABLE_90D_SUMMARY",
+        "WEARABLE_COMPARE_TABLE",
+        "fetch_evidence_by_id"
+      ],
+      "legacy_question_type": "LIFESTYLE",
+      "slots_tier0": [
+        "ATTACHMENT_LABEL",
+        "DATA_AVAILABILITY",
+        "TASK"
+      ],
+      "slots_tier1": [],
+      "tools_allowed": []
+    },
+    "casual": {
+      "forbidden": [
+        "GET_HEALTH_DATA",
+        "GET_TEMPORAL_HISTORY_DOSSIER",
+        "USER_SNAPSHOT"
+      ],
+      "legacy_question_type": "CASUAL",
+      "slots_tier0": [
+        "TASK"
+      ],
+      "slots_tier1": [],
+      "tools_allowed": []
+    },
+    "clarify": {
+      "forbidden": [
+        "ATTACHMENT_LABEL",
+        "DATA_AVAILABILITY",
+        "DOSSIER_CLINICAL_COMPACT",
+        "DOSSIER_LAB",
+        "EPISODIC_BRIDGE",
+        "EVIDENCE_CATALOG",
+        "GET_HEALTH_DATA",
+        "GET_TEMPORAL_HISTORY_DOSSIER",
+        "LDL_AUTHORITY",
+        "METADATA_CATALOG",
+        "NUMERICS_MANIFEST",
+        "PATIENT_STATE_LAB",
+        "PATIENT_STATE_WEARABLE",
+        "RECALL",
+        "SUPPLEMENT_BG",
+        "USER_SNAPSHOT",
+        "USER_SNAPSHOT_IN_RAW_USER",
+        "WEARABLE_90D_SUMMARY",
+        "WEARABLE_COMPARE_TABLE",
+        "WEARABLE_SNAPSHOT",
+        "fetch_evidence_by_id"
+      ],
+      "legacy_question_type": "LAB",
+      "slots_tier0": [
+        "TASK"
+      ],
+      "slots_tier1": [],
+      "tools_allowed": []
+    },
+    "combined_review": {
+      "forbidden": [
+        "GET_HEALTH_DATA",
+        "USER_SNAPSHOT"
+      ],
+      "legacy_question_type": "COMBINED",
+      "slots_tier0": [
+        "EVIDENCE_CATALOG",
+        "NUMERICS_MANIFEST",
+        "TASK"
+      ],
+      "slots_tier1": [
+        "AUDIT",
+        "RECALL",
+        "USER_CONTEXT_BRIEF"
+      ],
+      "tools_allowed": [
+        "fetch_evidence_by_id"
+      ]
+    },
+    "combined_review_catalog": {
+      "forbidden": [
+        "GET_HEALTH_DATA",
+        "USER_SNAPSHOT"
+      ],
+      "legacy_question_type": "COMBINED",
+      "slots_tier0": [
+        "EVIDENCE_CATALOG",
+        "NUMERICS_MANIFEST",
+        "TASK"
+      ],
+      "slots_tier1": [
+        "AUDIT",
+        "RECALL",
+        "USER_CONTEXT_BRIEF"
+      ],
+      "tools_allowed": [
+        "fetch_evidence_by_id"
+      ]
+    },
+    "lab_cross_year": {
+      "forbidden": [
+        "GET_HEALTH_DATA",
+        "USER_SNAPSHOT"
+      ],
+      "legacy_question_type": "LAB",
+      "slots_tier0": [
+        "LDL_AUTHORITY",
+        "NUMERICS_MANIFEST",
+        "TASK"
+      ],
+      "slots_tier1": [
+        "AUDIT",
+        "DOSSIER_LAB",
+        "PATIENT_STATE_LAB",
+        "RECALL"
+      ],
+      "tools_allowed": [
+        "get_temporal_history_dossier"
+      ]
+    },
+    "lifestyle": {
+      "forbidden": [
+        "USER_SNAPSHOT"
+      ],
+      "legacy_question_type": "LIFESTYLE",
+      "slots_tier0": [
+        "TASK"
+      ],
+      "slots_tier1": [
+        "PATIENT_STATE_LAB",
+        "SUPPLEMENT_BG",
+        "USER_CONTEXT_BRIEF"
+      ],
+      "tools_allowed": []
+    },
+    "supplement_manifest": {
+      "forbidden": [
+        "DOSSIER_CLINICAL_COMPACT",
+        "GET_HEALTH_DATA",
+        "USER_SNAPSHOT"
+      ],
+      "legacy_question_type": "LIFESTYLE",
+      "slots_tier0": [
+        "SUPPLEMENT_BG",
+        "TASK"
+      ],
+      "slots_tier1": [
+        "PATIENT_STATE_LAB"
+      ],
+      "tools_allowed": []
+    },
+    "wearable_only": {
+      "forbidden": [
+        "USER_SNAPSHOT_IN_RAW_USER"
+      ],
+      "legacy_question_type": "WEARABLE",
+      "slots_tier0": [
+        "NUMERICS_MANIFEST",
+        "TASK",
+        "WEARABLE_90D_SUMMARY"
+      ],
+      "slots_tier1": [
+        "PATIENT_STATE_WEARABLE"
+      ],
+      "tools_allowed": [
+        "get_health_data"
+      ]
+    },
+    "wearable_screenshot_review": {
+      "forbidden": [
+        "ATTACHMENT_LABEL",
+        "DOSSIER_CLINICAL_COMPACT",
+        "DOSSIER_LAB",
+        "EVIDENCE_CATALOG",
+        "GET_HEALTH_DATA",
+        "GET_TEMPORAL_HISTORY_DOSSIER",
+        "LDL_AUTHORITY",
+        "METADATA_CATALOG",
+        "NUMERICS_MANIFEST",
+        "PATIENT_STATE_LAB",
+        "PATIENT_STATE_WEARABLE",
+        "SUPPLEMENT_BG",
+        "USER_SNAPSHOT",
+        "fetch_evidence_by_id"
+      ],
+      "legacy_question_type": "WEARABLE",
+      "slots_tier0": [
+        "TASK",
+        "WEARABLE_90D_SUMMARY",
+        "WEARABLE_COMPARE_TABLE",
+        "WEARABLE_SNAPSHOT"
+      ],
+      "slots_tier1": [],
+      "tools_allowed": []
+    }
+  },
+  "schema": "pha.harness_profile_registry/v1",
+  "tier0_assembly_profiles": [
+    "attachment_asset_qa",
+    "attachment_episodic_bridge",
+    "attachment_grounded_review",
+    "casual",
+    "combined_review",
+    "combined_review_catalog",
+    "lab_cross_year",
+    "lifestyle",
+    "supplement_manifest",
+    "wearable_only",
+    "wearable_screenshot_review"
+  ]
+}

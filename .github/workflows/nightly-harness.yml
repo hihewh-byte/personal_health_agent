@@ -1,0 +1,91 @@
+name: Nightly Harness Regression
+
+# Long-running LLM + live-server batteries (148 + 164). Not for PR gate — see ci.yml + L1 selfcheck.
+on:
+  schedule:
+    - cron: "0 18 * * *"  # 02:00 UTC+8 daily
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: "Fixed seed for reproducible batteries"
+        required: false
+        default: "20260626"
+
+concurrency:
+  group: nightly-harness-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  l1-probe:
+    name: Stage 3H L1 probe (PR-safe)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install deps
+        run: pip install -r requirements.txt
+      - name: L1 physical-isolation probes
+        run: |
+          export PYTHONPATH=.
+          export PHA_UNIVERSAL_ATTACHMENT_LANE=1
+          export PHA_HEALTH_INTENT_CATALOG=1
+          python scripts/pha_universal_attachment_lane_l1_selfcheck.py
+
+  nightly-full:
+    name: Full harness (148 + 164)
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    # Full nightly needs live PHA + LLM + real image assets. Enable on self-hosted runner
+    # by setting repository variable PHA_NIGHTLY_ENABLED=true and configuring secrets below.
+    if: vars.PHA_NIGHTLY_ENABLED == 'true'
+    needs: l1-probe
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-eng
+      - name: Install Python deps
+        run: pip install -r requirements.txt
+      - name: Start PHA (background)
+        env:
+          PHA_UNIVERSAL_ATTACHMENT_LANE: "1"
+          PHA_HEALTH_INTENT_CATALOG: "1"
+        run: |
+          export PYTHONPATH=.
+          nohup python -m uvicorn pha.main:create_app --factory --host 127.0.0.1 --port 8788 \
+            > /tmp/pha-nightly-server.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:8788/health >/dev/null; then
+              echo "PHA up"
+              break
+            fi
+            sleep 2
+          done
+          curl -sf http://127.0.0.1:8788/health || (cat /tmp/pha-nightly-server.log; exit 1)
+      - name: Run nightly harness regression
+        env:
+          PHA_PORT: "8788"
+          PHA_NIGHTLY_SEED: ${{ github.event.inputs.seed || '20260626' }}
+          PHA_JUN11_ASSETS: ${{ secrets.PHA_JUN11_ASSETS }}
+          PHA_NIGHTLY_REPORT_DIR: /tmp/pha-nightly-harness
+          PHA_UNIVERSAL_ATTACHMENT_LANE: "1"
+          PHA_HEALTH_INTENT_CATALOG: "1"
+        run: bash scripts/nightly_harness_regression.sh
+      - name: Upload regression artifacts (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-harness-${{ github.run_id }}
+          path: |
+            /tmp/pha-nightly-harness/**
+            docs/rfcs/anti-regression-constraints.md
+          if-no-files-found: warn

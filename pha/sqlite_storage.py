@@ -2,17 +2,25 @@
 
 from __future__ import annotations
 
-import gc
 import logging
 import sqlite3
 from datetime import date, datetime, time
 from pathlib import Path
-from typing import Any, Callable, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from pha.date_parser import safe_parse_date, safe_parse_datetime
 from pha.models import WearableDailySummary
 
 logger = logging.getLogger(__name__)
+
+from pha.sqlite_connection import (
+    configure_sqlite_for_bulk_import,
+    connect_pooled as _connect,
+    ensure_schema,
+    open_connection,
+    register_schema_initializer,
+    release_connection as _release_connection,
+)
 
 _PACKAGE_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = _PACKAGE_ROOT / "data"
@@ -90,32 +98,16 @@ def database_exists() -> bool:
     return get_db_path().is_file()
 
 
-def _connect() -> sqlite3.Connection:
-    ensure_data_dir()
-    conn = sqlite3.connect(str(get_db_path()), check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def configure_sqlite_for_bulk_import(conn: sqlite3.Connection) -> None:
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA synchronous=NORMAL")
-    conn.execute("PRAGMA temp_store=MEMORY")
-    conn.execute("PRAGMA cache_size=-64000")
-
-
 class WearableDataBatchWriter:
     """
-    Stream inserts into ``wearable_data`` with periodic commit + ``gc.collect()``.
+    Stream inserts into ``wearable_data`` with periodic commit.
 
     Never holds more than ``STREAM_COMMIT_EVERY`` rows in memory.
     """
 
     def __init__(self, user_id: str) -> None:
-        init_schema()
         self.user_id = user_id.strip() or "default"
-        self._conn = _connect()
-        configure_sqlite_for_bulk_import(self._conn)
+        self._conn = open_connection(bulk_import=True)
         self._buffer: List[tuple[str, str, str, float, str]] = []
         self.total_written = 0
         self.total_ignored = 0
@@ -154,7 +146,6 @@ class WearableDataBatchWriter:
         self.total_written += inserted
         self.total_ignored += ignored
         self._buffer.clear()
-        gc.collect()
         return inserted
 
     def close(self) -> int:
@@ -163,17 +154,15 @@ class WearableDataBatchWriter:
             self.flush()
             return self.total_written
         finally:
-            self._conn.close()
+            _release_connection(self._conn)
 
 
 class SleepSegmentBatchWriter:
     """Persist raw sleep intervals for union re-aggregation."""
 
     def __init__(self, user_id: str) -> None:
-        init_schema()
         self.user_id = user_id.strip() or "default"
-        self._conn = _connect()
-        configure_sqlite_for_bulk_import(self._conn)
+        self._conn = open_connection(bulk_import=True)
         self._buffer: List[tuple] = []
         self.total_written = 0
 
@@ -218,7 +207,6 @@ class SleepSegmentBatchWriter:
         inserted = self._conn.total_changes - before
         self.total_written += inserted
         self._buffer.clear()
-        gc.collect()
         return inserted
 
     def close(self) -> int:
@@ -226,12 +214,15 @@ class SleepSegmentBatchWriter:
             self.flush()
             return self.total_written
         finally:
-            self._conn.close()
+            _release_connection(self._conn)
 
 
 def clear_wearable_storage(user_id: Optional[str] = None) -> None:
     """Delete all wearable_daily + wearable_data rows before a full re-import."""
-    init_schema()
+    from pha.workout_storage import init_workout_schema
+
+    ensure_schema()
+    init_workout_schema()
     conn = _connect()
     try:
         if user_id:
@@ -239,20 +230,16 @@ def clear_wearable_storage(user_id: Optional[str] = None) -> None:
             conn.execute("DELETE FROM wearable_data WHERE user_id = ?", (uid,))
             conn.execute("DELETE FROM wearable_sleep_segments WHERE user_id = ?", (uid,))
             conn.execute("DELETE FROM wearable_daily WHERE user_id = ?", (uid,))
-            from pha.workout_storage import clear_workout_sessions
-
-            clear_workout_sessions(uid)
+            conn.execute("DELETE FROM wearable_workout_sessions WHERE user_id = ?", (uid,))
         else:
             conn.execute("DELETE FROM wearable_data")
             conn.execute("DELETE FROM wearable_sleep_segments")
             conn.execute("DELETE FROM wearable_daily")
-            from pha.workout_storage import clear_workout_sessions
-
-            clear_workout_sessions()
+            conn.execute("DELETE FROM wearable_workout_sessions")
         conn.commit()
         logger.info("Cleared wearable storage for user_id=%s", user_id or "ALL")
     finally:
-        conn.close()
+        _release_connection(conn)
 
 
 def get_max_wearable_timestamp(user_id: str) -> Optional[datetime]:
@@ -268,11 +255,10 @@ def get_max_wearable_timestamp(user_id: str) -> Optional[datetime]:
             return None
         return safe_parse_datetime(row["ts"])
     finally:
-        conn.close()
+        _release_connection(conn)
 
 
 def count_wearable_samples(user_id: str) -> int:
-    init_schema()
     conn = _connect()
     try:
         row = conn.execute(
@@ -281,7 +267,7 @@ def count_wearable_samples(user_id: str) -> int:
         ).fetchone()
         return int(row["c"]) if row else 0
     finally:
-        conn.close()
+        _release_connection(conn)
 
 
 def upsert_wearable_daily_batch(
@@ -291,9 +277,7 @@ def upsert_wearable_daily_batch(
 ) -> int:
     if not rows:
         return 0
-    init_schema()
-    conn = _connect()
-    configure_sqlite_for_bulk_import(conn)
+    conn = open_connection(bulk_import=True)
     try:
         tuples = [_model_to_tuple(r) for r in rows]
         upsert_sql = _wearable_daily_upsert_sql()
@@ -303,18 +287,14 @@ def upsert_wearable_daily_batch(
                 tuples[i : i + batch_size],
             )
             conn.commit()
-            gc.collect()
         return len(rows)
     finally:
-        conn.close()
+        _release_connection(conn)
 
 
-def init_schema(conn: Optional[sqlite3.Connection] = None) -> None:
-    own = conn is None
-    db = conn or _connect()
-    try:
-        db.executescript(
-            """
+def _apply_schema_migrations(db: sqlite3.Connection) -> None:
+    db.executescript(
+        """
             CREATE TABLE IF NOT EXISTS wearable_daily (
                 user_id TEXT NOT NULL,
                 day TEXT NOT NULL,
@@ -344,17 +324,21 @@ def init_schema(conn: Optional[sqlite3.Connection] = None) -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_user_metric_time
                 ON wearable_data (user_id, metric_type, timestamp);
-            """,
-        )
-        db.commit()
-        _migrate_wearable_schema(db)
-        _migrate_import_sync_schema(db)
-        from pha.workout_storage import init_workout_schema
+        """,
+    )
+    db.commit()
+    _migrate_wearable_schema(db)
+    _migrate_import_sync_schema(db)
+    from pha.workout_storage import init_workout_schema
 
-        init_workout_schema(db)
-    finally:
-        if own:
-            db.close()
+    init_workout_schema(db)
+
+
+def init_schema(conn: Optional[sqlite3.Connection] = None) -> None:
+    if conn is not None:
+        _apply_schema_migrations(conn)
+        return
+    ensure_schema()
 
 
 def _migrate_wearable_schema(db: sqlite3.Connection) -> None:
@@ -474,7 +458,7 @@ def upsert_import_sync_state(
         )
         conn.commit()
     finally:
-        conn.close()
+        _release_connection(conn)
 
 
 def clear_import_sync_state(user_id: str) -> None:
@@ -485,7 +469,7 @@ def clear_import_sync_state(user_id: str) -> None:
         conn.execute("DELETE FROM import_sync_state WHERE user_id = ?", (uid,))
         conn.commit()
     finally:
-        conn.close()
+        _release_connection(conn)
 
 
 def get_import_sync_state(user_id: str) -> Optional[dict]:
@@ -499,7 +483,7 @@ def get_import_sync_state(user_id: str) -> Optional[dict]:
         ).fetchone()
         return dict(row) if row else None
     finally:
-        conn.close()
+        _release_connection(conn)
 
 
 def get_wearable_record_counts(user_id: str) -> dict:
@@ -543,14 +527,13 @@ def get_wearable_record_counts(user_id: str) -> dict:
             "workout_sessions": int(workout_sessions),
         }
     finally:
-        conn.close()
+        _release_connection(conn)
 
 
 def dedupe_wearable_data(user_id: Optional[str] = None) -> tuple[int, int]:
     """
     Remove duplicate wearable samples. Returns (wearable_data_removed, sleep_segments_removed).
     """
-    init_schema()
     conn = _connect()
     try:
         if user_id:
@@ -622,7 +605,7 @@ def dedupe_wearable_data(user_id: Optional[str] = None) -> tuple[int, int]:
             after_seg = conn.execute("SELECT COUNT(*) FROM wearable_sleep_segments").fetchone()[0]
         return int(before_wd - after_wd), int(before_seg - after_seg)
     finally:
-        conn.close()
+        _release_connection(conn)
 
 
 def query_sleep_segments_for_day(user_id: str, day: date) -> List[dict]:
@@ -640,7 +623,7 @@ def query_sleep_segments_for_day(user_id: str, day: date) -> List[dict]:
         )
         return [dict(r) for r in cur.fetchall()]
     finally:
-        conn.close()
+        _release_connection(conn)
 
 
 def query_sleep_segments_in_range(
@@ -666,7 +649,7 @@ def query_sleep_segments_in_range(
         )
         return [dict(r) for r in cur.fetchall()]
     finally:
-        conn.close()
+        _release_connection(conn)
 
 
 def query_wearable_hr_samples_in_range(
@@ -698,101 +681,137 @@ def query_wearable_hr_samples_in_range(
             out.append((ts, float(row["value"])))
         return out
     finally:
-        conn.close()
+        _release_connection(conn)
 
 
-def _sleep_stage_hours_from_segment_rows(
-    raw_segs: Sequence[Mapping[str, Any]],
-) -> Tuple[Optional[float], Optional[float]]:
-    """Sum deep/REM asleep segment durations (hours) from DB segment rows."""
-    from pha.sleep_aggregator import sleep_stage_kind_from_sample_id
+def resolve_import_watermark(user_id: str) -> Optional[datetime]:
+    """Watermark for export.zip delta sync: ``import_sync_state.last_record_time`` else DB max sample."""
+    uid = (user_id or "default").strip() or "default"
+    state = get_import_sync_state(uid)
+    if state:
+        raw = state.get("last_record_time")
+        if raw:
+            dt = safe_parse_datetime(str(raw))
+            if dt is not None:
+                return dt
+    return get_max_wearable_timestamp(uid)
 
-    deep_s = 0.0
-    rem_s = 0.0
-    for raw in raw_segs:
-        if int(raw.get("is_awake") or 0):
+
+def rebuild_wearable_daily_for_days(user_id: str, days: Sequence[date]) -> int:
+    """Re-aggregate ``wearable_daily`` for specific days from ``wearable_data`` + sleep segments."""
+    from collections import defaultdict
+
+    from pha.wearable_daily_aggregator import (
+        WearableDayMetricAgg,
+        accumulate_wearable_sample,
+        build_wearable_daily_summary,
+    )
+
+    uid = (user_id or "default").strip() or "default"
+    unique_days = sorted({d for d in days if d})
+    if not unique_days:
+        return 0
+
+    seg_by_day: Dict[date, List[dict]] = defaultdict(list)
+    for raw in query_sleep_segments_in_range(uid, unique_days[0], unique_days[-1]):
+        d = safe_parse_date(str(raw.get("day") or ""))
+        if d is None or d not in unique_days:
             continue
-        start = safe_parse_datetime(raw["start_time"])
-        end = safe_parse_datetime(raw["end_time"])
-        if start is None or end is None or end <= start:
-            continue
-        dur = (end - start).total_seconds()
-        stage = sleep_stage_kind_from_sample_id(str(raw.get("sample_id") or ""))
-        if stage == "deep":
-            deep_s += dur
-        elif stage == "rem":
-            rem_s += dur
-    deep_h = deep_s / 3600.0 if deep_s > 0 else None
-    rem_h = rem_s / 3600.0 if rem_s > 0 else None
-    return deep_h, rem_h
+        seg_by_day[d].append(raw)
+
+    rows: List[WearableDailySummary] = []
+    conn = _connect()
+    try:
+        for d in unique_days:
+            day_s = d.isoformat()
+            metrics = WearableDayMetricAgg()
+            cur = conn.execute(
+                """
+                SELECT metric_type, timestamp, value, sample_id
+                FROM wearable_data
+                WHERE user_id = ? AND substr(timestamp, 1, 10) = ?
+                """,
+                (uid, day_s),
+            )
+            for row in cur.fetchall():
+                if row["value"] is None:
+                    continue
+                accumulate_wearable_sample(
+                    str(row["metric_type"] or ""),
+                    float(row["value"]),
+                    str(row["sample_id"] or ""),
+                    metrics,
+                )
+            rows.append(
+                build_wearable_daily_summary(
+                    uid,
+                    d,
+                    metrics=metrics,
+                    segment_rows=seg_by_day.get(d, []),
+                ),
+            )
+    finally:
+        _release_connection(conn)
+
+    if rows:
+        upsert_wearable_daily_batch(rows)
+        sync_wearable_data_from_daily(rows, user_id=uid)
+    return len(rows)
 
 
 def rebuild_daily_sleep_from_segments(user_id: str) -> int:
-    """Recompute daily sleep union + deep/REM stage hours from stored segments."""
-    from pha.data_processor import SleepSegment, compute_sleep_hours_union
+    """Recompute daily sleep union + deep/REM stage hours from stored segments (single connection)."""
+    from collections import defaultdict
+
+    from pha.wearable_daily_aggregator import build_wearable_daily_summary
 
     uid = (user_id or "default").strip() or "default"
-    init_schema()
     conn = _connect()
     try:
-        days = [
-            row[0]
-            for row in conn.execute(
-                "SELECT DISTINCT day FROM wearable_sleep_segments WHERE user_id = ?",
-                (uid,),
-            ).fetchall()
-        ]
+        seg_rows = conn.execute(
+            """
+            SELECT day, start_time, end_time, source_name, sample_id, is_awake
+            FROM wearable_sleep_segments
+            WHERE user_id = ?
+            ORDER BY day, start_time
+            """,
+            (uid,),
+        ).fetchall()
+        if not seg_rows:
+            return 0
+
+        by_day: Dict[str, List[dict]] = defaultdict(list)
+        for row in seg_rows:
+            by_day[str(row["day"])].append(dict(row))
+
+        daily_by_day: Dict[date, WearableDailySummary] = {}
+        for row in conn.execute(
+            "SELECT * FROM wearable_daily WHERE user_id = ?",
+            (uid,),
+        ).fetchall():
+            model = _row_to_model(row)
+            daily_by_day[model.day] = model
     finally:
-        conn.close()
+        _release_connection(conn)
 
-    if not days:
-        return 0
-
-    updated = 0
-    rows = load_wearable_rows(uid)
-    by_day = {r.day: r for r in rows}
-
-    for day_s in sorted(days):
+    updates: List[WearableDailySummary] = []
+    for day_s in sorted(by_day.keys()):
         d = safe_parse_date(day_s) or date.today()
-        raw_segs = query_sleep_segments_for_day(uid, d)
-        asleep: List[SleepSegment] = []
-        awake_seconds = 0.0
-        for raw in raw_segs:
-            start = safe_parse_datetime(raw["start_time"])
-            end = safe_parse_datetime(raw["end_time"])
-            if start is None or end is None:
-                continue
-            if int(raw.get("is_awake") or 0):
-                awake_seconds += max(0.0, (end - start).total_seconds())
-            else:
-                asleep.append(
-                    SleepSegment(
-                        start=start,
-                        end=end,
-                        source_name=str(raw.get("source_name") or ""),
-                        sample_id=str(raw.get("sample_id") or ""),
-                    ),
-                )
-        sleep_h, _ = compute_sleep_hours_union(asleep)
-        awake_h = awake_seconds / 3600.0 if awake_seconds > 0 else None
+        row = daily_by_day.get(d) or WearableDailySummary(user_id=uid, day=d)
+        updates.append(
+            build_wearable_daily_summary(
+                uid,
+                d,
+                existing=row,
+                segment_rows=by_day[day_s],
+                sleep_only=True,
+            ),
+        )
 
-        row = by_day.get(d)
-        if row is None:
-            row = WearableDailySummary(user_id=uid, day=d)
-            rows.append(row)
-            by_day[d] = row
-        row.sleep_hours = sleep_h if sleep_h > 0 else None
-        row.awake_duration_hours = awake_h
-        deep_h, rem_h = _sleep_stage_hours_from_segment_rows(raw_segs)
-        row.sleep_deep_hours = deep_h
-        row.sleep_rem_hours = rem_h
-        if asleep:
-            row.sleep_start_time = min(s.start for s in asleep)
-        updated += 1
-
-    if rows:
-        upsert_wearable_rows(rows, sync_index_from_daily=True)
-    return updated
+    if updates:
+        upsert_wearable_daily_batch(updates)
+        sync_wearable_data_from_daily(updates, user_id=uid)
+    return len(updates)
 
 
 def _row_to_model(row: sqlite3.Row) -> WearableDailySummary:
@@ -897,32 +916,32 @@ def sync_wearable_data_from_daily(
     """
     Mirror daily rollups into ``wearable_data`` for indexed range scans.
 
-    Replaces existing samples for affected calendar days (per user).
+    Only replaces **noon daily-mirror rows** (per metric + ``_day_timestamp``).
+    Granular intraday samples (e.g. ``heart_rate``) are never deleted.
     """
     if not rows:
         return 0
     init_schema()
     uid_filter = (user_id or rows[0].user_id).strip() or "default"
-    days = sorted({r.day.isoformat() for r in rows if r.user_id == uid_filter or user_id is None})
-    if not days:
+    scoped = [r for r in rows if r.user_id == uid_filter] if user_id else list(rows)
+    if not scoped:
         return 0
 
-    tuples = _daily_rows_to_wearable_data_tuples(
-        [r for r in rows if r.user_id == uid_filter] if user_id else list(rows),
-    )
+    tuples = _daily_rows_to_wearable_data_tuples(scoped)
     if not tuples:
         return 0
 
     conn = _connect()
     try:
-        placeholders = ",".join("?" for _ in days)
-        conn.execute(
-            f"""
-            DELETE FROM wearable_data
-            WHERE user_id = ? AND substr(timestamp, 1, 10) IN ({placeholders})
-            """,
-            (uid_filter, *days),
-        )
+        mirror_keys = sorted({(uid, mt, ts) for uid, mt, ts, _val in tuples})
+        for uid, mt, ts in mirror_keys:
+            conn.execute(
+                """
+                DELETE FROM wearable_data
+                WHERE user_id = ? AND metric_type = ? AND timestamp = ?
+                """,
+                (uid, mt, ts),
+            )
         for i in range(0, len(tuples), _WEARABLE_DATA_BATCH):
             conn.executemany(
                 """
@@ -938,7 +957,7 @@ def sync_wearable_data_from_daily(
         conn.commit()
         return len(tuples)
     finally:
-        conn.close()
+        _release_connection(conn)
 
 
 def query_wearable_data_range(
@@ -973,7 +992,7 @@ def query_wearable_data_range(
             out.append((day, float(row["value"])))
         return out
     finally:
-        conn.close()
+        _release_connection(conn)
 
 
 def query_wearable_daily_range(
@@ -998,7 +1017,7 @@ def query_wearable_daily_range(
         )
         return [_row_to_model(r) for r in cur.fetchall()]
     finally:
-        conn.close()
+        _release_connection(conn)
 
 
 def query_active_energy_daily_range(
@@ -1036,7 +1055,7 @@ def query_active_energy_daily_range(
             if row["v"] is not None
         ]
     finally:
-        conn.close()
+        _release_connection(conn)
 
 
 def upsert_wearable_rows(
@@ -1046,7 +1065,6 @@ def upsert_wearable_rows(
 ) -> int:
     if not rows:
         return 0
-    init_schema()
     conn = _connect()
     try:
         conn.executemany(
@@ -1055,7 +1073,7 @@ def upsert_wearable_rows(
         )
         conn.commit()
     finally:
-        conn.close()
+        _release_connection(conn)
 
     if sync_index_from_daily:
         by_user: dict[str, list[WearableDailySummary]] = {}
@@ -1112,7 +1130,7 @@ def load_wearable_rows(
         cur = conn.execute(sql, params)
         return [_row_to_model(r) for r in cur.fetchall()]
     finally:
-        conn.close()
+        _release_connection(conn)
 
 
 def backfill_wearable_data_from_daily(user_id: Optional[str] = None) -> int:
@@ -1142,7 +1160,6 @@ def wipe_wearable_data(user_id: Optional[str] = None) -> int:
 def count_rows(user_id: Optional[str] = None) -> int:
     if not database_exists():
         return 0
-    init_schema()
     conn = _connect()
     try:
         if user_id:
@@ -1155,4 +1172,7 @@ def count_rows(user_id: Optional[str] = None) -> int:
         row = cur.fetchone()
         return int(row["c"]) if row else 0
     finally:
-        conn.close()
+        _release_connection(conn)
+
+
+register_schema_initializer(_apply_schema_migrations)

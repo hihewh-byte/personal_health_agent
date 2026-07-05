@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import sqlite3
 from collections import defaultdict
 from datetime import date, datetime
 from typing import DefaultDict, Sequence
@@ -22,6 +23,7 @@ from pha.sqlite_storage import (
     upsert_wearable_rows,
     wipe_wearable_data,
 )
+from pha.structured_log import log_exception
 from pha.trend_viz import build_trend_charts_json
 from pha.models import HealthEvent, UserCalibration, WearableDailySummary
 
@@ -58,7 +60,7 @@ def _merge_wearable_same_day(a: WearableDailySummary, b: WearableDailySummary) -
         raise ValueError(msg)
     steps: int | None
     if a.steps is not None and b.steps is not None:
-        steps = int(a.steps + b.steps)
+        steps = int(max(a.steps, b.steps))
     elif a.steps is not None:
         steps = a.steps
     elif b.steps is not None:
@@ -126,8 +128,8 @@ class HealthStore(MilestoneDatabasePort):
         self._wearable[uid] = merged_rows
         try:
             upsert_wearable_rows(merged_rows)
-        except Exception:
-            logger.exception("Failed to persist wearable rows to SQLite for user_id=%s", uid)
+        except (sqlite3.Error, OSError) as exc:
+            log_exception(logger, "store_persist_wearable_failed", exc, user_id=uid)
 
     def replace_wearable_rows_in_memory(
         self,
@@ -147,8 +149,8 @@ class HealthStore(MilestoneDatabasePort):
             self._wearable.clear()
         try:
             wipe_wearable_data(user_id)
-        except Exception:
-            logger.exception("Failed to wipe wearable rows from SQLite")
+        except (sqlite3.Error, OSError) as exc:
+            log_exception(logger, "store_wipe_wearable_failed", exc, user_id=user_id)
 
     def hydrate_from_sqlite(self, *, max_days: int = 400) -> int:
         """
@@ -159,16 +161,14 @@ class HealthStore(MilestoneDatabasePort):
         if not database_exists():
             logger.info("SQLite cold start: no database at %s", get_db_path())
             return 0
+        from pha.health_data import effective_query_reference_date
+
         rows = load_wearable_rows(
             limit_days=max_days,
-            reference_date=date(2026, 5, 15),
+            reference_date=effective_query_reference_date(),
         )
         if not rows:
             return 0
-        try:
-            backfill_wearable_data_from_daily()
-        except Exception:
-            logger.exception("wearable_data index backfill failed")
         by_user: DefaultDict[str, dict[date, WearableDailySummary]] = defaultdict(dict)
         for row in rows:
             uid = row.user_id.strip() or "default"

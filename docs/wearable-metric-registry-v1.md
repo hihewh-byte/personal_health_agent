@@ -64,8 +64,9 @@ L3  LLM 叙事（只引用 Tier0 表 · Audit 拦截）
 | 端点 | 说明 |
 |------|------|
 | `GET /data/sync-modules` | 列出 Registry 中 `ingest_modules` |
-| `POST /data/sync-module/{module_id}` | 当前仅 `hk_workout` |
-| `POST /data/backfill-workouts` | **兼容别名** → `hk_workout` |
+| `POST /data/upload` | **唯一推荐**：全量 import（Apple export 为全量快照） |
+| `POST /data/sync-module/{module_id}` | **已下线**（410） |
+| `POST /data/backfill-workouts` | **已下线**（410） |
 
 新增模块时：实现 L0 解析 + 在 JSON 增加 `ingest_modules` 条目 + 在 `main.data_sync_module` 接线 **一次**，不要新增 `/data/backfill-xxx` 专用路径。
 

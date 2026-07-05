@@ -82,5 +82,38 @@
       "omit_panel_indices": [3],
       "forbidden_compare_rows": ["spo2_percent"]
     }
+  ],
+  "hrv_regression_cases": [
+    {
+      "fixture_id": "hrv_split_ocr_27",
+      "description": "AVERAGE 行 OCR 断行 2+7 → 合并为 27 ms（真机 IMG_6895 类）",
+      "ocr_text": "Heart Rate Variability\nToday\nAVERAGE\n2\n7 ms",
+      "expected_hrv": "27"
+    },
+    {
+      "fixture_id": "hrv_slash_ocr_27",
+      "description": "Tesseract 将 27 读成 2/ ms（IMG_6895 真 OCR）",
+      "ocr_text": "Heart Rate Variability\nAVERAGE\n2/ ms\nToday",
+      "expected_hrv": "27"
+    },
+    {
+      "fixture_id": "hrv_chart_axis_not_kpi",
+      "description": "Y 轴 150 ms 不得压过 AVERAGE 27 ms",
+      "ocr_text": "Heart Rate Variability\nToday\n0\n50\n100\n150 ms\nAVERAGE\n27 ms",
+      "expected_hrv": "27"
+    },
+    {
+      "fixture_id": "hrv_long_about_loses_to_hero",
+      "description": "长说明文含 7 ms 不得压过 HRV 屏 AVERAGE 27 ms",
+      "panels": [
+        {
+          "ocr_text": "Heart Rate Variability (HRV) is a measure of the variation in the time interval between heart beats and standard deviation captured by the heart rate sensor over the age of 18 third party apps can also add HRV to Health with measurements showing 7 ms on chart"
+        },
+        {
+          "ocr_text": "Heart Rate Variability\nAVERAGE\n27 ms\nToday"
+        }
+      ],
+      "expected_hrv": "27"
+    }
   ]
 }

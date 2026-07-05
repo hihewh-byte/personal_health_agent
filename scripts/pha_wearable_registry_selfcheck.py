@@ -13,7 +13,6 @@ if str(ROOT) not in sys.path:
 from pha.wearable_compare_table_v1 import COMPARABLE_METRIC_SPECS, WORKOUT_METRICS
 from pha.wearable_metric_registry import (
     comparable_wearable_daily_specs,
-    ingest_module,
     list_ingest_modules,
     load_wearable_metric_registry,
     registry_path,
@@ -40,11 +39,11 @@ def main() -> int:
     if len(daily) < 7:
         errors.append(f"expected >=7 daily comparable metrics, got {len(daily)}")
 
-    hk = ingest_module("hk_workout")
-    if not hk:
-        errors.append("hk_workout ingest module missing")
-    if not list_ingest_modules():
-        errors.append("ingest_modules empty")
+    if list_ingest_modules():
+        errors.append(
+            "ingest_modules must be empty (full import only); "
+            f"got {[m.get('module_id') for m in list_ingest_modules()]}"
+        )
 
     if errors:
         for e in errors:

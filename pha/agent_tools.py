@@ -9,6 +9,11 @@ from typing import Any, Dict, List, Optional
 
 from pha.date_parser import safe_parse_date_required
 from pha.health_data import ALLOWED_METRICS, HealthDataResult, get_health_data
+from pha.llm_provider import (
+    build_ollama_synthetic_tool_call,
+    normalize_ollama_assistant_message,
+    parse_ollama_tool_arguments,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -395,18 +400,11 @@ def run_tool_loop(
         tool_calls = message.get("tool_calls") or []
 
         if tool_calls:
-            messages.append(message)
+            messages.append(normalize_ollama_assistant_message(message))
             for tc in tool_calls:
                 fn = tc.get("function") or {}
                 name = fn.get("name") or ""
-                raw_args = fn.get("arguments") or "{}"
-                if isinstance(raw_args, str):
-                    try:
-                        args = json.loads(raw_args)
-                    except json.JSONDecodeError:
-                        args = {}
-                else:
-                    args = dict(raw_args)
+                args = parse_ollama_tool_arguments(fn.get("arguments"))
                 status_messages.append(tool_status_message(name, args))
                 result = execute_tool_call(name, args, user_id=user_id)
                 tool_results.append({"tool": name, "arguments": args, "result": result})
@@ -435,14 +433,7 @@ def run_tool_loop(
                     {
                         "role": "assistant",
                         "content": "",
-                        "tool_calls": [
-                            {
-                                "function": {
-                                    "name": tool_name,
-                                    "arguments": json.dumps(args, ensure_ascii=False),
-                                },
-                            },
-                        ],
+                        "tool_calls": [build_ollama_synthetic_tool_call(tool_name, args)],
                     },
                 )
                 messages.append(

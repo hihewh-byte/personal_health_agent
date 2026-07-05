@@ -20,6 +20,7 @@ from pha.medical_metric_catalog import (
     UNKNOWN_REJECT,
     seed_medical_metrics_table,
 )
+from pha.sqlite_connection import release_connection
 from pha.sqlite_storage import _connect, init_schema
 
 logger = logging.getLogger(__name__)
@@ -172,7 +173,7 @@ def init_medical_schema(conn: Optional[sqlite3.Connection] = None) -> None:
         db.commit()
     finally:
         if own:
-            db.close()
+            release_connection(db)
 
 
 def _metrics_preview_from_rows(rows: Sequence[MedicalMetricRow], *, limit: int = 6) -> str:

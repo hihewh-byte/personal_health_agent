@@ -90,7 +90,20 @@
 
 ---
 
-## 8. 签字
+## 8. Stage 3C-δ 澄清 chips（多年化验）
+
+| ID | 验收项 | 方法 | 通过标准 | 状态 |
+|----|--------|------|----------|------|
+| 8.1 | 歧义短路 | DB 有 ≥2 年血脂 + 「血脂怎么样」 | SSE `event=clarify`，**无** `delta`；`harness profile=clarify` | ⏳ |
+| 8.2 | chips 呈现 | PHA Console 真机 | 助手气泡 + 年份 chips；点击后重发 `clarify_choice_id` | ⏳ |
+| 8.3 | 显式续答 | 点选某年 chip | R2 `turnScope.yearSource=explicit`；不再触发 clarify | ⏳ |
+| 8.4 | episodic 不消耗 | 澄清轮后查 harness | `record_health_turn_focus` 未写 focus / TTL 未递减 | ⏳ |
+
+脚本：`scripts/pha_e2e_clarify_multiturn_report.py`（API）· 浏览器真机（Console）。
+
+---
+
+## 9. 签字
 
 | 角色 | 结论 | 日期 |
 |------|------|------|

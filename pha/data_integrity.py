@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import statistics
 from typing import List, Sequence
 
 from pydantic import BaseModel
@@ -20,6 +21,8 @@ logger = logging.getLogger(__name__)
 SLEEP_HOURS_MAX = 14.0
 RHR_BPM_MIN = 30.0
 STEPS_DAY_MAX = 60_000
+STEPS_DAY_WARN = 20_000
+STEPS_KCAL_PER_1K_WARN = 30.0
 SPO2_PCT_MAX = 100.0
 RESPIRATORY_BPM_MAX = 40.0
 VO2MAX_MAX = 90.0
@@ -47,12 +50,18 @@ def validate_common_sense(rows: Sequence[WearableDailySummary]) -> str:
             issues.append(f"{d} RHR={row.resting_heart_rate_bpm:.0f}bpm (<30)")
         if row.steps is not None and row.steps > STEPS_DAY_MAX:
             issues.append(f"{d} steps={row.steps:,} (>60k)")
+        elif row.steps is not None and row.steps > STEPS_DAY_WARN:
+            issues.append(f"{d} steps={row.steps:,} (>20k, check multi-source overlap)")
         if row.spo2_pct is not None and row.spo2_pct > SPO2_PCT_MAX:
             issues.append(f"{d} SpO2={row.spo2_pct:.0f}% (>100)")
         if row.respiratory_rate_bpm is not None and row.respiratory_rate_bpm > RESPIRATORY_BPM_MAX:
             issues.append(f"{d} RR={row.respiratory_rate_bpm:.0f}/min (>40)")
         if row.vo2max_ml_kg_min is not None and row.vo2max_ml_kg_min > VO2MAX_MAX:
             issues.append(f"{d} VO2max={row.vo2max_ml_kg_min:.0f} (>90)")
+
+    coherence = _steps_kcal_coherence_note(rows)
+    if coherence:
+        issues.append(coherence)
 
     if not issues:
         return ""
@@ -65,6 +74,28 @@ def validate_common_sense(rows: Sequence[WearableDailySummary]) -> str:
         "Potential sensor overlap or duplicate import. "
         f"Flagged: {detail}. "
         "Interpret trends cautiously and mention data quality if relevant."
+    )
+
+
+def _steps_kcal_coherence_note(rows: Sequence[WearableDailySummary]) -> str:
+    """Flag when daily steps look inflated relative to active energy (typical walk ~40–50 kcal/1k steps)."""
+    ratios: List[float] = []
+    for row in rows:
+        if (
+            row.steps is not None
+            and row.steps >= 5000
+            and row.active_energy_kcal is not None
+            and row.active_energy_kcal > 0
+        ):
+            ratios.append(float(row.active_energy_kcal) / float(row.steps) * 1000.0)
+    if len(ratios) < 5:
+        return ""
+    med = statistics.median(ratios)
+    if med >= STEPS_KCAL_PER_1K_WARN:
+        return ""
+    return (
+        f"steps vs active_energy median {med:.0f} kcal/1000 steps (<{STEPS_KCAL_PER_1K_WARN:.0f}); "
+        "steps may be multi-device inflated — re-import export.zip recommended"
     )
 
 

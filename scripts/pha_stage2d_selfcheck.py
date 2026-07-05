@@ -13,6 +13,7 @@ if ROOT not in sys.path:
 os.environ["PHA_SHADOW_ROUTING"] = "1"
 os.environ["PHA_SHADOW_ROUTING_FORCE_SAMPLE"] = "1"
 os.environ["PHA_METADATA_CATALOG"] = "0"
+os.environ["PHA_GOAL_CLASSIFIER"] = "1"
 
 from pha.harness_report import dry_run_harness_report
 from pha.shadow_routing import (
@@ -83,6 +84,12 @@ def main() -> int:
     expected_pri = "high" if conf >= thresh else "low"
     if pri != expected_pri:
         print("FAIL: telemetry_priority", pri, "expected", expected_pri, "conf", conf)
+        failed += 1
+    if not payload.get("goal_class"):
+        print("FAIL: shadow payload missing goal_class (3F-δ)", payload)
+        failed += 1
+    if not isinstance(payload.get("suggested_domains"), list):
+        print("FAIL: shadow payload missing suggested_domains list", payload)
         failed += 1
 
     report = dry_run_harness_report(T2, user_id="default")

@@ -13,10 +13,10 @@ services:
     container_name: pha
     restart: unless-stopped
     ports:
-      - "${PHA_PORT:-8787}:8787"
+      - "${PHA_PORT:-8788}:8788"
     environment:
       PHA_HOST: "0.0.0.0"
-      PHA_PORT: "8787"
+      PHA_PORT: "8788"
       OLLAMA_BASE_URL: "${OLLAMA_BASE_URL:-http://host.docker.internal:11434}"
       OLLAMA_MODEL: "${OLLAMA_MODEL:-qwen2.5:7b-instruct}"
       OLLAMA_MEDICAL_MODEL: "${OLLAMA_MEDICAL_MODEL:-qwen2.5:7b-instruct}"

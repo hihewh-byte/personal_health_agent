@@ -9,7 +9,7 @@ import sys
 import time
 import urllib.request
 
-BASE = "http://127.0.0.1:8787"
+BASE = f"http://127.0.0.1:{os.environ.get('PHA_PORT', '8788')}"
 MODEL = os.environ.get("PHA_E2E_MODEL", "qwen2.5:7b-instruct")
 USER_ID = "default"
 MSG = """以下是我的补剂方案，请帮我看看有没有问题：

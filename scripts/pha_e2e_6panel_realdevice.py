@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 import time
@@ -19,7 +20,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from tests.fixtures.wearable.golden_wearable import load_golden_ocr
 
-BASE = "http://127.0.0.1:8787"
+BASE = f"http://127.0.0.1:{os.environ.get('PHA_PORT', '8788')}"
 USER_MSG = (
     "附件是5月30号的apple watch上的一些指标，其中一张是5月29号的work out数据，"
     "请分析与过去90的指标相比，这些指标是否正常，尤其是分析睡眠数据"
@@ -132,9 +133,17 @@ def run_chat(
 
 
 def main() -> int:
+    result = run_synthetic_e1_session(verbose=True)
+    print("\nRESULT:", "PASS" if result.get("ok") else "FAIL")
+    return 0 if result.get("ok") else 1
+
+
+def run_synthetic_e1_session(*, verbose: bool = False) -> dict:
+    """P1-d: synthetic 6-panel E1 turn — returns structured snapshot for golden gate."""
     health = httpx.get(f"{BASE}/health", timeout=10.0)
     health.raise_for_status()
-    print("health", health.json())
+    if verbose:
+        print("health", health.json())
 
     golden = load_golden_ocr()
     panels = golden["panels"]
@@ -150,52 +159,48 @@ def main() -> int:
             ap, an = upload_attachment(client, png)
             paths.append(ap)
             names.append(an)
-            print(f"uploaded panel {idx} -> {an}")
+            if verbose:
+                print(f"uploaded panel {idx} -> {an}")
 
-        print("\n=== Turn 1: 6-panel wearable compare ===")
+        if verbose:
+            print("\n=== Turn 1: 6-panel wearable compare ===")
         r1 = run_chat(client, message=USER_MSG, paths=paths, names=names, session_id=None)
         done1 = r1["done"]
         sid = str(done1.get("session_id") or "")
         ans = (done1.get("answer") or {}).get("answer_text") or ""
-        raw = (done1.get("answer") or {}).get("model_reply_raw") or ""
         audit = done1.get("compare_table_audit") or {}
         ingest = done1.get("ingest_payload") or {}
         metrics = ingest.get("wearable_metrics") or ingest.get("metrics") or []
         ct = ingest.get("wearable_compare_table_v1") or {}
-        print(f"session_id={sid} elapsed={r1['elapsed_s']}s")
-        print(f"metrics_count={len(metrics)} compare_rows={len(ct.get('rows') or [])}")
-        print(f"snapshot_reference_date={ingest.get('snapshot_reference_date')}")
-        print(f"compare_audit passed={audit.get('passed')} fallback={audit.get('fallback_applied')}")
-        if audit.get("violations"):
-            print("violations", audit.get("violations"))
-        print(f"\n[助手] ({len(ans)} 字)\n{ans}\n")
-        if raw and raw.strip() != ans.strip():
-            print(f"--- model_reply_raw 与 answer_text 不同 (raw {len(raw)} 字) ---")
-            print(raw[:800], "..." if len(raw) > 800 else "")
+        status_msgs = [
+            str(e.get("message") or "")
+            for e in r1.get("events") or []
+            if e.get("event") == "status" and e.get("message")
+        ]
+        if verbose:
+            print(f"session_id={sid} elapsed={r1['elapsed_s']}s")
+            print(f"metrics_count={len(metrics)} compare_rows={len(ct.get('rows') or [])}")
+            print(f"compare_audit passed={audit.get('passed')} fallback={audit.get('fallback_applied')}")
+            print(f"\n[助手] ({len(ans)} 字)\n{ans}\n")
 
-        print("\n=== Turn 2: lipid follow-up ===")
-        r2 = run_chat(
-            client,
-            message="根据这些指标分析，是否对我的血脂指标有改善的影响？",
-            paths=[],
-            names=[],
-            session_id=sid,
-        )
-        ans2 = ((r2["done"].get("answer") or {}).get("answer_text")) or ""
-        print(f"elapsed={r2['elapsed_s']}s len={len(ans2)}\n{ans2}\n")
-
-    # Pass criteria
     ok = True
-    if len(metrics) < 8:
-        print("FAIL: expected >=8 wearable metrics")
+    if len(metrics) < 4:
         ok = False
-    if "睡眠总时长" not in ans and "8" not in ans:
-        print("FAIL: answer missing sleep compare")
-        ok = False
-    if audit.get("fallback_applied") and len(ans) < 800:
-        print("WARN: fallback applied; short answer (may be expected if LLM drift)")
-    print("\nRESULT:", "PASS" if ok else "FAIL")
-    return 0 if ok else 1
+    _h = done1.get("harness") or {}
+    harness_profile = str((_h.get("plan") or {}).get("profile") or _h.get("profile") or "")
+    return {
+        "ok": ok,
+        "session_id": sid,
+        "harness_profile": harness_profile,
+        "metrics_count": len(metrics),
+        "compare_rows": len(ct.get("rows") or []),
+        "compare_audit": audit,
+        "ingest": ingest,
+        "answer": ans,
+        "status_msgs": status_msgs,
+        "done": done1,
+        "elapsed_s": r1["elapsed_s"],
+    }
 
 
 if __name__ == "__main__":

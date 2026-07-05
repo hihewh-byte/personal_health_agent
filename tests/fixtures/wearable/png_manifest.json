@@ -1,0 +1,10 @@
+[
+  {
+    "fixture_id": "hrv_average_27ms_png",
+    "path": "png/hrv_average_27ms.png",
+    "description": "真机 HRV 屏 AVERAGE 27 ms（IMG_6895）",
+    "expected_metrics": {
+      "hrv_rmssd_ms": "27"
+    }
+  }
+]

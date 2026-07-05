@@ -101,6 +101,26 @@ def should_use_wearable_screenshot_review(
 ) -> bool:
     if not has_parsed_attachment:
         return False
+    from pha.wearable_compare_table_v1 import user_requests_snapshot_correction
+    from pha.wearable_snapshot_v1 import user_requests_wearable_snapshot_remerge
+
+    if user_requests_wearable_snapshot_remerge(user_message) or user_requests_snapshot_correction(
+        user_message,
+    ):
+        fam_early = (document_family or "").strip().lower()
+        if fam_early in ("wearable", "apple_watch"):
+            return True
+    from pha.health_intent_catalog import (
+        health_intent_catalog_enabled,
+        should_prefer_attachment_qa_over_wearable,
+    )
+
+    if health_intent_catalog_enabled() and should_prefer_attachment_qa_over_wearable(
+        document_family=document_family,
+        user_message=user_message,
+        has_parsed_attachment=has_parsed_attachment,
+    ):
+        return False
     fam = (document_family or "").strip().lower()
     if fam == "wearable":
         return True
@@ -110,6 +130,12 @@ def should_use_wearable_screenshot_review(
     )
 
     if user_message_needs_wearable_query(user_message):
+        if health_intent_catalog_enabled() and should_prefer_attachment_qa_over_wearable(
+            document_family=document_family,
+            user_message=user_message,
+            has_parsed_attachment=has_parsed_attachment,
+        ):
+            return False
         return True
     return user_message_needs_attachment_recall(user_message)
 

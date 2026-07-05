@@ -9,7 +9,7 @@
 | **License** | [Apache-2.0](LICENSE) |
 | **Python** | 3.10+ |
 | **LLM runtime** | [Ollama](https://ollama.com) (local) |
-| **Current build** | `pha-v2.3.28-wave3d-metric-probe-sync-modules-ui` |
+| **Current build** | `pha-v2.3.32-full-import-only` |
 
 ---
 
@@ -19,7 +19,7 @@
 - **Wearable screenshot review** — 6-panel Apple Watch OCR → 90-day CompareTable with audit + hybrid fallback
 - **Lab / supplement attachment QA** — vision parse, episodic focus, numerics manifest compliance
 - **Harness evidence engine** — TurnEvidencePlan, Catalog fetch, Tier0 budget assembly
-- **Metric Registry** — config-driven compare rows + incremental sync modules (`hk_workout`, …)
+- **Metric Registry** — config-driven compare rows + wearable metric catalog
 - **Dashboard** — hero stats, dynamic metric charts, SSE chat, data import drawer
 
 ---
@@ -34,7 +34,7 @@ cd personal-health-agent
 cp .env.example .env
 bash scripts/pull-models.sh          # pull models into host Ollama
 docker compose up -d --build
-open http://127.0.0.1:8787
+open http://127.0.0.1:8788
 ```
 
 PHA container connects to host Ollama via `host.docker.internal:11434`.
@@ -61,7 +61,7 @@ python scripts/doctor.py                 # environment check
 PYTHONPATH=. python -m pha.main
 ```
 
-Open http://127.0.0.1:8787
+Open http://127.0.0.1:8788
 
 ---
 
@@ -70,7 +70,7 @@ Open http://127.0.0.1:8787
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PHA_HOST` | `127.0.0.1` | Bind address (`0.0.0.0` in Docker) |
-| `PHA_PORT` | `8787` | HTTP port |
+| `PHA_PORT` | `8788` | HTTP port |
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Ollama API |
 | `OLLAMA_MODEL` | `qwen2.5:7b-instruct` | Default chat model |
 | `OLLAMA_MEDICAL_MODEL` | `qwen2.5:7b-instruct` | Vision / medical parse |
@@ -117,9 +117,38 @@ Deep dive: [docs/pha-architecture-evolution-v2.3.md](docs/pha-architecture-evolu
 
 ---
 
+## Future Work (Enterprise · not in personal OSS v0.4)
+
+PHA personal edition ships as a **local-first single-user** agent. Multi-tenant clinical deployment and third-party device ingestion are **designed but not implemented**:
+
+| RFC | Scope |
+|-----|--------|
+| [docs/rfcs/rfc-device-ingestion-adapter.md](docs/rfcs/rfc-device-ingestion-adapter.md) | Universal MQTT/BLE/API ingest · dual-layer provenance · zero FSM change |
+| [docs/rfcs/rfc-enterprise-multi-tenant.md](docs/rfcs/rfc-enterprise-multi-tenant.md) | Enterprise Gateway · RBAC · composite `user_id` namespace |
+
+Open-source release checklist: [docs/wave4a-open-source-readiness-spec.md](docs/wave4a-open-source-readiness-spec.md)
+
+---
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Run `bash scripts/run_selfchecks.sh` before opening a PR.
+
+### Startup consensus (cross-agent)
+
+For any startup/availability related changes (service boot, scripts, ports, process lifecycle), follow:
+
+- Plan: [docs/startup-availability-remediation-plan-2026-06-08.md](docs/startup-availability-remediation-plan-2026-06-08.md)
+- Stability notes: [docs/startup-stability-2026-06-07.md](docs/startup-stability-2026-06-07.md)
+- Change log (must update in same PR): [docs/startup-change-log.md](docs/startup-change-log.md)
+
+### Harness consensus (cross-agent)
+
+For harness architecture changes, follow:
+
+- Baseline: [docs/harness-consensus-opus48-2026-06-08.md](docs/harness-consensus-opus48-2026-06-08.md)
+- Evolution context: [docs/pha-architecture-evolution-v2.3.md](docs/pha-architecture-evolution-v2.3.md)
+- Change log (must update in same PR): [docs/harness-change-log.md](docs/harness-change-log.md)
 
 Security: [SECURITY.md](SECURITY.md)
 

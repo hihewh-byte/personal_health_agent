@@ -200,6 +200,37 @@ def _ollama_shadow(
         return fb
 
 
+def _shadow_goal_telemetry(user_message: str) -> dict[str, Any]:
+    """3F-δ Intent Scout fields — telemetry only, zero-adopt."""
+    try:
+        from pha.goal_classifier import classify_goal, goal_classifier_enabled
+    except ImportError:
+        return {}
+    if not goal_classifier_enabled():
+        return {}
+    goal = classify_goal(user_message)
+    out: dict[str, Any] = {
+        "goal_class": goal.goal_class,
+        "goal_source": goal.source,
+        "suggested_domains": [],
+    }
+    if goal.goal_class == "holistic_assessment":
+        out["suggested_domains"] = ["lab", "wearable"]
+    elif goal.goal_class == "metric_specific":
+        from pha.health_intent_catalog import infer_metrics_from_message
+
+        domains: list[str] = []
+        for metric in infer_metrics_from_message(user_message):
+            if metric in ("hrv", "steps", "sleep", "vo2max", "resting_hr"):
+                if "wearable" not in domains:
+                    domains.append("wearable")
+            else:
+                if "lab" not in domains:
+                    domains.append("lab")
+        out["suggested_domains"] = domains
+    return out
+
+
 def run_shadow_routing(
     user_message: str,
     *,
@@ -245,6 +276,7 @@ def run_shadow_routing(
 
     threshold = shadow_confidence_threshold()
     telemetry_priority = "high" if conf >= threshold else "low"
+    goal_telemetry = _shadow_goal_telemetry(user_message)
 
     return {
         "enabled": True,
@@ -257,6 +289,9 @@ def run_shadow_routing(
         "shadow_proposed_ids": shadow_ids,
         "shadow_confidence": conf,
         "telemetry_priority": telemetry_priority,
+        "goal_class": goal_telemetry.get("goal_class", ""),
+        "goal_source": goal_telemetry.get("goal_source", ""),
+        "suggested_domains": list(goal_telemetry.get("suggested_domains") or []),
         "agreement": {
             "profile_match": profile_match,
             "ids_jaccard": round(jaccard, 3),
@@ -349,8 +384,43 @@ def maybe_start_shadow_job(
     return handle
 
 
+def build_shadow_status_message(payload: Dict[str, Any]) -> str:
+    """
+    User-visible hint for low-confidence disagreement.
+    Zero-adopt: telemetry only; never rewrites authoritative answer.
+    """
+    if not payload:
+        return ""
+    if not payload.get("enabled") or not payload.get("sampled"):
+        return ""
+    if payload.get("telemetry_priority") != "high":
+        return ""
+    dcls = str(payload.get("disagreement_class") or "")
+    if dcls in ("shadow_timeout", "shadow_parse_error"):
+        return ""
+
+    auth = str(payload.get("authoritative_profile") or "")
+    shadow_goal = str(payload.get("goal_class") or "")
+    shadow_prof = str(payload.get("shadow_profile_hint") or "")
+    conf = float(payload.get("shadow_confidence") or 0.0)
+    if (
+        auth in ("lifestyle", "")
+        and conf >= shadow_confidence_threshold()
+        and (
+            shadow_goal == "holistic_assessment"
+            or shadow_prof == "combined_review"
+        )
+    ):
+        return "是否希望基于化验与穿戴数据做综合评估？（当前答复不受影响）"
+
+    if not dcls:
+        return ""
+    return "低置信补强提示：已记录本轮语义路由分歧用于后续改进（不影响当前答复）。"
+
+
 __all__ = [
     "ShadowJobHandle",
+    "build_shadow_status_message",
     "effective_sample_rate",
     "maybe_start_shadow_job",
     "run_shadow_routing",

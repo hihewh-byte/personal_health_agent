@@ -14,6 +14,8 @@
 | `golden_ocr.json` | msg-310 六屏合成 OCR + 逐屏/合并期望 KPI | **γ-1.1** |
 | `golden_wearable.py` | 断言函数（panel · merge · SpO2 省略） | **γ-1.2** |
 | `golden_compare_table.json` | CompareTable 期望行 + baseline 合成输入 | **γ-1.3** |
+| `png/hrv_average_27ms.png` | 真机 HRV 屏（AVERAGE 27 ms） | **perception-v1** |
+| `png_manifest.json` | PNG → OCR 回归期望 | **perception-v1** |
 | `synthetic_ocr/` | （可选）未来分屏 OCR 片段目录 | 3d-β |
 
 真机像素图 **不进 repo**；默认 CI 使用 JSON 内合成 OCR 文本。

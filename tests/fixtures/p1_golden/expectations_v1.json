@@ -1,0 +1,141 @@
+{
+  "schema": "pha.p1_golden_expectations/v1",
+  "binding": {
+    "doc_roadmap_c1": "D-3d-2 E1",
+    "doc_roadmap_c2": "D-3d-2 E2 + E3",
+    "checklist_rfc": "docs/rfcs/stage3d-wearable-e2e-checklist.md"
+  },
+  "fixtures": {
+    "golden_ocr_fixture_id": "apple_health_screens_6panel_msg310",
+    "golden_compare_fixture_id": "msg310_baseline_90d_standard_compare",
+    "golden_ocr_path": "tests/fixtures/wearable/golden_ocr.json",
+    "golden_compare_path": "tests/fixtures/wearable/golden_compare_table.json"
+  },
+  "scenarios": {
+    "E1": {
+      "title": "6 图首次上传 · C-1",
+      "profile_expected": "wearable_screenshot_review",
+      "forbidden_profiles": [
+        "lifestyle",
+        "attachment_grounded_review",
+        "casual",
+        ""
+      ],
+      "min_wearable_metrics": 4,
+      "required_metric_ids": [
+        "sleep_time_asleep",
+        "hrv_rmssd_ms",
+        "resting_heart_rate_bpm"
+      ],
+      "compare_min_rows": 5,
+      "forbidden_answer_substrings": [
+        "定账",
+        "数仓",
+        "Tier0",
+        "车道",
+        "Manifest 白名单"
+      ],
+      "pass_if_any": [
+        "compare_table_audit.passed == true",
+        "compare_table_audit.fallback_applied == true",
+        "status_contains:CompareTable"
+      ],
+      "gate_ids": [
+        "E1-profile",
+        "E1-metrics",
+        "G-Compare-1",
+        "G-Compare-2"
+      ],
+      "score_formula": "E1_score = 1 iff all hard_assertions PASS else 0"
+    },
+    "E2": {
+      "title": "同 session 无图追问 · C-2a",
+      "reuse_session": true,
+      "profile_expected": "wearable_screenshot_review",
+      "sample_messages": [
+        "HRV 怎么样",
+        "图片里是什么"
+      ],
+      "forbidden_profile_drift": [
+        "lifestyle",
+        "attachment_grounded_review"
+      ],
+      "require_ingest_or_audit": true,
+      "contradiction_check": {
+        "id": "E2-c",
+        "description": "追问 KPI 不得与 E1 wearable_metrics 矛盾",
+        "fields": [
+          "sleep_time_asleep",
+          "hrv_rmssd_ms",
+          "resting_heart_rate_bpm"
+        ]
+      },
+      "compare_audit": {
+        "id": "G-Compare-2",
+        "pass_if": "violations empty OR fallback_applied == true"
+      },
+      "gate_ids": [
+        "E2-a",
+        "E2-b",
+        "E2-c",
+        "E2-d"
+      ],
+      "score_formula": "E2_score = 1 iff all hard_assertions PASS else 0"
+    },
+    "E3": {
+      "title": "新 session 空附件 · C-2b",
+      "new_session": true,
+      "sample_messages": [
+        "HRV 怎么样",
+        "图片里是什么"
+      ],
+      "allowed_profiles": [
+        "clarify",
+        "wearable_only",
+        "casual",
+        "lifestyle"
+      ],
+      "forbid_specific_wearable_numerics": true,
+      "forbidden_answer_patterns": [
+        "\\b30\\s*ms\\b",
+        "\\b58\\s*bpm\\b",
+        "\\b6hr32min\\b",
+        "HRV.*\\d+\\s*ms",
+        "静息.*\\d+\\s*bpm"
+      ],
+      "require_upload_hint_or_weak_answer": true,
+      "gate_ids": [
+        "E3-a",
+        "E3-b"
+      ],
+      "score_formula": "E3_score = 1 iff all hard_assertions PASS else 0"
+    }
+  },
+  "gates": {
+    "G-Compare-1": {
+      "description": "Tier0 含 WEARABLE_COMPARE_TABLE 或 ingest 行数达标",
+      "offline_proxy": "golden_compare_table.expected_standard.rows.length >= 5"
+    },
+    "G-Compare-2": {
+      "description": "用户答对比值 ∈ CompareTable 或 fallback_applied",
+      "offline_proxy": "pha_wearable_compare_table_selfcheck PASS"
+    },
+    "G-Compare-3": {
+      "description": "NO_BASELINE 行禁止 90d 分期幻觉",
+      "forbidden_substrings": [
+        "数仓摘要平均",
+        "近90天的平均值",
+        "近 90 天深睡"
+      ]
+    },
+    "G-Interp-1": {
+      "description": "NO_BASELINE 主观词 audit",
+      "offline_proxy": "compare_no_baseline_subjective in pha_numerics_manifest_selfcheck W-*"
+    }
+  },
+  "public_gate": {
+    "c1_pass": "E1_score == 1",
+    "c2_pass": "E2_score == 1 AND E3_score == 1",
+    "p1_offline_f_pass": "tier_f_all_green AND expectations_schema_valid"
+  }
+}

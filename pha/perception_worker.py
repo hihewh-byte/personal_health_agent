@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -20,41 +22,117 @@ def perceive_attachment_path(
     filename: str,
     *,
     source_image_index: int = 0,
+    user_id: str = "default",
+    message_id: Optional[int] = None,
+    auto_ingest: bool = False,
 ) -> Dict[str, Any]:
     """Per-image perception via ``_vision_parse_attachment`` (VLM + OCR context)."""
-    from pha.chat_service import _vision_parse_attachment  # lazy: avoid import cycle
+    from pha.chat_attachments import _vision_parse_attachment  # lazy: avoid import cycle
 
     parsed = _vision_parse_attachment(
         path,
         filename,
-        user_id="default",
-        message_id=None,
-        auto_ingest=False,
+        user_id=user_id,
+        message_id=message_id,
+        auto_ingest=auto_ingest,
     )
     parsed["source_image_index"] = source_image_index
     return parsed
 
 
-def perceive_paths(
+def _parallel_perceive_enabled() -> bool:
+    return (os.environ.get("PHA_PERCEPTION_PARALLEL") or "1").strip().lower() not in (
+        "0",
+        "false",
+        "off",
+    )
+
+
+def _parallel_max_workers(count: int) -> int:
+    cap = int(os.environ.get("PHA_PERCEPTION_PARALLEL_WORKERS") or "6")
+    return max(1, min(count, cap))
+
+
+def _perceive_paths_parts(
     paths: List[str],
     names: Optional[List[str]] = None,
+    *,
+    user_id: str = "default",
+    message_id: Optional[int] = None,
+    auto_ingest_single: bool = False,
+) -> List[Dict[str, Any]]:
+    from pha.perception_family import coerce_wearable_family
+
+    resolved_names = [
+        (names[i] if names and i < len(names) else None) or Path(p).name
+        for i, p in enumerate(paths)
+    ]
+    if len(paths) <= 1 or not _parallel_perceive_enabled():
+
+        def _one(i: int, p: str, n: str) -> Dict[str, Any]:
+            return coerce_wearable_family(
+                perceive_attachment_path(
+                    p,
+                    n,
+                    source_image_index=i,
+                    user_id=user_id,
+                    message_id=message_id,
+                    auto_ingest=auto_ingest_single and len(paths) == 1,
+                ),
+            )
+
+        return [_one(i, p, n) for i, (p, n) in enumerate(zip(paths, resolved_names))]
+
+    parts: List[Optional[Dict[str, Any]]] = [None] * len(paths)
+    with ThreadPoolExecutor(max_workers=_parallel_max_workers(len(paths))) as pool:
+        futures = {
+            pool.submit(
+                perceive_attachment_path,
+                p,
+                n,
+                source_image_index=i,
+                user_id=user_id,
+                message_id=message_id,
+                auto_ingest=False,
+            ): i
+            for i, (p, n) in enumerate(zip(paths, resolved_names))
+        }
+        for fut in as_completed(futures):
+            idx = futures[fut]
+            parts[idx] = coerce_wearable_family(fut.result())
+    return [p for p in parts if p is not None]
+
+
+def perceive_chat_attachment_paths(
+    paths: List[str],
+    names: Optional[List[str]] = None,
+    *,
+    user_id: str = "default",
+    message_id: Optional[int] = None,
+    user_message: str = "",
 ) -> Dict[str, Any]:
-    """Parse and merge multiple attachment paths into one finalized payload."""
+    """Server-authoritative multi-attachment perceive for chat send."""
+    parts = _perceive_paths_parts(
+        paths,
+        names,
+        user_id=user_id,
+        message_id=message_id,
+        auto_ingest_single=True,
+    )
+    return _merge_perceived_parts(parts, user_message=user_message)
+
+
+def _merge_perceived_parts(
+    parts: List[Dict[str, Any]],
+    *,
+    user_message: str = "",
+) -> Dict[str, Any]:
     from pha.vision_label_ledger import merge_parsed_payloads
 
     from pha.perception_family import (
         WEARABLE_FAMILY,
-        coerce_wearable_family,
         parts_should_finalize_as_wearable,
     )
-
-    parts = [
-        coerce_wearable_family(
-            perceive_attachment_path(p, n, source_image_index=i),
-        )
-        for i, p in enumerate(paths)
-        for n in [(names[i] if names and i < len(names) else None) or Path(p).name]
-    ]
 
     if len(parts) > 1 and parts_should_finalize_as_wearable(parts):
         merged: Dict[str, Any] = {
@@ -83,7 +161,17 @@ def perceive_paths(
         attachment_path_count=len(parts),
         parts=parts,
         perception_channel=channel,
+        user_message=user_message,
     )
+
+
+def perceive_paths(
+    paths: List[str],
+    names: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Parse and merge multiple attachment paths into one finalized payload."""
+    parts = _perceive_paths_parts(paths, names)
+    return _merge_perceived_parts(parts)
 
 
 def finalize_attachment_parse(
@@ -172,5 +260,6 @@ __all__ = [
     "finalize_attachment_parse",
     "ledger_from_payload",
     "perceive_attachment_path",
+    "perceive_chat_attachment_paths",
     "perceive_paths",
 ]

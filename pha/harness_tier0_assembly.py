@@ -36,6 +36,8 @@ _SLOT_MARKERS: Dict[str, str] = {
     "WEARABLE_SNAPSHOT": "穿戴截图定账",
     "WEARABLE_COMPARE_TABLE": "穿戴对比定账",
     "DATA_AVAILABILITY": "数据可用性（库内概况）",
+    "EPISODIC_BRIDGE": "上轮对话摘要（单会话续焦）",
+    "USER_CONTEXT_BRIEF": "慢性健康简报（CHB · 只读）",
 }
 
 _PROFILE_CONFIG: Dict[str, Dict[str, Any]] = {
@@ -82,6 +84,12 @@ _PROFILE_CONFIG: Dict[str, Dict[str, Any]] = {
         "degradation_order": ["SUPPLEMENT_BG", "WEARABLE_90D_SUMMARY", "NUMERICS_MANIFEST"],
         "supplement_start": "min",
     },
+    "attachment_grounded_review": {
+        "priority": ["ATTACHMENT_LABEL", "DATA_AVAILABILITY", "TASK"],
+        "protected": {"ATTACHMENT_LABEL", "TASK"},
+        "degradation_order": ["DATA_AVAILABILITY"],
+        "supplement_start": "full",
+    },
     "lab_cross_year": {
         "priority": ["TASK", "NUMERICS_MANIFEST", "LDL_AUTHORITY"],
         "protected": {"TASK", "NUMERICS_MANIFEST", "LDL_AUTHORITY"},
@@ -89,8 +97,8 @@ _PROFILE_CONFIG: Dict[str, Dict[str, Any]] = {
         "supplement_start": "full",
     },
     "wearable_only": {
-        "priority": ["TASK", "WEARABLE_90D_SUMMARY"],
-        "protected": {"TASK", "WEARABLE_90D_SUMMARY"},
+        "priority": ["TASK", "NUMERICS_MANIFEST", "WEARABLE_90D_SUMMARY"],
+        "protected": {"TASK", "NUMERICS_MANIFEST", "WEARABLE_90D_SUMMARY"},
         "degradation_order": ["WEARABLE_90D_SUMMARY"],
         "supplement_start": "full",
     },
@@ -315,6 +323,20 @@ def _build_slot_assemblies(
             asm.text_summary = raw
             asm.text_min = raw[:120] if raw else ""
         assemblies.append(asm)
+    epi = (slot_contents.get("EPISODIC_BRIDGE") or "").strip()
+    if epi and not any(a.slot_id == "EPISODIC_BRIDGE" for a in assemblies):
+        epi_asm = _SlotAssembly(
+            slot_id="EPISODIC_BRIDGE",
+            raw=epi,
+            level="full",
+            protected=True,
+        )
+        epi_asm.text_full = epi[:1200] if len(epi) > 1200 else epi
+        epi_asm.text_summary = epi_asm.text_full
+        epi_asm.text_min = epi_asm.text_full[:400] if epi_asm.text_full else ""
+        insert_at = 1 if assemblies and assemblies[0].slot_id == "TASK" else 0
+        assemblies.insert(insert_at, epi_asm)
+        protected.add("EPISODIC_BRIDGE")
     return assemblies, protected
 
 

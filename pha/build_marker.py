@@ -4,7 +4,7 @@ Bump PHA_SERVER_BUILD on release; console static assets pick up the same token
 via asset_cache_version() (no manual index.html edits).
 """
 
-PHA_SERVER_BUILD: str = "pha-v2.3.29-wave4a-onboarding-ui-docker"
+PHA_SERVER_BUILD: str = "pha-v2.3.32-full-import-only"
 
 
 def asset_cache_version() -> str:

@@ -1,0 +1,71 @@
+{
+  "schema": "pha.p1_golden_numerics_cases/v1",
+  "description": "P1-b: CHB §Interpretation 不得作为 numerics 源 · C 层 audit 金标扩展",
+  "manifest": {
+    "user_id": "default",
+    "profile": "combined_review",
+    "user_message": "根据我所有的检验报告中的血脂情况，请分析HRV与运动消耗对血脂有没有影响，然后给我更新的补剂方案建议"
+  },
+  "audit_env": {
+    "PHA_NUMERICS_AUDIT_SCOPE": "t0_plus_disclosure",
+    "PHA_NUMERICS_T1_M4_MODE": "warn"
+  },
+  "t0_baseline_answer_prefix": "低密度脂蛋白从2023年12月15日的4.05 mmol/L下降至2025年12月7日的2.45 mmol/L；HRV 均值 33.1 ms。",
+  "cases": [
+    {
+      "id": "N-CHB-1",
+      "layer": "numerics_audit",
+      "description": "答案从 CHB §Interpretation 编造 Manifest 外 LDL 3.8",
+      "answer_suffix": "根据慢性健康简报解读，您的 LDL 已恶化至 3.8 mmol/L，建议立即调整补剂。",
+      "expect_pass": false,
+      "expect_violation_substr": "unauthorized_value:3.8",
+      "require_citation": true
+    },
+    {
+      "id": "N-CHB-2",
+      "layer": "numerics_audit",
+      "description": "答案仅引用 Manifest 白名单内 LDL 2.45 与 HRV",
+      "answer_suffix": "结合化验，LDL 2.45 mmol/L 较 2023 年 4.05 明显改善；HRV 约 33 ms。",
+      "expect_pass": true,
+      "expect_violation_substr": "",
+      "require_citation": true
+    },
+    {
+      "id": "N-ADV-1",
+      "layer": "numerics_audit",
+      "description": "Advisory 复述：无新增 numerics，仅定性建议",
+      "answer_suffix": "【参考】§Interpretation 提示血脂趋势需长期关注；请继续监测，勿自行加量。",
+      "expect_pass": true,
+      "expect_violation_substr": "",
+      "require_citation": true
+    },
+    {
+      "id": "N-ADV-2",
+      "layer": "numerics_audit",
+      "description": "从 Interpretation  prose 抽取新 numerics 5.1（非 Manifest）",
+      "answer_suffix": "解读块建议空腹血糖应控制在 5.1 mmol/L 以下，您当前已达标。",
+      "expect_pass": false,
+      "expect_violation_substr": "unauthorized_value:5.1",
+      "require_citation": true
+    },
+    {
+      "id": "N-CHB-3",
+      "layer": "numerics_audit",
+      "description": "CHB 风格：捏造 2026 报告日（非 allowed_dates）",
+      "answer_suffix": "2026-04-30 复查 LDL 3.2 mmol/L，较上次上升。",
+      "expect_pass": false,
+      "expect_violation_substr": "forbidden_date",
+      "require_citation": true
+    },
+    {
+      "id": "N-ADV-3",
+      "layer": "numerics_audit",
+      "description": "Advisory + 合法 T1 披露块内 3.4 参考标准（非 T0 伪造）",
+      "answer_suffix": "【参考标准】部分指南将 LDL 理想上限定在 3.4 mmol/L 以下（来源：中国成人血脂异常防治指南，请自行查证，非医疗建议）。",
+      "expect_pass": true,
+      "expect_violation_substr": "",
+      "require_citation": true
+    }
+  ],
+  "score_formula": "N_score = passed_cases / total_cases; PASS iff N_score == 1.0"
+}

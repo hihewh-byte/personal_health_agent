@@ -15,6 +15,7 @@ os.environ.setdefault("PHA_HARNESS_DEBUG", "1")
 os.environ["PHA_HARNESS_REPORT_PATH"] = "/tmp/pha-harness-golden.jsonl"
 
 from pha.harness_report import (  # noqa: E402
+    REPORT_SCHEMA,
     dry_run_harness_report,
     emit_harness_build_report,
     format_harness_summary,
@@ -106,8 +107,8 @@ def main() -> int:
             if any(d.startswith("forbidden_") or d.startswith("tier0_not_materialized") for d in pva):
                 print("FAIL: plan_vs_actual:", pva)
                 failed += 1
-            if report.get("schema") != "pha.harness_report/v1.1":
-                print("FAIL: expected harness_report v1.1 schema:", report.get("schema"))
+            if report.get("schema") != REPORT_SCHEMA:
+                print("FAIL: expected harness_report schema:", REPORT_SCHEMA, report.get("schema"))
                 failed += 1
             ir = report.get("intent_route") or {}
             if ir.get("authoritative_profile") != "combined_review":

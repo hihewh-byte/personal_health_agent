@@ -1,16 +1,8 @@
 {
   "schema_version": "wearable_metric_registry_v1",
-  "version": "2026.06.01",
-  "description": "PHA 穿戴指标注册表 — CompareTable / L1 聚合 / 增量同步模块的唯一配置源（Wave 3d-δ-c）",
-  "ingest_modules": [
-    {
-      "module_id": "hk_workout",
-      "display_zh": "锻炼 (HKWorkout)",
-      "requires_zip": true,
-      "clears_on_full_import": false,
-      "legacy_endpoint": "/data/backfill-workouts"
-    }
-  ],
+  "version": "2026.06.09",
+  "description": "PHA 穿戴指标注册表 — CompareTable / L1 聚合（Wave 3d-δ-c）。Apple Health export 为全量快照，ingest 仅走 /data/upload。",
+  "ingest_modules": [],
   "metrics": [
     {
       "metric_id": "sleep_time_asleep",
@@ -22,7 +14,7 @@
       },
       "snapshot": { "unit": "hr", "parser": "sleep_duration" },
       "ui": { "label_zh": "睡眠总时长" },
-      "intent_hints": ["睡眠", "sleep_time", "asleep", "时长"]
+      "intent_hints": ["睡眠", "sleep_time", "asleep", "睡眠总时长", "睡眠时长"]
     },
     {
       "metric_id": "hrv_rmssd_ms",
@@ -34,7 +26,7 @@
       },
       "snapshot": { "unit": "ms", "parser": "numeric" },
       "ui": { "label_zh": "HRV" },
-      "intent_hints": ["hrv", "心率变异性", "HRV"]
+      "intent_hints": ["hrv", "心率变异性", "HRV", "rmssd", "心率变异"]
     },
     {
       "metric_id": "resting_heart_rate_bpm",
@@ -46,7 +38,7 @@
       },
       "snapshot": { "unit": "bpm", "parser": "numeric" },
       "ui": { "label_zh": "静息心率" },
-      "intent_hints": ["静息", "resting", "RHR"]
+      "intent_hints": ["静息", "resting", "RHR", "心率怎么样", "心率指标", "心率正常", "心跳"]
     },
     {
       "metric_id": "spo2_percent",
@@ -109,9 +101,8 @@
         "conditional_row": true
       },
       "snapshot": { "unit": "bpm", "parser": "numeric_range" },
-      "ingest": { "module": "hk_workout" },
       "ui": { "label_zh": "锻炼心率范围" },
-      "intent_hints": ["锻炼", "workout", "运动", "心率范围"]
+      "intent_hints": ["锻炼", "workout", "运动", "心率范围", "锻炼心率", "运动心率"]
     },
     {
       "metric_id": "workout_count_recent",
@@ -123,9 +114,8 @@
         "conditional_row": true
       },
       "snapshot": { "unit": "count", "parser": "integer" },
-      "ingest": { "module": "hk_workout" },
       "ui": { "label_zh": "近期锻炼次数" },
-      "intent_hints": ["锻炼", "workout", "运动", "次锻炼"]
+      "intent_hints": ["次锻炼", "锻炼次数", "锻炼天数", "几次锻炼"]
     }
   ]
 }

@@ -145,12 +145,15 @@ def fetch_evidence_by_id(
             resolved.append(canonical)
 
     combined = "\n\n---\n\n".join(b["text"] for b in blocks if b.get("text"))
+    required = set(default_combined_fetch_ids(user_message))
+    all_required_ready = bool(required) and required.issubset(set(resolved))
     return {
         "fetched_ids": resolved,
         "requested_ids": requested,
         "blocks": blocks,
         "combined_text": combined,
         "harness_fallback": bool(fallback),
+        "all_required_ready": all_required_ready,
         "chars_total": len(combined),
         "schema_registry": True,
     }

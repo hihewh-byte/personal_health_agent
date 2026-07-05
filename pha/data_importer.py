@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import gc
 import logging
 import zipfile
 from collections import defaultdict
@@ -18,7 +17,7 @@ from pha.import_jobs import update_job
 from pha.date_parser import safe_parse_datetime
 from pha.memory_engine import compress_wearable_data
 from pha.models import WearableDailySummary
-from pha.data_processor import SleepSegment, compute_sleep_hours_union, make_sleep_sample_id
+from pha.data_processor import SleepSegment, make_sleep_sample_id
 from pha.sleep_aggregator import sleep_stage_kind_from_hk_value
 from pha.sleep_audit import audit_sleep_after_import
 from pha.sqlite_storage import (
@@ -39,6 +38,7 @@ from pha.sqlite_storage import (
     upsert_wearable_daily_batch,
 )
 from pha.store import store
+from pha.structured_log import log_exception
 from pha.workout_storage import WorkoutSessionBatchWriter, WorkoutSessionRow, make_workout_sample_id
 
 logger = logging.getLogger(__name__)
@@ -54,6 +54,22 @@ HK_RESPIRATORY_RATE = "HKQuantityTypeIdentifierRespiratoryRate"
 HK_VO2MAX = "HKQuantityTypeIdentifierVO2Max"
 HK_WRIST_TEMP = "HKQuantityTypeIdentifierAppleSleepingWristTemperature"
 HK_BODY_TEMP = "HKQuantityTypeIdentifierBodyTemperature"
+
+_SUPPORTED_RECORD_TYPES = frozenset(
+    {
+        HK_STEP_COUNT,
+        HK_HEART_RATE,
+        HK_RESTING_HR,
+        HK_HRV_SDNN,
+        HK_ACTIVE_ENERGY,
+        HK_OXYGEN_SATURATION,
+        HK_RESPIRATORY_RATE,
+        HK_VO2MAX,
+        HK_WRIST_TEMP,
+        HK_BODY_TEMP,
+        HK_SLEEP,
+    },
+)
 
 ProgressCallback = Callable[[int, int, str], None]
 
@@ -131,7 +147,8 @@ def _sleep_is_asleep(value: str) -> bool:
 
 @dataclass
 class _DayAgg:
-    steps_sum: int = 0
+    # Per-source sums; daily total = max across sources (Apple Health overlap).
+    steps_by_source: Dict[str, int] = field(default_factory=dict)
     hr_sum: float = 0.0
     hr_n: int = 0
     rhr_sum: float = 0.0
@@ -164,10 +181,10 @@ class _PendingWorkout:
     energy_kcal: Optional[float] = None
 
 
-def _count_records_in_zip(fileobj: BinaryIO) -> tuple[int, int]:
-    """Fast pre-scan: total Record + Workout elements and xml file count."""
+def _zip_xml_byte_budget(fileobj: BinaryIO) -> tuple[int, int]:
+    """Single-pass budget: uncompressed XML bytes + xml file count (no iterparse pre-scan)."""
     fileobj.seek(0)
-    total = 0
+    total_bytes = 0
     xml_files = 0
     with zipfile.ZipFile(fileobj, mode="r") as zf:
         for info in zf.infolist():
@@ -179,14 +196,9 @@ def _count_records_in_zip(fileobj: BinaryIO) -> tuple[int, int]:
             if "__macosx/" in name.replace("\\", "/"):
                 continue
             xml_files += 1
-            with zf.open(info, "r") as fp:
-                for _event, elem in iterparse(fp, events=("end",)):
-                    tag = _local_tag(elem.tag)
-                    if tag in ("Record", "Workout"):
-                        total += 1
-                    elem.clear()
+            total_bytes += max(0, int(info.file_size))
     fileobj.seek(0)
-    return total, xml_files
+    return total_bytes, xml_files
 
 
 def _make_progress_reporter(
@@ -224,8 +236,10 @@ class AppleHealthParser:
     def __init__(self, user_id: str) -> None:
         self._user_id = user_id.strip() or "default"
         self._xml_max_dt: Optional[datetime] = None
-        self._seen_samples: set[str] = set()
         self._pending_workout: Optional[_PendingWorkout] = None
+        self._watermark: Optional[datetime] = None
+        self._affected_days: set[date] = set()
+        self._records_skipped_watermark: int = 0
 
     def parse_export_zip(
         self,
@@ -240,16 +254,17 @@ class AppleHealthParser:
             raise ValueError("export.zip stream must be seekable")
         fileobj.seek(0)
 
-        if job_id:
-            update_job(job_id, status="running", message="正在统计 export.xml 记录总数…")
-
-        rows_total, xml_files_precount = _count_records_in_zip(fileobj)
+        bytes_total, xml_files_precount = _zip_xml_byte_budget(fileobj)
         report = _make_progress_reporter(
             job_id=job_id,
-            rows_total=rows_total,
+            rows_total=bytes_total,
             on_progress=on_progress,
         )
-        report(0, rows_total, f"Found {rows_total:,} Record elements in zip")
+        report(
+            0,
+            bytes_total,
+            f"ZIP XML budget: {bytes_total:,} bytes across {xml_files_precount} file(s)",
+        )
 
         if clear_before_import:
             logger.info("Clearing wearable_data + wearable_daily for user_id=%s", self._user_id)
@@ -265,8 +280,8 @@ class AppleHealthParser:
         per_day: DefaultDict[date, _DayAgg] = defaultdict(_DayAgg)
         xml_files = 0
         records = 0
+        bytes_done = 0
         self._xml_max_dt = None
-        self._seen_samples = set()
         writer = WearableDataBatchWriter(self._user_id)
         sleep_writer = SleepSegmentBatchWriter(self._user_id)
         workout_writer = WorkoutSessionBatchWriter(self._user_id)
@@ -289,10 +304,14 @@ class AppleHealthParser:
                             writer,
                             sleep_writer,
                             workout_writer,
-                            records_offset=records,
-                            rows_total=rows_total,
-                            report=report,
                         )
+                    bytes_done += max(0, int(info.file_size))
+                    pct = bytes_done / bytes_total * 100 if bytes_total else 0
+                    report(
+                        bytes_done,
+                        bytes_total,
+                        f"Importing: {bytes_done:,} / {bytes_total:,} bytes ({pct:.0f}%)…",
+                    )
         except zipfile.BadZipFile as exc:
             raise ValueError("Invalid or corrupted zip") from exc
         finally:
@@ -323,7 +342,11 @@ class AppleHealthParser:
         compressed = compress_wearable_data(merged, user_id=self._user_id)
         audit_sleep_after_import(self._user_id, merged)
 
-        report(records, rows_total, f"Import complete: {records:,} / {rows_total:,} rows (100%)")
+        report(
+            bytes_total,
+            bytes_total,
+            f"Import complete: {records:,} elements, {bytes_total:,} bytes (100%)",
+        )
 
         upsert_import_sync_state(
             self._user_id,
@@ -343,7 +366,7 @@ class AppleHealthParser:
             zip_filename=filename,
             xml_files_scanned=max(xml_files, xml_files_precount),
             record_elements_seen=records,
-            record_elements_total=rows_total,
+            record_elements_total=bytes_total,
             wearable_samples_written=samples_written,
             days_written=len(incoming_rows),
             compression_output_chars=len(compressed),
@@ -360,7 +383,7 @@ class AppleHealthParser:
                 status="complete",
                 percent=100.0,
                 rows_processed=records,
-                rows_total=rows_total,
+                rows_total=bytes_total,
                 message=result.message,
                 xml_max_date=(xml_max_dt.date().isoformat() if xml_max_dt else ""),
                 db_max_timestamp=integrity.db_max_timestamp,
@@ -369,6 +392,167 @@ class AppleHealthParser:
                 import_complete=True,
             )
 
+        return result
+
+    def delta_sync_from_zip(
+        self,
+        fileobj: BinaryIO,
+        *,
+        filename: str = "export.zip",
+        job_id: Optional[str] = None,
+        on_progress: Optional[ProgressCallback] = None,
+    ) -> AppleImportResult:
+        """
+        Incremental import: Record + Sleep + Workout after import watermark.
+
+        Does **not** call ``clear_wearable_storage``. Rebuilds daily rollups only for
+        calendar days touched by newly ingested samples.
+        """
+        from pha.sqlite_storage import (
+            rebuild_daily_sleep_from_segments,
+            rebuild_wearable_daily_for_days,
+            resolve_import_watermark,
+        )
+        from pha.workout_storage import rebuild_workout_daily_rollup
+
+        if not getattr(fileobj, "seekable", lambda: True)():
+            raise ValueError("export.zip stream must be seekable")
+        fileobj.seek(0)
+
+        self._watermark = resolve_import_watermark(self._user_id)
+        self._affected_days = set()
+        self._records_skipped_watermark = 0
+        self._pending_workout = None
+        self._xml_max_dt = None
+
+        if job_id:
+            wm_msg = (
+                self._watermark.isoformat() if self._watermark else "（无水位线，将导入全部样本）"
+            )
+            update_job(job_id, status="running", message=f"增量同步水位线: {wm_msg}")
+
+        bytes_total, xml_files_precount = _zip_xml_byte_budget(fileobj)
+        report = _make_progress_reporter(
+            job_id=job_id,
+            rows_total=bytes_total,
+            on_progress=on_progress,
+        )
+        report(0, bytes_total, f"Delta sync XML budget: {bytes_total:,} bytes")
+
+        upsert_import_sync_state(
+            self._user_id,
+            status="running",
+            message="正在增量同步 export.zip（不清库）…",
+        )
+
+        per_day: DefaultDict[date, _DayAgg] = defaultdict(_DayAgg)
+        xml_files = 0
+        records = 0
+        bytes_done = 0
+        writer = WearableDataBatchWriter(self._user_id)
+        sleep_writer = SleepSegmentBatchWriter(self._user_id)
+        workout_writer = WorkoutSessionBatchWriter(self._user_id)
+
+        try:
+            fileobj.seek(0)
+            with zipfile.ZipFile(fileobj, mode="r") as zf:
+                members = [m for m in zf.infolist() if not m.is_dir()]
+                for info in members:
+                    name = info.filename
+                    if not name.lower().endswith(".xml"):
+                        continue
+                    if "__macosx/" in name.replace("\\", "/"):
+                        continue
+                    xml_files += 1
+                    with zf.open(info, "r") as fp:
+                        records += self._stream_parse_xml_records(
+                            fp,
+                            per_day,
+                            writer,
+                            sleep_writer,
+                            workout_writer,
+                        )
+                    bytes_done += max(0, int(info.file_size))
+                    pct = bytes_done / bytes_total * 100 if bytes_total else 0
+                    report(
+                        bytes_done,
+                        bytes_total,
+                        f"Delta sync: {bytes_done:,} / {bytes_total:,} bytes ({pct:.0f}%)…",
+                    )
+        except zipfile.BadZipFile as exc:
+            raise ValueError("Invalid or corrupted zip") from exc
+        finally:
+            samples_written = writer.close()
+            sleep_writer.close()
+            _ = workout_writer.close()
+
+        days_rebuilt = rebuild_wearable_daily_for_days(self._user_id, sorted(self._affected_days))
+        rebuild_daily_sleep_from_segments(self._user_id)
+        rebuild_workout_daily_rollup(self._user_id)
+
+        from pha.sqlite_storage import load_wearable_rows
+
+        merged = load_wearable_rows(self._user_id)
+        if merged:
+            store.replace_wearable_rows_in_memory(self._user_id, merged)
+
+        integrity = verify_import_completeness(
+            self._user_id,
+            xml_max_dt=self._xml_max_dt,
+            min_expected_date=date(2026, 2, 1),
+        )
+
+        wm_note = (
+            f"水位线 {self._watermark.isoformat()}"
+            if self._watermark
+            else "无水位线（全量追加）"
+        )
+        msg = (
+            f"增量同步完成（{wm_note}）：扫描 {records:,} 元素，"
+            f"跳过 {self._records_skipped_watermark:,} 条（≤水位线），"
+            f"新写入样本 {samples_written:,}，重算 {days_rebuilt} 天日聚合。"
+        )
+
+        upsert_import_sync_state(
+            self._user_id,
+            status="complete",
+            last_sync_at=datetime.utcnow().isoformat(),
+            last_record_time=integrity.db_max_timestamp or (
+                self._xml_max_dt.isoformat() if self._xml_max_dt else None
+            ),
+            records_seen=records,
+            days_written=len(merged),
+            wearable_samples_written=samples_written,
+            message=msg,
+        )
+
+        result = AppleImportResult(
+            user_id=self._user_id,
+            zip_filename=filename,
+            xml_files_scanned=max(xml_files, xml_files_precount),
+            record_elements_seen=records,
+            record_elements_total=bytes_total,
+            wearable_samples_written=samples_written,
+            days_written=days_rebuilt,
+            xml_max_timestamp=integrity.xml_max_timestamp,
+            db_max_timestamp=integrity.db_max_timestamp,
+            import_complete=True,
+            message=msg,
+            job_id=job_id or "",
+        )
+
+        if job_id:
+            update_job(
+                job_id,
+                status="complete",
+                percent=100.0,
+                rows_processed=records,
+                rows_total=bytes_total,
+                message=msg,
+                import_complete=True,
+            )
+
+        self._watermark = None
         return result
 
     def backfill_workouts_from_zip(
@@ -386,7 +570,6 @@ class AppleHealthParser:
         if not getattr(fileobj, "seekable", lambda: True)():
             raise ValueError("export.zip stream must be seekable")
         fileobj.seek(0)
-        self._seen_samples = set()
         self._pending_workout = None
         workout_writer = WorkoutSessionBatchWriter(self._user_id)
         workouts_seen = 0
@@ -439,6 +622,12 @@ class AppleHealthParser:
         if self._xml_max_dt is None or dt > self._xml_max_dt:
             self._xml_max_dt = dt
 
+    def _is_after_watermark(self, start_dt: datetime, end_dt: Optional[datetime]) -> bool:
+        if self._watermark is None:
+            return True
+        end = end_dt or start_dt
+        return end > self._watermark
+
     def _stream_parse_xml_records(
         self,
         fp: BinaryIO,
@@ -446,13 +635,8 @@ class AppleHealthParser:
         writer: WearableDataBatchWriter,
         sleep_writer: SleepSegmentBatchWriter,
         workout_writer: WorkoutSessionBatchWriter,
-        *,
-        records_offset: int,
-        rows_total: int,
-        report: ProgressCallback,
     ) -> int:
         count = 0
-        last_reported = 0
 
         try:
             for event, elem in iterparse(fp, events=("start", "end")):
@@ -477,27 +661,18 @@ class AppleHealthParser:
                     elem.clear()
                     continue
                 if tag == "Record" and event == "end":
-                    att = elem.attrib
-                    start_raw = att.get("startDate") or att.get("creationDate") or ""
-                    end_raw = att.get("endDate") or start_raw
-                    self._note_xml_datetime(_parse_apple_datetime(start_raw))
-                    self._note_xml_datetime(_parse_apple_datetime(end_raw))
-                    self._consume_record(elem, per_day, writer, sleep_writer)
+                    rtype = elem.attrib.get("type") or ""
+                    if rtype in _SUPPORTED_RECORD_TYPES:
+                        start_raw = elem.attrib.get("startDate") or elem.attrib.get("creationDate") or ""
+                        end_raw = elem.attrib.get("endDate") or start_raw
+                        self._note_xml_datetime(_parse_apple_datetime(start_raw))
+                        self._note_xml_datetime(_parse_apple_datetime(end_raw))
+                        self._consume_record(elem, per_day, writer, sleep_writer)
                     count += 1
                     elem.clear()
                     continue
                 if event == "end":
                     elem.clear()
-
-                processed = records_offset + count
-                if processed - last_reported >= max(1, rows_total // 20) or processed >= rows_total:
-                    pct = processed / rows_total * 100 if rows_total else 0
-                    msg = f"Importing: {processed:,} / {rows_total:,} rows ({pct:.0f}%)..."
-                    report(processed, rows_total, msg)
-                    last_reported = processed
-
-                if count % 50_000 == 0:
-                    gc.collect()
 
         except OSError:
             logger.exception("XML stream aborted")
@@ -521,6 +696,10 @@ class AppleHealthParser:
         start_dt = _parse_apple_datetime(start_raw)
         if start_dt is None:
             return
+        end_dt = _parse_apple_datetime(end_raw) or start_dt
+        if not self._is_after_watermark(start_dt, end_dt):
+            self._records_skipped_watermark += 1
+            return
         day = _as_utc_date(start_dt)
 
         sample_id = make_sleep_sample_id(
@@ -530,16 +709,15 @@ class AppleHealthParser:
             value=value,
             source_name=source_name,
         )
-        if sample_id in self._seen_samples:
-            return
-        self._seen_samples.add(sample_id)
+        self._affected_days.add(day)
 
         if rtype == HK_STEP_COUNT:
             v = _safe_float(value)
             if v is None:
                 return
             iv = int(round(v))
-            per_day[day].steps_sum += iv
+            src = (source_name or "unknown").strip() or "unknown"
+            per_day[day].steps_by_source[src] = per_day[day].steps_by_source.get(src, 0) + iv
             writer.add_sample(METRIC_STEPS, start_dt, float(iv), sample_id=sample_id)
             return
 
@@ -710,8 +888,6 @@ class AppleHealthParser:
                 elem.clear()
             elif event == "end":
                 elem.clear()
-            if count and count % 50_000 == 0:
-                gc.collect()
         return count
 
     def _flush_pending_workout(
@@ -728,6 +904,9 @@ class AppleHealthParser:
         start_dt = _parse_apple_datetime(start_raw)
         end_dt = _parse_apple_datetime(end_raw)
         if start_dt is None or end_dt is None or end_dt <= start_dt:
+            return
+        if not self._is_after_watermark(start_dt, end_dt):
+            self._records_skipped_watermark += 1
             return
 
         duration_sec = (end_dt - start_dt).total_seconds()
@@ -751,11 +930,9 @@ class AppleHealthParser:
             end_raw=end_raw,
             source_name=source_name,
         )
-        if sample_id in self._seen_samples:
-            return
-        self._seen_samples.add(sample_id)
 
         day = _as_utc_date(start_dt)
+        self._affected_days.add(day)
         workout_writer.add_session(
             WorkoutSessionRow(
                 user_id=self._user_id,
@@ -772,44 +949,41 @@ class AppleHealthParser:
         )
 
     def _build_summaries(self, per_day: Dict[date, _DayAgg]) -> List[WearableDailySummary]:
+        from pha.wearable_daily_aggregator import WearableDayMetricAgg, build_wearable_daily_summary
+
         rows: List[WearableDailySummary] = []
         for d in sorted(per_day.keys()):
             agg = per_day[d]
-            steps = agg.steps_sum if agg.steps_sum > 0 else None
-            if agg.rhr_n > 0:
-                rhr = agg.rhr_sum / agg.rhr_n
-            elif agg.hr_n > 0:
-                rhr = agg.hr_sum / agg.hr_n
-            else:
-                rhr = None
-            hrv = (agg.hrv_sum / agg.hrv_n) if agg.hrv_n > 0 else None
-            sleep_h, _ = compute_sleep_hours_union(agg.sleep_segments)
-            sleep_h = sleep_h if sleep_h > 0 else None
-            deep_h = (agg.sleep_deep_seconds / 3600.0) if agg.sleep_deep_seconds > 0 else None
-            rem_h = (agg.sleep_rem_seconds / 3600.0) if agg.sleep_rem_seconds > 0 else None
-            awake_h = (agg.awake_seconds / 3600.0) if agg.awake_seconds > 0 else None
-            kcal = agg.active_energy_sum if agg.active_energy_sum > 0 else None
-            spo2 = (agg.spo2_sum / agg.spo2_n) if agg.spo2_n > 0 else None
-            resp = (agg.respiratory_sum / agg.respiratory_n) if agg.respiratory_n > 0 else None
-            vo2 = (agg.vo2max_sum / agg.vo2max_n) if agg.vo2max_n > 0 else None
-            wrist = (agg.wrist_temp_sum / agg.wrist_temp_n) if agg.wrist_temp_n > 0 else None
+            metrics = WearableDayMetricAgg(
+                steps_by_source=dict(agg.steps_by_source),
+                hr_sum=agg.hr_sum,
+                hr_n=agg.hr_n,
+                rhr_sum=agg.rhr_sum,
+                rhr_n=agg.rhr_n,
+                hrv_sum=agg.hrv_sum,
+                hrv_n=agg.hrv_n,
+                active_energy_sum=agg.active_energy_sum,
+                spo2_sum=agg.spo2_sum,
+                spo2_n=agg.spo2_n,
+                respiratory_sum=agg.respiratory_sum,
+                respiratory_n=agg.respiratory_n,
+                vo2max_sum=agg.vo2max_sum,
+                vo2max_n=agg.vo2max_n,
+                wrist_temp_sum=agg.wrist_temp_sum,
+                wrist_temp_n=agg.wrist_temp_n,
+            )
             rows.append(
-                WearableDailySummary(
-                    user_id=self._user_id,
-                    day=d,
-                    steps=steps,
-                    resting_heart_rate_bpm=rhr,
-                    hrv_rmssd_ms=hrv,
-                    sleep_hours=sleep_h,
-                    sleep_deep_hours=deep_h,
-                    sleep_rem_hours=rem_h,
-                    awake_duration_hours=awake_h,
-                    sleep_start_time=agg.first_sleep_start,
-                    active_energy_kcal=kcal,
-                    spo2_pct=spo2,
-                    respiratory_rate_bpm=resp,
-                    vo2max_ml_kg_min=vo2,
-                    wrist_temp_c=wrist,
+                build_wearable_daily_summary(
+                    self._user_id,
+                    d,
+                    metrics=metrics,
+                    import_sleep=(
+                        agg.sleep_segments,
+                        agg.sleep_deep_seconds,
+                        agg.sleep_rem_seconds,
+                        agg.awake_seconds,
+                        agg.first_sleep_start,
+                    ),
                 ),
             )
         return rows
@@ -833,6 +1007,31 @@ def run_import_from_path(
                 clear_before_import=True,
             )
     except ImportIncompleteError as exc:
+        log_exception(
+            logger,
+            "import_incomplete",
+            exc,
+            job_id=job_id,
+            user_id=user_id,
+            filename=filename,
+        )
+        if job_id:
+            update_job(job_id, status="failed", import_complete=False, error=str(exc), message=str(exc))
+        upsert_import_sync_state(
+            user_id,
+            status="failed",
+            message=str(exc),
+        )
+        raise
+    except (OSError, zipfile.BadZipFile, ValueError) as exc:
+        log_exception(
+            logger,
+            "import_failed",
+            exc,
+            job_id=job_id,
+            user_id=user_id,
+            filename=filename,
+        )
         if job_id:
             update_job(job_id, status="failed", import_complete=False, error=str(exc), message=str(exc))
         upsert_import_sync_state(
@@ -842,6 +1041,14 @@ def run_import_from_path(
         )
         raise
     except Exception as exc:
+        log_exception(
+            logger,
+            "import_failed_unexpected",
+            exc,
+            job_id=job_id,
+            user_id=user_id,
+            filename=filename,
+        )
         if job_id:
             update_job(job_id, status="failed", import_complete=False, error=str(exc), message=str(exc))
         upsert_import_sync_state(

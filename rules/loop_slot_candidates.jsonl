@@ -1,0 +1,2 @@
+{"token": "昨晚", "kind": "time", "metric_id": "sleep", "backlog": "temporal_router|episodic", "source": "4-alpha-1-distiller", "source_message": "昨晚睡多久啊"}
+{"token": "日均", "kind": "aggregation", "metric_id": "steps", "backlog": "chb_window|compare_table", "source": "4-alpha-1-distiller", "source_message": "日均多少步"}

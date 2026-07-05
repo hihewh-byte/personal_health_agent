@@ -281,6 +281,36 @@ def test_kpi_extraction_hardening() -> bool:
         print("FAIL sleep_rem forward", sleep_metrics.get("sleep_rem"))
         return False
 
+    sleep_misread = (
+        "Sleep\n6 hr 32 min TIME ASLEEP\n"
+        "TIME IN BED 8 hr\n"
+        "Awake 1 hr 55 min\n@ REM 1 hr 29 min"
+    )
+    sleep_device_ocr = (
+        "Sleep\n6M\nTIME IN BED\nTIME ASLEEP\nShr\n6 nr 32 min\nJun 11, 2026\n"
+        "@ Awake\n1 hr 55 min\n6h, 32 min"
+    )
+    device_metrics = {
+        m.metric_id: m.value for m in extract_metrics_from_ocr(sleep_device_ocr)
+    }
+    if device_metrics.get("sleep_time_asleep") != "6hr32min":
+        print("FAIL sleep device OCR", device_metrics.get("sleep_time_asleep"))
+        return False
+    hrv_device = "Heart Rate Variability\nAVERAGE\n34 ins\nToday"
+    hrv_val = next(
+        (m.value for m in extract_metrics_from_ocr(hrv_device) if m.metric_id == "hrv_rmssd_ms"),
+        None,
+    )
+    if hrv_val != "34":
+        print("FAIL hrv device OCR ins->ms", hrv_val)
+        return False
+    misread_metrics = {
+        m.metric_id: m.value for m in extract_metrics_from_ocr(sleep_misread)
+    }
+    if misread_metrics.get("sleep_time_asleep") != "6hr32min":
+        print("FAIL sleep_time_asleep misread awake", misread_metrics.get("sleep_time_asleep"))
+        return False
+
     sleep_apple = (
         "@ Awake\n1hr 22 min\n@ REM\n2 hr 17 min\n@ Core\n4 hr 18 min\n@ Deep\n1hr 9 min"
     )
@@ -353,6 +383,17 @@ def test_workout_extraction() -> bool:
         return False
     if metrics.get("workout_count_recent") != "8":
         print("FAIL workout count", metrics)
+        return False
+    wo_days = (
+        "Workouts\nDuring your last workout, your heart rate was 68-116 beats per minute.\n"
+        "You worked out on 20 days in the last 4 weeks."
+    )
+    days_metrics = {m.metric_id: m.value for m in extract_metrics_from_ocr(wo_days)}
+    if days_metrics.get("workout_count_recent") != "20":
+        print("FAIL workout 4w days", days_metrics)
+        return False
+    if days_metrics.get("workout_heart_rate_range_bpm") != "68-116":
+        print("FAIL workout last workout hr", days_metrics)
         return False
     if infer_screen_type(wo) != "workout":
         print("FAIL workout screen type", infer_screen_type(wo))

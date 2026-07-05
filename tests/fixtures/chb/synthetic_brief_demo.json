@@ -1,0 +1,42 @@
+{
+  "schema": "pha.chb/v0.1",
+  "user_id": "default",
+  "compiled_at": "2099-01-01T00:00:00+00:00",
+  "ledger_hash": "c209d632963d6a6f",
+  "facts": [
+    {
+      "text": "Demo ALT panel 2099-01-01: 42 U/L",
+      "ref_id": "lab_demo_2099_alt",
+      "prov_type": "lab_report",
+      "metric_id": "alt",
+      "value": "42",
+      "unit": "U/L",
+      "observed_at": "2099-01-01"
+    },
+    {
+      "text": "Demo HRV 90d mean: 55.0 ms",
+      "ref_id": "wearable_demo_90d_hrv",
+      "prov_type": "wearable_import",
+      "metric_id": "hrv",
+      "value": "55.0",
+      "unit": "ms",
+      "observed_at": "2099-01-01"
+    }
+  ],
+  "interpretation": [
+    {
+      "text": "以上为 T0 账本可引用事实；启用 PHA_CHB_COMPILER=1 可生成趋势解读（仍为非数字源）。",
+      "derived_from": [
+        "lab_demo_2099_alt",
+        "wearable_demo_90d_hrv"
+      ],
+      "prov_type": "stub"
+    }
+  ],
+  "open_questions": [
+    "Synthetic demo artifact only — not real health data."
+  ],
+  "slot_hints": [],
+  "facts_markdown": "## §Facts（硬事实 · 可引用）\n- Demo ALT panel 2099-01-01: 42 U/L [ref: lab_demo_2099_alt]\n- Demo HRV 90d mean: 55.0 ms [ref: wearable_demo_90d_hrv]",
+  "interpretation_markdown": "## §Interpretation（解读 · 非数字源 · ADVISORY ONLY）\n> 本栏仅为健康参考建议，**禁止**作为 Numerics Manifest / LabelLedger / 剂量或控制流的数字来源。数字主权仅属于 §Facts（T0）。\n- 以上为 T0 账本可引用事实；启用 PHA_CHB_COMPILER=1 可生成趋势解读（仍为非数字源）。"
+}

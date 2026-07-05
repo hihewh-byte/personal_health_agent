@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import tempfile
+import threading
 from contextlib import asynccontextmanager
 from datetime import date, datetime, time
 from pathlib import Path
@@ -81,6 +82,7 @@ from pha.sqlite_storage import (
     get_db_path,
     upsert_import_sync_state,
 )
+from pha.structured_log import log_exception, log_warning
 
 logger = logging.getLogger(__name__)
 
@@ -109,21 +111,44 @@ def _agent_timeout_seconds() -> float:
     )
 
 
+def _run_startup_maintenance() -> None:
+    """Run heavy startup maintenance off the critical /health path."""
+    if not database_exists():
+        return
+    try:
+        audit = run_startup_data_audit()
+        indexed = backfill_wearable_data_from_daily()
+        logger.info(
+            "PHA startup maintenance: %s; wearable_data index samples=%s, db=%s",
+            audit.get("message", ""),
+            indexed,
+            get_db_path(),
+        )
+    except Exception as exc:
+        log_exception(
+            logger,
+            "startup_maintenance_failed",
+            exc,
+            db=str(get_db_path()),
+        )
+
+
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
     init_medical_schema()
     init_chat_schema()
     if database_exists():
-        audit = run_startup_data_audit()
         loaded = store.hydrate_from_sqlite()
-        indexed = backfill_wearable_data_from_daily()
         logger.info(
-            "PHA startup: %s; hydrated %s recent day rows, wearable_data index samples=%s, db=%s",
-            audit.get("message", ""),
+            "PHA startup: core_ready=true; hydrated %s recent day rows from %s",
             loaded,
-            indexed,
             get_db_path(),
         )
+        if (os.environ.get("PHA_STARTUP_MAINTENANCE_SYNC", "0").strip() in {"1", "true", "yes"}):
+            _run_startup_maintenance()
+        else:
+            th = threading.Thread(target=_run_startup_maintenance, name="pha-startup-maintenance", daemon=True)
+            th.start()
     else:
         logger.info("PHA startup: no SQLite DB at %s (awaiting export.zip upload)", get_db_path())
     yield
@@ -152,7 +177,8 @@ def llm_models() -> dict[str, list[str]]:
             timeout_seconds=_probe_timeout_seconds(),
         )
         return {"models": names}
-    except Exception:
+    except (httpx.HTTPError, OSError, TimeoutError) as exc:
+        log_warning(logger, "ollama_models_probe_failed", error=type(exc).__name__)
         return {"models": []}
 
 
@@ -175,7 +201,8 @@ def llm_pdf_text_models() -> dict[str, Any]:
             "heuristic_token": FALLBACK_TO_HEURISTIC,
             "ollama_reachable": True,
         }
-    except Exception as exc:
+    except (httpx.HTTPError, OSError, TimeoutError) as exc:
+        log_warning(logger, "ollama_pdf_models_probe_failed", error=type(exc).__name__)
         return {
             "models": [],
             "auto_model": None,
@@ -201,7 +228,8 @@ def llm_vision_status() -> dict[str, Any]:
         else:
             status["vision_message"] = f"Vision 就绪: {status.get('vision_model')}"
         return status
-    except Exception as exc:
+    except (httpx.HTTPError, OSError, TimeoutError) as exc:
+        log_warning(logger, "ollama_vision_probe_failed", error=type(exc).__name__)
         return {
             "ollama_reachable": False,
             "vision_available": False,
@@ -236,55 +264,38 @@ def health_data_query(
 
 
 def _run_import_background(job_id: str, path: str, user_id: str, filename: str) -> None:
-    try:
-        run_import_from_path(path, user_id=user_id, filename=filename, job_id=job_id)
-    finally:
-        try:
-            os.unlink(path)
-        except OSError:
-            logger.warning("Failed to remove temp import file %s", path)
-
-
-def _run_workout_backfill_background(job_id: str, path: str, user_id: str, filename: str) -> None:
-    """Incremental Workout-only parse — does not clear wearable_daily."""
-    from pha.data_importer import AppleHealthParser
-    from pha.import_jobs import update_job
-
     uid = (user_id or "default").strip() or "default"
     try:
-        update_job(job_id, status="running", message="正在增量同步锻炼（HKWorkout）…")
-        with open(path, "rb") as fh:
-            result = AppleHealthParser(uid).backfill_workouts_from_zip(
-                fh,
-                filename=filename,
-                on_progress=lambda c, t, m: update_job(
-                    job_id,
-                    status="running",
-                    message=m,
-                    percent=100.0 if t else 0.0,
-                ),
-            )
-        update_job(
-            job_id,
-            status="complete",
-            percent=100.0,
-            message=result.message,
-            import_complete=True,
-        )
-        upsert_import_sync_state(
-            uid,
-            status="complete",
-            message=result.message,
+        run_import_from_path(path, user_id=uid, filename=filename, job_id=job_id)
+    except ImportIncompleteError as exc:
+        log_exception(
+            logger,
+            "import_background_incomplete",
+            exc,
+            job_id=job_id,
+            user_id=uid,
+            filename=filename,
         )
     except Exception as exc:
-        update_job(job_id, status="failed", import_complete=False, error=str(exc), message=str(exc))
-        upsert_import_sync_state(uid, status="failed", message=str(exc))
-        raise
+        log_exception(
+            logger,
+            "import_background_failed",
+            exc,
+            job_id=job_id,
+            user_id=uid,
+            filename=filename,
+        )
     finally:
         try:
             os.unlink(path)
-        except OSError:
-            logger.warning("Failed to remove temp import file %s", path)
+        except OSError as exc:
+            log_warning(
+                logger,
+                "import_temp_file_cleanup_failed",
+                path=path,
+                job_id=job_id,
+                error=type(exc).__name__,
+            )
 
 
 @app.post("/data/upload", response_model=AppleImportResult)
@@ -329,108 +340,31 @@ async def data_upload(
     )
 
 
-def _enqueue_hk_workout_backfill(
-    background_tasks: BackgroundTasks,
-    *,
-    user_id: str,
-    zip_bytes: bytes,
-    filename: str,
-    clear_existing: bool,
-) -> AppleImportResult:
-    uid = (user_id or "default").strip() or "default"
-    if clear_existing:
-        from pha.workout_storage import clear_workout_sessions
-
-        clear_workout_sessions(uid)
-    job = create_job(user_id=uid)
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
-    try:
-        tmp.write(zip_bytes)
-        tmp.flush()
-        tmp_path = tmp.name
-    finally:
-        tmp.close()
-    background_tasks.add_task(
-        _run_workout_backfill_background,
-        job.job_id,
-        tmp_path,
-        uid,
-        filename,
-    )
-    return AppleImportResult(
-        ok=True,
-        user_id=uid,
-        zip_filename=filename,
-        job_id=job.job_id,
-        message="锻炼增量同步已启动（不清空步数/睡眠/HRV 等已有数据）；请查看同步状态。",
-    )
-
-
 @app.get("/data/sync-modules")
 def data_list_sync_modules() -> dict[str, Any]:
-    """Registry 声明的可增量同步模块（Wave 3d-δ-c）。"""
-    from pha.wearable_metric_registry import list_ingest_modules
-
-    return {"modules": list_ingest_modules()}
+    """Apple Health export.zip 为全量快照；请使用 ``POST /data/upload``。"""
+    return {
+        "modules": [],
+        "policy": "full_import_only",
+        "message": "Apple Health 每次导出均为全量 export.zip，请使用「开始导入」或 POST /data/upload。",
+    }
 
 
 @app.post("/data/sync-module/{module_id}", response_model=AppleImportResult)
-async def data_sync_module(
-    module_id: str,
-    background_tasks: BackgroundTasks,
-    user_id: str = Form("default"),
-    file: UploadFile = File(..., description="Apple Health export.zip"),
-    clear_existing: bool = Form(False),
-) -> AppleImportResult:
-    """按 Registry ``ingest_modules`` 触发增量同步（当前仅 ``hk_workout``）。"""
-    from pha.wearable_metric_registry import ingest_module
-
-    spec = ingest_module(module_id)
-    if not spec:
-        raise HTTPException(status_code=404, detail=f"unknown ingest module_id={module_id!r}")
-    fname = (file.filename or "").strip().lower()
-    if not fname.endswith(".zip"):
-        raise HTTPException(status_code=400, detail="file must be a .zip (Apple Health export.zip)")
-    content = await file.read()
-    if not content:
-        raise HTTPException(status_code=400, detail="empty upload")
-    mid = (module_id or "").strip()
-    if mid == "hk_workout":
-        return _enqueue_hk_workout_backfill(
-            background_tasks,
-            user_id=user_id,
-            zip_bytes=content,
-            filename=file.filename or "export.zip",
-            clear_existing=clear_existing,
-        )
-    raise HTTPException(status_code=501, detail=f"ingest module {mid!r} is registered but not wired")
+async def data_sync_module(module_id: str) -> AppleImportResult:
+    """已下线：请使用 ``POST /data/upload`` 全量导入。"""
+    raise HTTPException(
+        status_code=410,
+        detail="增量同步已取消。Apple Health export.zip 为全量快照，请使用 POST /data/upload（Dashboard「开始导入」）。",
+    )
 
 
 @app.post("/data/backfill-workouts", response_model=AppleImportResult)
-async def data_backfill_workouts(
-    background_tasks: BackgroundTasks,
-    user_id: str = Form("default"),
-    file: UploadFile = File(..., description="Apple Health export.zip（仅增量同步锻炼，不清空已有数仓）"),
-    clear_existing: bool = Form(False, description="清空该用户已有 Workout 会话后再写入"),
-) -> AppleImportResult:
-    """
-    Dashboard 入口：增量解析 zip 中的 ``<Workout>``，**不**调用 ``clear_wearable_storage``。
-
-    用于历史全量导入早于 δ-b 时补全锻炼基线；新上传请仍用 ``/data/upload``（已含 Workout 解析）。
-    等价于 ``POST /data/sync-module/hk_workout``（保留兼容）。
-    """
-    fname = (file.filename or "").strip().lower()
-    if not fname.endswith(".zip"):
-        raise HTTPException(status_code=400, detail="file must be a .zip (Apple Health export.zip)")
-    content = await file.read()
-    if not content:
-        raise HTTPException(status_code=400, detail="empty upload")
-    return _enqueue_hk_workout_backfill(
-        background_tasks,
-        user_id=user_id,
-        zip_bytes=content,
-        filename=file.filename or "export.zip",
-        clear_existing=clear_existing,
+async def data_backfill_workouts() -> AppleImportResult:
+    """已下线：请使用 ``POST /data/upload`` 全量导入（含 Workout）。"""
+    raise HTTPException(
+        status_code=410,
+        detail="锻炼增量回填已取消。请使用 POST /data/upload 全量导入 export.zip。",
     )
 
 
@@ -953,6 +887,10 @@ class ChatRequest(BaseModel):
         default=None,
         description="Pre-parsed payloads from /api/chat/attachments/parse (multi-image merge)",
     )
+    clarify_choice_id: Optional[str] = Field(
+        default=None,
+        description="Stage 3C-δ: chip selection id from prior clarify SSE event",
+    )
 
 
 class ChatAttachmentParseRequest(BaseModel):
@@ -1090,7 +1028,7 @@ def api_chat_attachment_parse(body: ChatAttachmentParseRequest) -> dict[str, Any
             auto_ingest=body.auto_ingest,
         )
         return {"ok": True, "parsed": parsed}
-    except Exception as exc:
+    except (ValueError, VisionModelNotReadyError, VisionJsonParseError, httpx.HTTPError, OSError) as exc:
         try:
             record_chat_attachment_parse_failure(
                 uid,
@@ -1098,8 +1036,38 @@ def api_chat_attachment_parse(body: ChatAttachmentParseRequest) -> dict[str, Any
                 attachment_name=name or path,
                 error=str(exc),
             )
-        except Exception:
-            pass
+        except Exception as inner:
+            log_exception(
+                logger,
+                "attachment_parse_failure_record_failed",
+                inner,
+                user_id=uid,
+                attachment_path=path,
+            )
+        return {"ok": False, "error": str(exc)}
+    except Exception as exc:
+        log_exception(
+            logger,
+            "attachment_parse_failed",
+            exc,
+            user_id=uid,
+            attachment_path=path,
+        )
+        try:
+            record_chat_attachment_parse_failure(
+                uid,
+                attachment_path=path,
+                attachment_name=name or path,
+                error=str(exc),
+            )
+        except Exception as inner:
+            log_exception(
+                logger,
+                "attachment_parse_failure_record_failed",
+                inner,
+                user_id=uid,
+                attachment_path=path,
+            )
         return {"ok": False, "error": str(exc)}
 
 
@@ -1188,6 +1156,7 @@ async def api_chat_stream(body: ChatRequest) -> StreamingResponse:
             attachment_paths=body.attachment_paths,
             attachment_names=body.attachment_names,
             attachment_parsed_parts=body.attachment_parsed_parts,
+            clarify_choice_id=body.clarify_choice_id,
         ):
             yield f"data: {payload}\n\n"
             await asyncio.sleep(0)
@@ -1243,5 +1212,5 @@ if __name__ == "__main__":
     import uvicorn
 
     _host = (os.environ.get("PHA_HOST") or "127.0.0.1").strip() or "127.0.0.1"
-    _port = int((os.environ.get("PHA_PORT") or "8787").strip() or "8787")
+    _port = int((os.environ.get("PHA_PORT") or "8788").strip() or "8788")
     uvicorn.run("pha.main:app", host=_host, port=_port, reload=False)

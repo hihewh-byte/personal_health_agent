@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import List, Sequence, Tuple
@@ -66,12 +67,8 @@ def _subtract_interval(
     return [(a, b) for a, b in pieces if b > a]
 
 
-def compute_sleep_hours_union(segments: Sequence[SleepSegment]) -> Tuple[float, float]:
-    """
-    Union of asleep intervals with Watch priority over iPhone on overlaps.
-
-    Returns (sleep_hours, awake_hours_placeholder) — awake tracked separately in importer.
-    """
+def _compute_sleep_hours_union_legacy(segments: Sequence[SleepSegment]) -> Tuple[float, float]:
+    """Previous interval-subtraction implementation (kept for regression checks)."""
     if not segments:
         return 0.0, 0.0
 
@@ -95,6 +92,47 @@ def compute_sleep_hours_union(segments: Sequence[SleepSegment]) -> Tuple[float, 
 
     union = _merge_intervals(accepted)
     total_seconds = sum((e - s).total_seconds() for s, e in union)
+    return total_seconds / 3600.0, 0.0
+
+
+def compute_sleep_hours_union(segments: Sequence[SleepSegment]) -> Tuple[float, float]:
+    """
+    Union of asleep intervals with Watch priority over iPhone on overlaps.
+
+    Sweep-line O(n log n): each time slice is attributed to the highest-priority
+    (lowest priority number) source covering it.
+
+    Returns (sleep_hours, awake_hours_placeholder) — awake tracked separately in importer.
+    """
+    if not segments:
+        return 0.0, 0.0
+
+    events: List[Tuple[datetime, int, int]] = []
+    for seg in segments:
+        if seg.end <= seg.start:
+            continue
+        pri = _source_priority(seg.source_name)
+        events.append((seg.start, 1, pri))
+        events.append((seg.end, -1, pri))
+
+    if not events:
+        return 0.0, 0.0
+
+    # End (-1) before start (+1) at identical timestamps.
+    events.sort(key=lambda item: (item[0], item[1]))
+
+    active: Counter[int] = Counter()
+    prev: datetime | None = None
+    total_seconds = 0.0
+
+    for t, delta, pri in events:
+        if prev is not None and t > prev and active:
+            total_seconds += (t - prev).total_seconds()
+        active[pri] += delta
+        if active[pri] == 0:
+            del active[pri]
+        prev = t
+
     return total_seconds / 3600.0, 0.0
 
 

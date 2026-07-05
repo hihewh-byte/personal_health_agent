@@ -31,7 +31,8 @@ _SCREEN_TYPE_RULES: List[Tuple[ScreenType, re.Pattern[str]]] = [
     ("sleep", re.compile(r"time\s+asleep|睡眠|@?\s*(?:deep|rem|awake)\b", re.I)),
     ("workout", re.compile(
         r"workouts?\s+highlights|heart\s+rate:\s*workout|recent\s+run|"
-        r"beats per minute during your recent|锻炼\s|functional strength",
+        r"beats per minute during your recent|during your last workout|"
+        r"worked out on \d+ days|锻炼\s|functional strength",
         re.I,
     )),
     ("heart_rate", re.compile(r"heart\s+rate|心率|resting\s+rate", re.I)),
@@ -44,18 +45,38 @@ _DATE_HINT_RE = re.compile(
 )
 
 _HRV_PATTERNS: List[re.Pattern[str]] = [
-    re.compile(r"(?:hrv|variability).*?(\d{1,3})\s*ms", re.I | re.S),
-    re.compile(r"average\s+(\d{1,3})\s*ms", re.I),
+    re.compile(r"(?:hrv|variability).*?(\d{1,3})\s*(?:ms|ins)", re.I | re.S),
+    re.compile(r"average\s+(\d{1,3})\s*(?:ms|ins)", re.I),
 ]
 _SPO2_PATTERNS: List[re.Pattern[str]] = [
     re.compile(r"(?:blood\s+oxygen|血氧|spo2).*?(\d{2,3})\s*%", re.I | re.S),
 ]
-_SLEEP_ASLEEP_PATTERNS: List[re.Pattern[str]] = [
-    re.compile(
-        r"(?:time\s+asleep|睡眠).*?(\d{1,2})\s*hr(?:\s*(\d{1,2})\s*min)?",
-        re.I | re.S,
-    ),
-]
+_SLEEP_ASLEEP_AFTER_LABEL_RE = re.compile(
+    r"time\s+asleep\s*\n\s*(\d{1,2})\s*hr(?:\s*(\d{1,2})\s*min)?",
+    re.I,
+)
+_SLEEP_ASLEEP_SAME_LINE_RE = re.compile(
+    r"time\s+asleep\s+(\d{1,2})\s*hr(?:\s*(\d{1,2})\s*min)?",
+    re.I,
+)
+_SLEEP_ASLEEP_BEFORE_LABEL_RE = re.compile(
+    r"(\d{1,2})\s*hr(?:\s*(\d{1,2})\s*min)?[^\n]{0,32}time\s+asleep",
+    re.I,
+)
+_SLEEP_CN_ASLEEP_RE = re.compile(
+    r"睡眠(?:时长|时间)?\s*(\d{1,2})\s*小时(?:\s*(\d{1,2})\s*分)?",
+    re.I,
+)
+_SLEEP_ASLEEP_AFTER_LABEL_LOOSE_RE = re.compile(
+    r"time\s+asleep[\s\S]{0,220}?(\d{1,2})\s*(?:hr|nr|h)\s*,?\s*(\d{1,2})\s*min",
+    re.I,
+)
+_SLEEP_ASLEEP_COMPACT_RE = re.compile(
+    r"\b(\d{1,2})h[,.\s]+(\d{1,2})\s*min\b",
+    re.I,
+)
+_AWAKE_CONTEXT_RE = re.compile(r"\bawake\b", re.I)
+_TIME_IN_BED_RE = re.compile(r"time\s+in\s+bed", re.I)
 _HEART_RATE_RANGE_RE = re.compile(r"(\d{2,3})\s*[–\-]\s*(\d{2,3})\s*bpm", re.I)
 _RESTING_HR_RE = re.compile(
     r"(?:resting|静息)[^\d]{0,80}?(\d{2,3})\s*(?:bpm|beats\s*per\s*minute)",
@@ -78,11 +99,22 @@ _RESPIRATORY_RANGE_RE = re.compile(
 _WORKOUT_KCAL_RE = re.compile(r"(\d{2,4})\s*kcal", re.I)
 _WORKOUT_MIN_RE = re.compile(r"(\d{1,3})\s*min\b", re.I)
 _WORKOUT_HR_RANGE_RE = re.compile(
-    r"(?:heart\s+rate:\s*workout|during your recent\s+run).{0,80}?"
+    r"(?:heart\s+rate:\s*workout|during your (?:recent\s+run|last\s+workout)|"
+    r"heart\s+rate\s+was).{0,120}?"
     r"(\d{2,3})\s*[–\-]\s*(\d{2,3})\s*(?:beats per minute|bpm)",
     re.I | re.S,
 )
+_WORKOUT_DAYS_4W_RE = re.compile(
+    r"(?:worked\s+out|work\s*out)\s+on\s+(\d{1,3})\s+days?\s+in\s+the\s+last\s+4\s+weeks",
+    re.I,
+)
 _WORKOUT_COUNT_RE = re.compile(r"(\d{1,3})\s+Workouts?\b", re.I)
+
+_WEARABLE_REMERGE_USER_RE = re.compile(
+    r"重新|再次|核实|不对|错误|明显错|解析.*不对|重新分析|重新上传|"
+    r"再次解析|截图.*(?:不对|错误)|睡眠.*(?:不对|错误|核实)",
+    re.I,
+)
 
 _METRIC_UNIT: Dict[str, str] = {
     "hrv_rmssd_ms": "ms",
@@ -263,6 +295,92 @@ def _format_hr_min_value(hr: str, minutes: str = "") -> Tuple[str, str]:
     return f"{hr}hr", ""
 
 
+def user_requests_wearable_snapshot_remerge(user_message: str) -> bool:
+    """Follow-up asks to re-check / re-parse prior wearable screenshots."""
+    return bool(_WEARABLE_REMERGE_USER_RE.search(user_message or ""))
+
+
+def normalize_wearable_ocr_text(text: str) -> str:
+    """Shared Tesseract denoise for Apple Health UI screenshots (真机 OCR)."""
+    raw = (text or "").strip()
+    if not raw:
+        return raw
+    raw = re.sub(r"(\d)\s*/\s*", r"\g<1>7", raw)
+    raw = raw.replace("/", "7")
+    raw = re.sub(r"(\d{1,2})\s*nr\b", r"\1 hr", raw, flags=re.I)
+    raw = re.sub(r"(\d{1,3})\s*ins\b", r"\1 ms", raw, flags=re.I)
+    raw = re.sub(r"\bsem\b", "bpm", raw, flags=re.I)
+    raw = re.sub(r"(\d{1,2})h[,.\s]+(\d{1,2})\s*min", r"\1 hr \2 min", raw, flags=re.I)
+    return raw
+
+
+def _sleep_line_context(blob: str, match: re.Match[str]) -> str:
+    line_start = blob.rfind("\n", 0, match.start()) + 1
+    line_end = blob.find("\n", match.end())
+    if line_end == -1:
+        line_end = len(blob)
+    return blob[line_start:line_end]
+
+
+def _sleep_asleep_match_is_valid(
+    blob: str,
+    match: re.Match[str],
+    *,
+    after_asleep_label: bool = False,
+) -> bool:
+    snippet = match.group(0) or ""
+    line = _sleep_line_context(blob, match)
+    if _AWAKE_CONTEXT_RE.search(line) or re.search(r"@\s*awake\b", line, re.I):
+        return False
+    if after_asleep_label or _SLEEP_ASLEEP_BEFORE_LABEL_RE.search(snippet):
+        return True
+    pre = blob[max(0, match.start() - 48) : match.start()]
+    if _TIME_IN_BED_RE.search(pre) and _SLEEP_ASLEEP_BEFORE_LABEL_RE.search(snippet) is None:
+        return False
+    return True
+
+
+def _extract_sleep_time_asleep(
+    blob: str,
+    *,
+    source_screen_index: int = 0,
+) -> Optional[WearableMetricV1]:
+    """Hero KPI: TIME ASLEEP — never use Awake stage duration."""
+    text = normalize_wearable_ocr_text(blob)
+    if not text:
+        return None
+    for pat, after_label in (
+        (_SLEEP_ASLEEP_AFTER_LABEL_RE, True),
+        (_SLEEP_ASLEEP_SAME_LINE_RE, True),
+        (_SLEEP_ASLEEP_BEFORE_LABEL_RE, False),
+        (_SLEEP_ASLEEP_AFTER_LABEL_LOOSE_RE, True),
+        (_SLEEP_CN_ASLEEP_RE, False),
+    ):
+        m = pat.search(text)
+        if not m or not _sleep_asleep_match_is_valid(text, m, after_asleep_label=after_label):
+            continue
+        val, sub = _format_hr_min_value(m.group(1), m.group(2) or "")
+        return _metric(
+            "sleep_time_asleep",
+            val,
+            sub_value=sub,
+            source_screen_index=source_screen_index,
+            source_line=m.group(0).strip()[:160],
+        )
+    if re.search(r"time\s+asleep", text, re.I):
+        m = _SLEEP_ASLEEP_COMPACT_RE.search(text)
+        if m and _sleep_asleep_match_is_valid(text, m):
+            val, sub = _format_hr_min_value(m.group(1), m.group(2) or "")
+            return _metric(
+                "sleep_time_asleep",
+                val,
+                sub_value=sub,
+                source_screen_index=source_screen_index,
+                source_line=m.group(0).strip()[:160],
+            )
+    return None
+
+
 def _metric(
     metric_id: str,
     value: str,
@@ -396,8 +514,17 @@ def _extract_workout_metrics(blob: str, *, source_screen_index: int) -> List[Wea
                 source_line=m.group(0).strip(),
             ),
         )
-    m = _WORKOUT_COUNT_RE.search(blob)
+    m = _WORKOUT_DAYS_4W_RE.search(blob)
     if m:
+        out.append(
+            _metric(
+                "workout_count_recent",
+                m.group(1),
+                source_screen_index=source_screen_index,
+                source_line=m.group(0).strip(),
+            ),
+        )
+    elif (m := _WORKOUT_COUNT_RE.search(blob)):
         out.append(
             _metric(
                 "workout_count_recent",
@@ -442,6 +569,33 @@ def extract_metrics_from_ocr(
     *,
     source_screen_index: int = 0,
 ) -> List[WearableMetricV1]:
+    """Per-screen metric extraction via MetricCandidate IR (Wave 3d-perception-v1)."""
+    from pha.wearable_metric_candidates import (
+        candidate_merge_enabled,
+        candidate_to_wearable_metric,
+        extract_metric_candidates_from_ocr,
+        merge_metric_candidates_global,
+    )
+
+    ocr_text = normalize_wearable_ocr_text(ocr_text)
+    if not (ocr_text or "").strip():
+        return []
+    if not candidate_merge_enabled():
+        return _extract_metrics_from_ocr_legacy(ocr_text, source_screen_index=source_screen_index)
+    candidates = extract_metric_candidates_from_ocr(
+        ocr_text,
+        source_screen_index=source_screen_index,
+    )
+    winners = merge_metric_candidates_global(candidates)
+    return [candidate_to_wearable_metric(c) for c in winners.values()]
+
+
+def _extract_metrics_from_ocr_legacy(
+    ocr_text: str,
+    *,
+    source_screen_index: int = 0,
+) -> List[WearableMetricV1]:
+    """Rollback path when ``PHA_WEARABLE_CANDIDATE_MERGE=0``."""
     blob = (ocr_text or "").strip()
     if not blob:
         return []
@@ -503,25 +657,13 @@ def extract_metrics_from_ocr(
         _add(_extract_respiratory_rate(blob, source_screen_index=source_screen_index))
 
     if screen_type in ("sleep", "unknown"):
-        for pat in _SLEEP_ASLEEP_PATTERNS:
-            m = pat.search(blob)
-            if m:
-                val, sub = _format_hr_min_value(m.group(1), m.group(2) or "")
-                _add(
-                    _metric(
-                        "sleep_time_asleep",
-                        val,
-                        sub_value=sub,
-                        source_screen_index=source_screen_index,
-                        source_line=m.group(0).strip(),
-                    ),
-                )
-                break
+        _add(_extract_sleep_time_asleep(blob, source_screen_index=source_screen_index))
         _add(_extract_sleep_stage(blob, "Deep", "sleep_deep", source_screen_index=source_screen_index))
         _add(_extract_sleep_stage(blob, "REM", "sleep_rem", source_screen_index=source_screen_index))
 
     if screen_type == "workout" or re.search(
-        r"heart\s+rate:\s*workout|workouts?\s+highlights|during your recent\s+run",
+        r"heart\s+rate:\s*workout|workouts?\s+highlights|"
+        r"during your (?:recent\s+run|last\s+workout)|worked out on \d+ days",
         blob,
         re.I,
     ):
@@ -541,7 +683,7 @@ def screen_from_part(part: Dict[str, Any], *, index: int) -> WearableScreenV1:
         index=index,
         screen_type=infer_screen_type(ocr),
         date_hint=extract_date_hint(ocr),
-        ocr_excerpt=ocr[:600],
+        ocr_excerpt=ocr[:2000],
         layout_region_types=[str(x) for x in region_types[:8]],
     )
 
@@ -551,26 +693,54 @@ def merge_wearable_parts(
     *,
     perception_channel: PerceptionChannel = "ocr_only",
 ) -> WearableSnapshotLedgerV1:
+    from pha.wearable_metric_candidates import (
+        candidate_merge_enabled,
+        candidate_to_wearable_metric,
+        extract_metric_candidates_from_ocr,
+        merge_metric_candidates_global,
+    )
+
     screens: List[WearableScreenV1] = []
-    metrics_by_id: Dict[str, WearableMetricV1] = {}
     trace: List[Dict[str, Any]] = []
+    all_candidates = []
 
     for i, part in enumerate(parts):
         ocr = str(part.get("ocr_text") or "")
         screens.append(screen_from_part(part, index=i))
-        for m in extract_metrics_from_ocr(ocr, source_screen_index=i):
-            prev = metrics_by_id.get(m.metric_id)
-            if prev is None or len(m.source_line) > len(prev.source_line):
-                metrics_by_id[m.metric_id] = m
-        trace.append(
-            {
-                "index": i,
-                "screen_type": screens[-1].screen_type,
-                "metric_ids": [x.metric_id for x in extract_metrics_from_ocr(ocr, source_screen_index=i)],
-            },
-        )
+        if candidate_merge_enabled():
+            cands = extract_metric_candidates_from_ocr(ocr, source_screen_index=i)
+            all_candidates.extend(cands)
+            trace.append(
+                {
+                    "index": i,
+                    "screen_type": screens[-1].screen_type,
+                    "metric_ids": [c.metric_id for c in cands],
+                    "candidates": [c.model_dump(mode="python") for c in cands[:24]],
+                },
+            )
+        else:
+            per_screen = extract_metrics_from_ocr(ocr, source_screen_index=i)
+            trace.append(
+                {
+                    "index": i,
+                    "screen_type": screens[-1].screen_type,
+                    "metric_ids": [x.metric_id for x in per_screen],
+                },
+            )
 
-    metrics = list(metrics_by_id.values())
+    if candidate_merge_enabled():
+        winners = merge_metric_candidates_global(all_candidates)
+        metrics = [candidate_to_wearable_metric(c) for c in winners.values()]
+    else:
+        metrics_by_id: Dict[str, WearableMetricV1] = {}
+        for i, part in enumerate(parts):
+            ocr = str(part.get("ocr_text") or "")
+            for m in extract_metrics_from_ocr(ocr, source_screen_index=i):
+                prev = metrics_by_id.get(m.metric_id)
+                if prev is None or len(m.source_line) > len(prev.source_line):
+                    metrics_by_id[m.metric_id] = m
+        metrics = list(metrics_by_id.values())
+
     return WearableSnapshotLedgerV1(
         attachment_count=max(1, len(parts)),
         screens=screens,
@@ -603,6 +773,17 @@ def assess_wearable_confidence(
         missing = sum(1 for s in ledger.screens if not (s.ocr_excerpt or "").strip())
         if missing > max(1, attachment_count // 2):
             reasons.append("gw3_screens_sparse")
+
+    for m in ledger.metrics:
+        if m.metric_id == "hrv_rmssd_ms":
+            try:
+                hrv_v = float(str(m.value).strip())
+            except ValueError:
+                warnings.append("hrv_snapshot_unparsed")
+                break
+            if hrv_v < 12:
+                warnings.append("hrv_snapshot_low_confidence")
+            break
 
     if reasons:
         conf: ParseConfidence = "low"
@@ -760,6 +941,42 @@ def finalize_wearable_attachment(
 finalize_wearable_parsed_payload = finalize_wearable_attachment
 
 
+def remerge_wearable_parsed_payload(
+    parsed: Mapping[str, Any],
+    *,
+    user_message: str = "",
+) -> Dict[str, Any]:
+    """Re-run OCR merge from stored screen excerpts (correction / follow-up turns)."""
+    base = dict(parsed)
+    ws = base.get("wearable_snapshot_v1") or {}
+    screens = list(ws.get("screens") or []) if isinstance(ws, dict) else []
+    parts: List[Dict[str, Any]] = []
+    for sc in screens:
+        if not isinstance(sc, dict):
+            continue
+        ocr = str(sc.get("ocr_excerpt") or "").strip()
+        if ocr:
+            parts.append({"ocr_text": ocr, "document_family": "wearable"})
+    if not parts:
+        combined = str(base.get("ocr_text") or "").strip()
+        if combined:
+            chunks = [c.strip() for c in re.split(r"\n\s*\n+", combined) if c.strip()]
+            if len(chunks) >= 2:
+                parts = [{"ocr_text": c, "document_family": "wearable"} for c in chunks]
+            else:
+                parts = [{"ocr_text": combined, "document_family": "wearable"}]
+    if not parts:
+        return base
+    channel = str(base.get("perception_channel") or "ocr_only")
+    return finalize_wearable_attachment(
+        base,
+        attachment_count=max(int(base.get("attachment_count") or 0), len(parts)),
+        parts=parts,
+        perception_channel=channel,  # type: ignore[arg-type]
+        user_message=user_message,
+    )
+
+
 __all__ = [
     "WearableMetricV1",
     "WearableScreenV1",
@@ -774,4 +991,7 @@ __all__ = [
     "infer_snapshot_reference_date",
     "finalize_wearable_parsed_payload",
     "merge_wearable_parts",
+    "normalize_wearable_ocr_text",
+    "remerge_wearable_parsed_payload",
+    "user_requests_wearable_snapshot_remerge",
 ]

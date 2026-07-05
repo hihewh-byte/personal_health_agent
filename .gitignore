@@ -15,6 +15,13 @@ storage/attachments/
 *.sqlite
 *.sqlite3
 
+# Runtime reports (may contain personal health data or local paths)
+reports/loop/
+reports/chb/**/brief_*.json
+reports/p1_golden/*
+!reports/p1_golden/README.md
+!reports/chb/README.md
+
 # PHA local snapshots (use git tags for releases)
 .pha-versions/
 

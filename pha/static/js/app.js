@@ -107,6 +107,18 @@ window.pdfParsing = false;
       if (ev.session_id) currentChatSessionId = ev.session_id;
       return;
     }
+    if (typ === 'meta') {
+      if (ev.session_id) currentChatSessionId = ev.session_id;
+      return;
+    }
+    if (typ === 'fact_card') {
+      appendFactCard(ev);
+      return;
+    }
+    if (typ === 'follow_ups') {
+      appendFollowUpChips(ev.choices || []);
+      return;
+    }
     if (typ === 'delta') {
       if (pinnedTemporalStatus) showChatStatus(pinnedTemporalStatus);
       appendStreamingAssistantDelta(ev.delta || '');
@@ -124,10 +136,30 @@ window.pdfParsing = false;
       loadHealthAssets();
       return;
     }
+    if (typ === 'clarify') {
+      pinnedTemporalStatus = '';
+      hideChatStatus();
+      var clarifyPrompt = ev.prompt || '请选择一项以继续。';
+      var clarifyChoices = ev.choices || [];
+      if (streamingAssistantBubble) {
+        finalizeStreamingAssistantBubble(clarifyPrompt, [], clarifyPrompt);
+      } else {
+        appendAssistantWithEvidence(clarifyPrompt, [], clarifyPrompt);
+      }
+      appendClarifyChips(clarifyChoices);
+      if (ev.session_id) currentChatSessionId = ev.session_id;
+      return;
+    }
     if (typ === 'done') {
       pinnedTemporalStatus = '';
       hideChatStatus();
       if (ev.session_id) currentChatSessionId = ev.session_id;
+      if (ev.clarify) {
+        streamingAssistantBubble = null;
+        streamingMarkdownBuf = '';
+        loadChatSessions();
+        return;
+      }
       var ans = ev.answer || {};
       var ingestOptsDone = null;
       if (ev.ingest_payload && ev.user_message_id) {
@@ -1541,7 +1573,10 @@ window.pdfParsing = false;
         if (m.requires_zip) opt.dataset.requiresZip = '1';
         syncModuleSelect.appendChild(opt);
       });
-      if (mods.length === 1 && mods[0].module_id) {
+      var preferred = mods.find(function (m) { return m.module_id === 'hk_export_delta'; });
+      if (preferred && preferred.module_id) {
+        syncModuleSelect.value = preferred.module_id;
+      } else if (mods.length === 1 && mods[0].module_id) {
         syncModuleSelect.value = mods[0].module_id;
       }
       updateSyncModuleSubmitState();
@@ -3118,6 +3153,131 @@ window.pdfParsing = false;
     });
   }
 
+  function appendFactCard(ev) {
+    if (!chat || !ev || !ev.items || !ev.items.length) return;
+    var row = document.createElement('div');
+    row.className = 'pha-chat-row pha-chat-row--assistant pha-fact-card-row';
+    var card = document.createElement('div');
+    card.className = 'pha-fact-card';
+    var title = document.createElement('div');
+    title.className = 'pha-fact-card-title';
+    title.textContent = '数字卡（Manifest T0）';
+    card.appendChild(title);
+    ev.items.slice(0, 8).forEach(function (it) {
+      var line = document.createElement('div');
+      line.className = 'pha-fact-card-line';
+      var label = it.label || ((it.metric || '') + ' ' + (it.value != null ? it.value : ''));
+      if (it.anchor) label += ' · ' + it.anchor;
+      line.textContent = label;
+      card.appendChild(line);
+    });
+    row.appendChild(card);
+    chat.appendChild(row);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function appendFollowUpChips(choices) {
+    if (!chat || !choices || !choices.length) return;
+    var row = document.createElement('div');
+    row.className = 'pha-chat-row pha-chat-row--assistant pha-followup-row';
+    var wrap = document.createElement('div');
+    wrap.className = 'pha-followup-chips';
+    choices.forEach(function (ch) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pha-followup-chip';
+      btn.textContent = ch.label || ch.id || '';
+      btn.addEventListener('click', function () {
+        if (!q) return;
+        q.value = String(ch.label || ch.id || '');
+        sendAsk();
+      });
+      wrap.appendChild(btn);
+    });
+    row.appendChild(wrap);
+    chat.appendChild(row);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function appendClarifyChips(choices) {
+    if (!chat || !choices || !choices.length) return;
+    var row = document.createElement('div');
+    row.className = 'pha-chat-row pha-chat-row--assistant pha-clarify-row';
+    var wrap = document.createElement('div');
+    wrap.className = 'pha-clarify-chips';
+    choices.forEach(function (ch) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pha-clarify-chip';
+      btn.textContent = ch.label || ch.id || '';
+      btn.addEventListener('click', function () {
+        sendClarifyChoice(String(ch.id || ''), String(ch.label || ch.id || ''));
+      });
+      wrap.appendChild(btn);
+    });
+    row.appendChild(wrap);
+    chat.appendChild(row);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  async function sendClarifyChoice(choiceId, label) {
+    var model = (modelSelect.value || '').trim();
+    if (!model) return appendError({ status: 0 }, '未选择模型');
+    if (!choiceId) return;
+    var msg = (label || choiceId).trim();
+    appendChat(msg, 'user');
+    sendBtn.disabled = true;
+    pinnedTemporalStatus = '';
+    auditPanelShownThisTurn = false;
+    beginStreamingAssistantBubble();
+    var uid = (userIdInput.value || 'default').trim() || 'default';
+    try {
+      var body = {
+        user_id: uid,
+        message: msg,
+        model: model,
+        session_id: currentChatSessionId,
+        extra_system_context: chatExtraSystemContext || '',
+        clarify_choice_id: choiceId
+      };
+      var res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        var _pe = await readHttpErrorDetail(res);
+        maybeShowParseErrorModal(res, _pe);
+        hideChatStatus();
+        return appendError(res, _pe.detail);
+      }
+      if (!res.body || !res.body.getReader) throw new Error('浏览器不支持流式响应');
+      var reader = res.body.getReader();
+      var decoder = new TextDecoder();
+      var buf = '';
+      while (true) {
+        var chunk = await reader.read();
+        if (chunk.done) break;
+        buf += decoder.decode(chunk.value, { stream: true });
+        var parts = buf.split('\n\n');
+        buf = parts.pop() || '';
+        parts.forEach(function (block) {
+          block.split('\n').forEach(function (ln) {
+            var ev = parseChatSsePayload(ln);
+            if (!ev) return;
+            handleChatSseEvent(ev);
+          });
+        });
+      }
+    } catch (e) {
+      hideChatStatus();
+      appendError({ status: 0 }, String(e));
+    } finally {
+      sendBtn.disabled = !modelSelect.value;
+      streamingAssistantBubble = null;
+    }
+  }
+
   async function sendAsk() {
     var model = (modelSelect.value || '').trim();
     if (!model) return appendError({ status: 0 }, '未选择模型');
@@ -3287,7 +3447,6 @@ window.pdfParsing = false;
   setInterval(refreshVisionStatus, 12000);
   loadTrends();
   loadHealthAssets();
-  loadSyncModules();
   loadSyncStatus();
   setInterval(loadSyncStatus, 4000);
   if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();

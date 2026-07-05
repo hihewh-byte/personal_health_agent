@@ -6,7 +6,9 @@ Thank you for your interest in PHA. This project handles **personal health data*
 
 1. Read [README.md](README.md) and [docs/INSTALL.md](docs/INSTALL.md).
 2. Run `python scripts/doctor.py` and `bash scripts/run_selfchecks.sh`.
-3. Do **not** include real health exports, SQLite databases, lab PDFs, or screenshots in PRs.
+3. Do **not** include real health exports, SQLite databases, lab PDFs, screenshots, or **`reports/chb/**/brief_*.json`** in PRs.
+
+See [docs/wave4a-open-source-readiness-spec.md](docs/wave4a-open-source-readiness-spec.md) §3 for the full PII audit checklist.
 
 ## Development setup
 

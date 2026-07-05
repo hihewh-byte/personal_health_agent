@@ -705,6 +705,57 @@
       border-bottom-left-radius: 0.25rem;
     }
     .pha-chat-bubble--assistant.prose-pha { color: #e2e8f0; }
+    .pha-clarify-row { margin-top: -0.25rem; }
+    .pha-clarify-chips {
+      display: flex; flex-wrap: wrap; gap: 0.45rem;
+      max-width: min(88%, 42rem);
+      padding: 0.15rem 0 0.35rem;
+    }
+    .pha-clarify-chip {
+      padding: 0.4rem 0.85rem;
+      border-radius: 999px;
+      border: 1px solid rgba(59, 130, 246, 0.55);
+      background: rgba(30, 58, 138, 0.35);
+      color: #bfdbfe;
+      font-size: 0.8125rem;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .pha-clarify-chip:hover {
+      border-color: #60a5fa;
+      background: rgba(37, 99, 235, 0.45);
+      color: #eff6ff;
+    }
+    .pha-fact-card-row { margin-top: -0.15rem; }
+    .pha-fact-card {
+      max-width: min(88%, 42rem);
+      padding: 0.55rem 0.8rem;
+      border-radius: 0.65rem;
+      border: 1px solid rgba(52, 211, 153, 0.45);
+      background: rgba(6, 78, 59, 0.35);
+      font-size: 0.8125rem;
+      color: #d1fae5;
+    }
+    .pha-fact-card-title { font-weight: 600; margin-bottom: 0.35rem; color: #6ee7b7; }
+    .pha-fact-card-line { line-height: 1.45; }
+    .pha-followup-row { margin-top: -0.2rem; }
+    .pha-followup-chips {
+      display: flex; flex-wrap: wrap; gap: 0.4rem;
+      max-width: min(88%, 42rem);
+    }
+    .pha-followup-chip {
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      border: 1px solid rgba(16, 185, 129, 0.5);
+      background: rgba(6, 95, 70, 0.35);
+      color: #a7f3d0;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+    .pha-followup-chip:hover {
+      border-color: #34d399;
+      background: rgba(5, 150, 105, 0.45);
+    }
     .pha-chat-audit-wrap { width: 100%; max-width: min(92%, 44rem); }
     .pha-chat-audit-wrap .pha-audit-panel { margin-top: 0; max-height: 16rem; }
     .pha-asset-del-btn {
@@ -1092,12 +1143,7 @@
         </div>
         <p id="import-filename" style="font-size:0.75rem;color:#64748b;margin:0.5rem 0"></p>
         <button type="button" id="import-submit" disabled>开始导入</button>
-        <label for="sync-module-select" style="display:block;font-size:0.75rem;color:#94a3b8;margin:0.75rem 0 0.35rem">增量同步模块（Registry）</label>
-        <select id="sync-module-select" style="width:100%;padding:0.45rem 0.5rem;border-radius:0.375rem;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:0.8125rem">
-          <option value="">加载模块列表…</option>
-        </select>
-        <button type="button" id="sync-module-submit" disabled style="margin-top:0.5rem">增量同步所选模块（不清库）</button>
-        <p id="sync-module-hint" style="font-size:0.7rem;color:#64748b;margin:0.35rem 0 0">选择 export.zip 与模块：仅补 Registry 声明的增量管道，不删除步数/睡眠/HRV 等已有记录。</p>
+        <p style="font-size:0.7rem;color:#64748b;margin:0.75rem 0 0">Apple Health 每次导出均为<strong>全量</strong> export.zip（无官方增量包）。请使用上方「开始导入」；将清空本用户旧穿戴数据后写入最新导出。</p>
         <progress id="upload-progress" class="hidden" max="100" value="0" style="width:100%;margin-top:0.5rem"></progress>
         <p id="upload-status" style="font-size:0.75rem;color:#94a3b8;margin-top:0.5rem"></p>
       </section>

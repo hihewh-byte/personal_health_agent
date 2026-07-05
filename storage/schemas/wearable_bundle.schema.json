@@ -6,7 +6,7 @@
     "name": "pha-evidence-asset",
     "revision": "2026-05-21",
     "trust_level": "signed_directory_only",
-    "notes": "P1.6 DCH：Catalog 诱饵由 trigger_keywords 运行时生成；指标由同表驱动 Reduce。"
+    "notes": "P1.6 DCH：Catalog 诱饵由 trigger_keywords 运行时生成；指标由同表驱动 Reduce。 · 4-α.1: retired fuzzy triggers (睡得好/睡得怎么样)"
   },
   "asset_id": "wearable_bundle",
   "legacy_ids": ["WEARABLE_90D"],
@@ -39,8 +39,13 @@
     "trigger_keywords": [
       {"token": "HRV", "metric_id": "hrv", "zh": "HRV"},
       {"token": "心率变异性", "metric_id": "hrv", "zh": "HRV"},
+      {"token": "心率变异", "metric_id": "hrv", "zh": "HRV"},
+      {"token": "rmssd", "metric_id": "hrv", "zh": "HRV"},
       {"token": "步数", "metric_id": "steps", "zh": "步数"},
+      {"token": "走路", "metric_id": "steps", "zh": "步数"},
+      {"token": "走得多", "metric_id": "steps", "zh": "步数"},
       {"token": "睡眠", "metric_id": "sleep", "zh": "睡眠"},
+      {"token": "睡多久", "metric_id": "sleep", "zh": "睡眠"},
       {"token": "静息心率", "metric_id": "rhr", "zh": "静息心率"},
       {"token": "活动消耗", "metric_id": "activity_kcal", "zh": "活动消耗"},
       {"token": "运动消耗", "metric_id": "activity_kcal", "zh": "活动消耗"},

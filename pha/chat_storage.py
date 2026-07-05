@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from pha.date_parser import safe_parse_datetime
+from pha.sqlite_connection import release_connection
 from pha.sqlite_storage import _connect, init_schema
 
 CHAT_SCHEMA = """
@@ -62,7 +63,7 @@ def init_chat_schema() -> None:
         init_active_recall_schema(conn)
         conn.commit()
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def _now_iso() -> str:
@@ -291,6 +292,30 @@ def get_message(message_id: int) -> Optional[ChatMessageRow]:
         if not row:
             return None
         return _row_to_message(row)
+    finally:
+        conn.close()
+
+
+def get_latest_session_attachment_message_id(session_id: str) -> Optional[int]:
+    """Message id for the most recent user attachment parse in session."""
+    sid = (session_id or "").strip()
+    if not sid:
+        return None
+    init_chat_schema()
+    conn = _connect()
+    try:
+        row = conn.execute(
+            """
+            SELECT id FROM chat_messages
+            WHERE session_id = ? AND role = 'user'
+              AND parsed_json IS NOT NULL AND TRIM(parsed_json) != ''
+            ORDER BY id DESC LIMIT 1
+            """,
+            (sid,),
+        ).fetchone()
+        if not row:
+            return None
+        return int(row["id"])
     finally:
         conn.close()
 

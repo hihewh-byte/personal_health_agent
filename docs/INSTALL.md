@@ -42,7 +42,7 @@ cp .env.example .env
 docker compose up -d --build
 
 # 4. Verify
-curl http://127.0.0.1:8787/health
+curl http://127.0.0.1:8788/health
 docker compose logs -f pha
 ```
 
@@ -87,7 +87,7 @@ python scripts/doctor.py
 
 export PYTHONPATH=.
 python -m pha.main
-# → http://127.0.0.1:8787
+# → http://127.0.0.1:8788
 ```
 
 Restart helper:
@@ -103,7 +103,7 @@ bash scripts/pha_restart_accept.sh
 1. Export **Apple Health** as `export.zip` on your iPhone/Mac.
 2. Open PHA → **数据导入** drawer.
 3. Drop `export.zip` → **开始导入** (full import).
-4. For workout-only backfill: select module **锻炼 (HKWorkout)** → **增量同步**.
+4. Workout 数据已包含在全量 export.zip 导入中（无需增量同步入口）。
 
 ---
 
@@ -111,7 +111,7 @@ bash scripts/pha_restart_accept.sh
 
 | Symptom | Fix |
 |---------|-----|
-| `Connection refused` on :8787 | `docker compose ps` / `bash scripts/pha_restart_accept.sh` |
+| `Connection refused` on :8788 | `docker compose ps` / `bash scripts/pha_restart_accept.sh` |
 | Ollama timeout | Check `OLLAMA_BASE_URL`; run `ollama list` |
 | OCR empty / vision fail | `which tesseract`; install language packs |
 | Docker can't reach Ollama | Use `host.docker.internal` (Mac/Win) or `--profile bundled` |
@@ -130,7 +130,7 @@ bash scripts/run_selfchecks.sh
 
 | Item | Default |
 |------|---------|
-| HTTP | `8787` (`PHA_PORT`) |
+| HTTP | `8788` (`PHA_PORT`) |
 | Ollama | `11434` |
 | DB | `./data/pha_storage.db` |
 | User assets | `./storage/users/` |

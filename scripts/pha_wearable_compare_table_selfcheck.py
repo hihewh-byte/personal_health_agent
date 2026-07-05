@@ -628,8 +628,20 @@ def test_snapshot_reference_date_anchor() -> bool:
         print("FAIL table.reference_date", table.reference_date)
         return False
     w = next((r for r in table.rows if r.metric_id == "workout_count_recent"), None)
-    if not w or w.baseline_90d_value != "15":
-        print("FAIL workout baseline at May 30 anchor", w)
+    if not w or w.snapshot_value != "8":
+        print("FAIL workout snapshot at May 30 anchor", w)
+        return False
+    if w.row_kind == "snapshot_only":
+        if w.baseline_90d_value not in ("NO_BASELINE", None, ""):
+            print("FAIL workout baseline expected NO_BASELINE in snapshot_only", w)
+            return False
+    elif w.row_kind == "comparable_90d":
+        if not w.baseline_90d_value or w.baseline_90d_value == "NO_BASELINE":
+            print("FAIL workout baseline missing for comparable_90d", w)
+            return False
+        print("OK workout comparable baseline", w.baseline_90d_value, w.baseline_90d_range)
+    else:
+        print("FAIL workout row_kind", w.row_kind, w)
         return False
     return True
 
@@ -687,6 +699,73 @@ def test_respiratory_range_endpoint_authorized() -> bool:
     return True
 
 
+def test_single_metric_focus() -> bool:
+    from pha.wearable_compare_table_v1 import (
+        CompareRowV1,
+        CompareTableV1,
+        build_single_metric_focus_answer,
+        infer_single_metric_focus_ids,
+    )
+
+    if infer_single_metric_focus_ids("HRV 怎么样") != ["hrv_rmssd_ms"]:
+        print("FAIL focus ids hrv", infer_single_metric_focus_ids("HRV 怎么样"))
+        return False
+    if infer_single_metric_focus_ids("指标是否都正常"):
+        print("FAIL broad compare should not focus")
+        return False
+    if infer_single_metric_focus_ids("分析所有指标"):
+        print("FAIL 所有指标 should stay broad compare")
+        return False
+    # P2 Stage 3G-followup: narrow-hint precedence must beat the broad bundle `core` fallback.
+    p2_focus = {
+        "心率范围呢": ["workout_heart_rate_range_bpm"],
+        "请分析心率指标": ["resting_heart_rate_bpm"],
+        "心率正常吗": ["resting_heart_rate_bpm"],
+    }
+    for msg, expected in p2_focus.items():
+        got = infer_single_metric_focus_ids(msg)
+        if got != expected:
+            print(f"FAIL p2 single focus {msg!r}: {got} != {expected}")
+            return False
+    # 深睡时长 / 锻炼成对 → allowed metric pairs (not blocked by 2-non-sleep rule).
+    if set(infer_single_metric_focus_ids("深睡时长是多少")) != {"sleep_deep", "sleep_rem"}:
+        print("FAIL 深睡时长 pair", infer_single_metric_focus_ids("深睡时长是多少"))
+        return False
+    if set(infer_single_metric_focus_ids("请报告锻炼心率范围")) != {
+        "workout_heart_rate_range_bpm",
+        "workout_count_recent",
+    }:
+        print("FAIL 锻炼心率范围 workout pair", infer_single_metric_focus_ids("请报告锻炼心率范围"))
+        return False
+    table = CompareTableV1(
+        rows=[
+            CompareRowV1(
+                metric_id="hrv_rmssd_ms",
+                row_kind="comparable_90d",
+                snapshot_value="34",
+                baseline_90d_value="33.0",
+                baseline_90d_unit="ms",
+                baseline_90d_range="23.1-45.8",
+                verdict="within_range",
+            ),
+            CompareRowV1(
+                metric_id="sleep_time_asleep",
+                row_kind="comparable_90d",
+                snapshot_value="6hr32min",
+                baseline_90d_value="8.1",
+                baseline_90d_unit="hr",
+                baseline_90d_range="0.4-10.0",
+                verdict="within_range",
+            ),
+        ],
+    )
+    ans = build_single_metric_focus_answer(table, "HRV 怎么样")
+    if "34" not in ans or "睡眠" in ans:
+        print("FAIL focus answer", ans)
+        return False
+    return True
+
+
 def main() -> int:
     ok = all(
         [
@@ -711,6 +790,7 @@ def main() -> int:
             test_hybrid_fallback_preserves_llm_advisory(),
             test_comparable_stage_narrative_not_fabrication(),
             test_respiratory_range_endpoint_authorized(),
+            test_single_metric_focus(),
         ],
     )
     print("pha_wearable_compare_table_selfcheck:", "PASS" if ok else "FAIL")

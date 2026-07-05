@@ -40,7 +40,7 @@ _WORKOUT_INTENT_RE = re.compile(
 )
 
 _COMPARE_ALL_METRICS_RE = re.compile(
-    r"指标|是否正常|对比|相比|是不是都|整体",
+    r"所有指标|各项指标|全部指标|多项指标|各.{0,2}指标|是否正常|对比|相比|是不是都|整体",
     re.I,
 )
 
@@ -122,9 +122,9 @@ def compute_verdict(snapshot: float, *, range_min: float, range_max: float) -> V
 
 def _verdict_note(verdict: Verdict, *, row_kind: RowKind, metric_id: str = "") -> str:
     if row_kind == "snapshot_only" and metric_id in NO_BASELINE_METRICS:
-        return "数仓无睡眠分期历史；禁止与 90d 对比"
+        return "暂无睡眠分期历史，无法与近 90 天对比"
     if row_kind == "snapshot_only":
-        return "仅报告截图定账；数仓无对应 90d 基线"
+        return "仅本次截图读数，暂无对应近 90 天基线"
     if verdict == "within_range":
         return "落在 90 天区间内"
     if verdict == "above_mean":
@@ -132,7 +132,7 @@ def _verdict_note(verdict: Verdict, *, row_kind: RowKind, metric_id: str = "") -
     if verdict == "below_mean":
         return "低于 90 天区间下限"
     if verdict == "insufficient_data":
-        return "截图/定账暂无该 KPI"
+        return "本次截图暂无该指标"
     return ""
 
 
@@ -297,7 +297,7 @@ def _append_workout_compare_rows(
                 baseline_90d_value="NO_BASELINE",
                 baseline_source="none",
                 verdict="insufficient_data",
-                verdict_note="截图/定账暂无锻炼 KPI",
+                verdict_note="本次截图暂无锻炼指标",
             ),
         )
 
@@ -514,8 +514,8 @@ _VERDICT_LABEL_ZH: Dict[str, str] = {
     "within_range": "落在近 90 天正常区间内",
     "above_mean": "高于近 90 天区间上限",
     "below_mean": "低于近 90 天区间下限",
-    "snapshot_only": "仅截图定账",
-    "insufficient_data": "暂无可靠定账",
+    "snapshot_only": "仅本次截图",
+    "insufficient_data": "暂无可靠读数",
 }
 
 _DECIMAL_TOKEN_RE = re.compile(r"(?<!\d)(\d+\.\d{1,2})(?!\d)")
@@ -620,7 +620,7 @@ def _format_snapshot_display(metric_id: str, value: str) -> str:
     if metric_id == "workout_heart_rate_range_bpm":
         return f"{value} bpm"
     if metric_id == "workout_count_recent":
-        return f"{value} 次"
+        return f"{value} 天（近4周）"
     return value
 
 
@@ -921,6 +921,472 @@ def _audit_fabricated_stage_90d(
     return violations
 
 
+_CORRECTION_USER_RE = re.compile(
+    r"重新|再次|核实|不对|错误|明显错|解析.*不对|重新分析|再次解析|从哪来|哪里来的|"
+    r"睡眠.*(?:不对|错误|核实)|锻炼.*(?:不对|错误|哪里来|从哪来|次数)",
+    re.I,
+)
+
+_EPISODIC_SHORT_METRIC_RE = re.compile(
+    r"^(?:我(?:最近|今天)的?\s*)?"
+    r"(?:睡眠|步数|锻炼|心率|血氧|呼吸率?|HRV|静息心率)(?:呢|吗|\?|？)?$",
+    re.I,
+)
+
+_EXERCISE_SUITABILITY_RE = re.compile(
+    r"适合|能否|可以.*运动|明天|后天|跑步|训练|workout",
+    re.I,
+)
+
+_EXERCISE_ADVICE_ONLY_RE = re.compile(
+    r"^(?:那)?(?:明天|后天|今天)?.*(?:适合|能否|可以|能).*(?:运动|锻炼|跑步|训练)"
+    r"|^(?:跑多久|跑步).*(?:合适|多久|吗)",
+    re.I,
+)
+
+_HEALTH_SUMMARY_RE = re.compile(
+    r"总结|概览|整体.*(?:健康|情况)|健康数据",
+    re.I,
+)
+
+_EPISODIC_DELTA_RE = re.compile(
+    r"^(?:和上周比呢|和昨天比呢|相比怎么样|比呢|正常吗)[\?？]?$",
+    re.I,
+)
+
+_CATALOG_PRIMARY_METRIC: Dict[str, str] = {
+    "sleep": "sleep_time_asleep",
+    "hrv": "hrv_rmssd_ms",
+    "rhr": "resting_heart_rate_bpm",
+    "spo2": "spo2_percent",
+    "respiratory_rate": "respiratory_rate",
+}
+
+_SLEEP_FOCUS_METRIC_IDS = frozenset({"sleep_time_asleep", "sleep_deep", "sleep_rem"})
+# Workout questions are resolved as a pair (HR range + recent count) by the probe layer's
+# _WORKOUT_HINT_RE coupling; treat that pair as a valid narrow focus, mirroring the sleep-stage pair.
+_WORKOUT_FOCUS_METRIC_IDS = frozenset({"workout_heart_rate_range_bpm", "workout_count_recent"})
+_SINGLE_METRIC_FOCUS_MAX = 2
+
+
+def _is_allowed_focus_pair(ids: Sequence[str]) -> bool:
+    s = set(ids)
+    return s <= _SLEEP_FOCUS_METRIC_IDS or s <= _WORKOUT_FOCUS_METRIC_IDS
+
+
+def infer_single_metric_focus_ids(user_message: str) -> List[str]:
+    """
+    Narrow wearable follow-up: one metric (or sleep stage pair), not broad compare.
+
+    Uses hint/catalog mapping only — does **not** expand via ``user_message_needs_wearable_query``.
+    """
+    msg = (user_message or "").strip()
+    if not msg:
+        return []
+    if _EXERCISE_ADVICE_ONLY_RE.search(msg):
+        return []
+    if _COMPARE_ALL_METRICS_RE.search(msg) or user_requests_snapshot_correction(msg):
+        return []
+    from pha.intent_gates import infer_wearable_metrics
+    from pha.wearable_metric_probe import _CATALOG_TO_REGISTRY, _hint_match_metric_ids
+
+    if _EPISODIC_SHORT_METRIC_RE.match(msg):
+        for cat in infer_wearable_metrics(msg):
+            primary = _CATALOG_PRIMARY_METRIC.get(cat)
+            if primary:
+                return [primary]
+        return []
+
+    seen: Set[str] = set()
+    ordered: List[str] = []
+    for mid in _hint_match_metric_ids(msg):
+        if mid not in seen:
+            seen.add(mid)
+            ordered.append(mid)
+    # Narrow-hint precedence: an unambiguous registry-hint match (e.g. 「心率范围呢」「请分析心率指标」)
+    # must win over the broad bundle `core` fallback, which would otherwise add every comparable
+    # metric and blow past the single-focus cap. Only expand via infer_wearable_metrics when hints
+    # are empty or already over-broad.
+    if ordered and len(ordered) <= _SINGLE_METRIC_FOCUS_MAX and (
+        len(ordered) < 2 or _is_allowed_focus_pair(ordered)
+    ):
+        return ordered
+    for cat in infer_wearable_metrics(msg):
+        for reg_id in _CATALOG_TO_REGISTRY.get(cat, ()):
+            if reg_id not in seen:
+                seen.add(reg_id)
+                ordered.append(reg_id)
+    if not ordered or len(ordered) > _SINGLE_METRIC_FOCUS_MAX:
+        return []
+    if len(ordered) == 2 and not _is_allowed_focus_pair(ordered):
+        return []
+    return ordered
+
+
+def _format_metric_focus_rows(
+    table: CompareTableV1,
+    focus_ids: Set[str],
+) -> List[str]:
+    lines: List[str] = []
+    for row in table.rows:
+        if row.metric_id not in focus_ids or not row.snapshot_value:
+            continue
+        label = _METRIC_LABEL_ZH.get(row.metric_id, row.metric_id)
+        snap = _format_snapshot_display(row.metric_id, row.snapshot_value)
+        if row.row_kind == "comparable_90d" and (row.baseline_90d_value or "").strip() not in (
+            "",
+            "NO_BASELINE",
+        ):
+            base = row.baseline_90d_value or "—"
+            rng = _format_range_human(row.baseline_90d_range)
+            verdict = _VERDICT_LABEL_ZH.get(row.verdict, row.verdict_note or "")
+            unit = (row.baseline_90d_unit or "").strip()
+            base_s = f"{base} {unit}".strip()
+            lines.append(
+                f"- **{label}**：本次截图 **{snap}**；近 90 天平均 **{base_s}**（区间 {rng}），{verdict}。"
+            )
+        else:
+            lines.append(f"- **{label}**：本次截图 **{snap}**（仅来自本次截图）。")
+    return lines
+
+
+def build_compare_table_metric_focus_summary(
+    table: CompareTableV1,
+    metric_ids: Sequence[str],
+    *,
+    intro: str = "关于您关心的指标：",
+) -> str:
+    focus_ids = {m for m in metric_ids if m}
+    rows = _format_metric_focus_rows(table, focus_ids)
+    if not rows:
+        return ""
+    lines = [intro, ""] + rows
+    if "sleep_time_asleep" in focus_ids:
+        lines.append("")
+        lines.append(
+            "说明：睡眠总时长取自截图顶部 **TIME ASLEEP**，不是 Stages 里的 **Awake（清醒时长）**。"
+        )
+    if "workout_count_recent" in focus_ids:
+        lines.append("")
+        lines.append(
+            "说明：近期锻炼次数取自 Workouts 页「过去 4 周锻炼天数」，不是日历上的日期数字。"
+        )
+    return "\n".join(lines).strip()
+
+
+def infer_episodic_delta_focus_ids(
+    user_message: str,
+    prior_user_message: str = "",
+) -> List[str]:
+    """Reuse prior turn metric when user sends a bare delta prompt (e.g. 「和上周比呢」)."""
+    msg = (user_message or "").strip()
+    if not msg or not _EPISODIC_DELTA_RE.match(msg):
+        return []
+    prior = (prior_user_message or "").strip()
+    if not prior:
+        return []
+    return infer_single_metric_focus_ids(prior)
+
+
+def build_episodic_delta_focus_answer(
+    table: CompareTableV1,
+    user_message: str,
+    *,
+    prior_user_message: str = "",
+) -> str:
+    focus_ids = infer_episodic_delta_focus_ids(user_message, prior_user_message)
+    if not focus_ids:
+        return ""
+    body = build_compare_table_metric_focus_summary(
+        table,
+        focus_ids,
+        intro="关于您关心的指标（与近 90 天基线对比；系统无逐周切片）：",
+    )
+    return body
+
+
+def build_exercise_suitability_followup_answer(
+    table: CompareTableV1,
+    user_message: str,
+) -> str:
+    """Screenshot-session exercise advice without re-pasting full CompareTable."""
+    if not _EXERCISE_ADVICE_ONLY_RE.search((user_message or "").strip()):
+        return ""
+    if not any(r.snapshot_value for r in table.rows):
+        return ""
+    adv = _deterministic_exercise_advisory(table)
+    msg = (user_message or "").strip()
+    if re.search(r"跑步|跑多久", msg, re.I):
+        adv = (
+            f"{adv}\n"
+            "- 若选择跑步：睡眠偏短时建议 **20–30 分钟** 轻松慢跑或快走，勿强行长距离。"
+        )
+    return adv
+
+
+def build_health_summary_followup_answer(
+    table: CompareTableV1,
+    user_message: str,
+) -> str:
+    """Screenshot-session health overview without LLM re-dump."""
+    if not _HEALTH_SUMMARY_RE.search((user_message or "").strip()):
+        return ""
+    if not any(r.snapshot_value for r in table.rows):
+        return ""
+    summary = compare_table_to_user_summary(table)
+    return (
+        "### 健康数据概览\n\n"
+        f"{summary}\n\n"
+        "以上为本次截图读数小结，非医疗诊断。"
+    )
+
+
+def _build_episodic_caution_brief(table: CompareTableV1) -> str:
+    """Top caution bullets from CompareTable verdicts — no full-table preamble."""
+    lines = ["关于您还需留意的事项：", ""]
+    cautions: List[str] = []
+    for row in table.rows:
+        if not row.snapshot_value:
+            continue
+        if row.verdict not in ("above_mean", "below_mean"):
+            continue
+        label = _METRIC_LABEL_ZH.get(row.metric_id, row.metric_id)
+        note = (row.verdict_note or "").strip() or _verdict_note(
+            row.verdict,
+            row_kind=row.row_kind,
+            metric_id=row.metric_id,
+        )
+        cautions.append(f"- **{label}**：本次 **{row.snapshot_value}**；{note}")
+        if len(cautions) >= 3:
+            break
+    if not cautions:
+        cautions.append(
+            "- 本次读数未见明显越界项；请结合身体感受决定是否调整运动强度。",
+        )
+    lines.extend(cautions)
+    lines.append("")
+    lines.append("以上为延伸参考，非医疗诊断。")
+    return "\n".join(lines)
+
+
+def build_weak_episodic_followup_answer(
+    table: CompareTableV1,
+    user_message: str,
+) -> str:
+    """
+    Screenshot-session weak follow-up: close ack or advisory caution brief.
+
+    Catalog-driven (weak_followup / advisory_followup) — no phrase routing in callers.
+    """
+    from pha.health_intent_catalog import (
+        is_advisory_episodic_followup,
+        is_weak_close_followup,
+        is_weak_episodic_followup,
+    )
+
+    msg = (user_message or "").strip()
+    if not msg or not any(r.snapshot_value for r in table.rows):
+        return ""
+    if is_weak_close_followup(msg):
+        return (
+            "不客气。请留意先前读数小结中的异常项；"
+            "如有胸痛、持续不适或症状持续，请及时就医。"
+        )
+    if is_advisory_episodic_followup(msg) or (
+        is_weak_episodic_followup(msg) and not is_weak_close_followup(msg)
+    ):
+        return _build_episodic_caution_brief(table)
+    return ""
+
+
+def user_message_needs_wearable_session_reuse(
+    user_message: str,
+    prior_user_message: str = "",
+) -> bool:
+    """Follow-up turns that should reload session screenshot parse (skip_llm path)."""
+    from pha.intent_gates import (
+        user_message_needs_attachment_recall,
+        user_message_needs_wearable_query,
+    )
+    from pha.wearable_snapshot_v1 import user_requests_wearable_snapshot_remerge
+
+    msg = (user_message or "").strip()
+    if not msg:
+        return False
+    from pha.health_intent_catalog import is_weak_episodic_followup
+
+    if is_weak_episodic_followup(msg):
+        return True
+    if user_message_needs_wearable_query(msg):
+        return True
+    if user_message_needs_attachment_recall(msg):
+        return True
+    if user_requests_wearable_snapshot_remerge(msg):
+        return True
+    if user_requests_snapshot_correction(msg):
+        return True
+    if infer_single_metric_focus_ids(msg):
+        return True
+    if infer_episodic_delta_focus_ids(msg, prior_user_message):
+        return True
+    if _EXERCISE_ADVICE_ONLY_RE.search(msg):
+        return True
+    if _HEALTH_SUMMARY_RE.search(msg):
+        return True
+    return False
+
+
+def build_single_metric_focus_answer(
+    table: CompareTableV1,
+    user_message: str,
+    *,
+    prior_user_message: str = "",
+) -> str:
+    """Deterministic single-metric reply from CompareTable (screenshot session follow-up)."""
+    delta = build_episodic_delta_focus_answer(
+        table,
+        user_message,
+        prior_user_message=prior_user_message,
+    )
+    if delta:
+        return delta
+    focus_ids = infer_single_metric_focus_ids(user_message)
+    if not focus_ids:
+        return ""
+    has_snap = any(
+        r.metric_id in focus_ids and r.snapshot_value for r in table.rows
+    )
+    if not has_snap and set(focus_ids) <= _SLEEP_FOCUS_METRIC_IDS:
+        return (
+            "关于您关心的指标：\n\n"
+            "- **深睡/REM**：本次截图未识别到可靠的睡眠分期数值（总睡眠时长已读取）。"
+            "请查看 Health 睡眠「Stages」页核对。"
+        )
+    if not has_snap:
+        return ""
+    return build_compare_table_metric_focus_summary(table, focus_ids)
+
+
+def build_catalog_followup_focus_answer(
+    table: CompareTableV1,
+    user_message: str,
+) -> str:
+    """Screenshot session: 「睡眠呢」→ CompareTable 主指标，而非数仓均值。"""
+    from pha.intent_gates import infer_wearable_metrics
+
+    cats = infer_wearable_metrics(user_message or "")
+    if len(cats) != 1:
+        return ""
+    primary = _CATALOG_PRIMARY_METRIC.get(cats[0])
+    if not primary:
+        return ""
+    has_snap = any(r.metric_id == primary and r.snapshot_value for r in table.rows)
+    if not has_snap:
+        return ""
+    return build_compare_table_metric_focus_summary(table, [primary])
+
+
+def _deterministic_exercise_advisory(table: CompareTableV1) -> str:
+    """Brief exercise guidance from CompareTable verdicts (no LLM)."""
+    sleep_row = next((r for r in table.rows if r.metric_id == "sleep_time_asleep"), None)
+    hrv_row = next((r for r in table.rows if r.metric_id == "hrv_rmssd_ms"), None)
+    lines = ["### 运动建议", ""]
+    notes: List[str] = []
+    if sleep_row and sleep_row.snapshot_value:
+        notes.append(f"今日睡眠 {sleep_row.snapshot_value}")
+    if hrv_row and hrv_row.snapshot_value:
+        notes.append(f"HRV {hrv_row.snapshot_value}")
+    if notes:
+        lines.append(f"综合 {'、'.join(notes)} 与近 90 天对比：")
+    lines.append(
+        "- 明天可进行**低至中等强度**运动（散步、轻度阻力训练、椭圆机等）；"
+        "若感疲劳或睡眠偏短，优先恢复性活动并避免高强度间歇。"
+    )
+    lines.append("- 以上为健康参考，非医疗诊断；如有胸痛、持续不适请就医。")
+    return "\n".join(lines)
+
+
+def build_compare_first_upload_answer(
+    table: CompareTableV1,
+    user_message: str,
+) -> str:
+    """
+    First screenshot upload: CompareTable SSO before LLM (~180s → ~0s).
+
+    Skips when user asks single-metric or correction-only turns.
+    """
+    if infer_single_metric_focus_ids(user_message) or user_requests_snapshot_correction(
+        user_message,
+    ):
+        return ""
+    if not any(r.snapshot_value for r in table.rows):
+        return ""
+    summary = compare_table_to_user_summary(table)
+    if _EXERCISE_SUITABILITY_RE.search(user_message or ""):
+        return f"{summary}\n\n{_deterministic_exercise_advisory(table)}"
+    return summary
+
+
+def compare_table_to_llm_markdown_focused(
+    table: CompareTableV1,
+    metric_ids: Sequence[str],
+) -> str:
+    """Tier0 compare block narrowed to requested metrics (reduces LLM re-dump)."""
+    focus = {m for m in metric_ids if m}
+    if not focus:
+        return compare_table_to_llm_markdown(table)
+    subset = CompareTableV1(
+        schema_version=table.schema_version,
+        reference_date=table.reference_date,
+        window_90d=dict(table.window_90d or {}),
+        rows=[r for r in table.rows if r.metric_id in focus],
+    )
+    if not subset.rows:
+        return compare_table_to_llm_markdown(table)
+    head = "【本次仅关注以下指标 · 勿列举其他截图 KPI】"
+    return f"{head}\n\n{compare_table_to_llm_markdown(subset)}"
+
+
+_CORRECTION_METRIC_HINTS: Dict[str, Tuple[str, ...]] = {
+    "sleep_time_asleep": ("睡眠", "睡觉", "asleep"),
+    "workout_count_recent": ("锻炼", "workout", "运动", "次数"),
+    "sleep_deep": ("深睡",),
+    "sleep_rem": ("REM", "快速眼动"),
+}
+
+
+def user_requests_snapshot_correction(user_message: str) -> bool:
+    return bool(_CORRECTION_USER_RE.search(user_message or ""))
+
+
+def _correction_metric_ids(user_message: str, table: CompareTableV1) -> List[str]:
+    msg = user_message or ""
+    ids: List[str] = []
+    for metric_id, hints in _CORRECTION_METRIC_HINTS.items():
+        if any(h.lower() in msg.lower() for h in hints):
+            ids.append(metric_id)
+    if ids:
+        return ids
+    if user_requests_snapshot_correction(msg):
+        return [r.metric_id for r in table.rows if r.snapshot_value][:3]
+    return []
+
+
+def build_compare_table_correction_summary(
+    table: CompareTableV1,
+    user_message: str,
+) -> str:
+    """Focused re-statement for user correction turns (avoid full-table paste loop)."""
+    focus_ids = _correction_metric_ids(user_message, table)
+    if not focus_ids:
+        return ""
+    return build_compare_table_metric_focus_summary(
+        table,
+        focus_ids,
+        intro="根据截图重新核对后的关键指标：",
+    )
+
+
 def compare_table_to_user_summary(table: CompareTableV1) -> str:
     """User-visible fallback summary (no Tier0 / metric_id jargon)."""
     lines = ["根据您上传的 Apple Watch 截图，与过去约 90 天记录对比：", ""]
@@ -1124,8 +1590,24 @@ def apply_compare_table_fallback_if_needed(
     if audit.get("passed"):
         return answer_text, audit
     audit["fallback_applied"] = True
-    audit["fallback_mode"] = "hybrid"
     audit["tier0_markdown"] = table.to_markdown()
+    if user_requests_snapshot_correction(user_message):
+        correction = build_compare_table_correction_summary(table, user_message)
+        if correction:
+            audit["fallback_mode"] = "correction_focus"
+            advisory = extract_llm_health_advisory(answer_text, table)
+            audit["advisory_chars"] = len(advisory or "")
+            if advisory:
+                return f"{correction}\n\n{advisory}", audit
+            return correction, audit
+    focus_ids = infer_single_metric_focus_ids(user_message)
+    if focus_ids:
+        focus = build_compare_table_metric_focus_summary(table, focus_ids)
+        if focus:
+            audit["fallback_mode"] = "metric_focus"
+            audit["advisory_chars"] = 0
+            return focus, audit
+    audit["fallback_mode"] = "hybrid"
     hybrid = build_compare_table_hybrid_answer(table, answer_text)
     audit["advisory_chars"] = max(0, len(hybrid) - len(compare_table_to_user_summary(table)))
     return hybrid, audit
@@ -1152,9 +1634,22 @@ __all__ = [
     "compare_table_from_parsed",
     "compare_table_to_llm_markdown",
     "compare_table_to_markdown",
+    "build_compare_table_correction_summary",
     "compare_table_to_user_summary",
     "compute_verdict",
     "parse_snapshot_numeric",
+    "build_compare_table_metric_focus_summary",
+    "build_episodic_delta_focus_answer",
+    "build_exercise_suitability_followup_answer",
+    "build_health_summary_followup_answer",
+    "build_weak_episodic_followup_answer",
+    "infer_episodic_delta_focus_ids",
+    "user_message_needs_wearable_session_reuse",
+    "build_compare_first_upload_answer",
+    "build_single_metric_focus_answer",
+    "compare_table_to_llm_markdown_focused",
+    "infer_single_metric_focus_ids",
     "persist_compare_table_to_parsed",
+    "user_requests_snapshot_correction",
     "user_requests_workout_compare",
 ]

@@ -28,7 +28,8 @@ from pha.intent_gates import (
 
 logger = logging.getLogger(__name__)
 
-REPORT_SCHEMA = "pha.harness_report/v1.1"
+REPORT_SCHEMA = "pha.harness_report/v1.2"
+REPORT_SCHEMA_V11 = "pha.harness_report/v1.1"
 REPORT_SCHEMA_LEGACY = "pha.harness_report/v1"
 
 _MATRIX_TARGETS: Dict[str, Dict[str, Any]] = {
@@ -160,6 +161,11 @@ class HarnessTurnInputs:
     dynamic_slots: Dict[str, Any] = field(default_factory=dict)
     metadata_catalog_block: str = ""
     shadow_routing: Dict[str, Any] = field(default_factory=dict)
+    turn_scope: Dict[str, Any] = field(default_factory=dict)
+    episodic: Dict[str, Any] = field(default_factory=dict)
+    goal_class: str = ""
+    goal_source: str = ""
+    arbiter_decision: Dict[str, Any] = field(default_factory=dict)
 
 
 def _slot_rows(inputs: HarnessTurnInputs) -> List[Dict[str, Any]]:
@@ -466,6 +472,16 @@ def build_harness_report(inputs: HarnessTurnInputs) -> Dict[str, Any]:
         }
     if inputs.shadow_routing:
         report["shadow_routing"] = dict(inputs.shadow_routing)
+    if inputs.turn_scope:
+        report["turnScope"] = dict(inputs.turn_scope)
+    if inputs.episodic:
+        report["episodic"] = dict(inputs.episodic)
+    if inputs.goal_class:
+        report["goalClass"] = inputs.goal_class
+    if inputs.goal_source:
+        report["goalSource"] = inputs.goal_source
+    if inputs.arbiter_decision:
+        report["arbiterDecision"] = dict(inputs.arbiter_decision)
     return report
 
 
@@ -672,7 +688,7 @@ def dry_run_harness_report(
     raw_sup = f"{tier0_supp}\n\n---\n\n{tier1_supp}".strip()
 
     pre_results: List[Dict[str, Any]] = []
-    if plan_allows_heuristic_snapshot(plan):
+    if plan_allows_heuristic_snapshot(plan, user_message=user_message):
         from pha.agent_tools import apply_health_heuristic_override
 
         _, _, pre_results = apply_health_heuristic_override(user_message, uid)
@@ -771,7 +787,7 @@ def dry_run_harness_report(
         raw_supplemental=raw_sup,
         system_after_stack=str(messages[0].get("content") or "") if messages else "",
         system_content_max=SYSTEM_CONTENT_MAX_CHARS,
-        inject_wearable_snapshot=plan_allows_heuristic_snapshot(plan),
+        inject_wearable_snapshot=plan_allows_heuristic_snapshot(plan, user_message=user_message),
         build_forced_dossier=build_dossier,
         has_snapshot=SNAPSHOT_MARKER in last_user,
         tool_results=pre_results,
