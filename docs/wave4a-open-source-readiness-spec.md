@@ -142,6 +142,7 @@ git filter-repo --path reports/chb/ --invert-paths --force
 - [x] 通用 Enterprise RFC 双文档落盘（W-13/W-14）
 - [x] PR CI offline selfcheck 绿
 - [x] README 含免责声明 + Future Work 锚点
+- [x] Dashboard UI 默认英文 + `PHA_UI_LANG` + 顶栏 en/zh 切换
 - [x] 首发操作指南：[`GITHUB_PUBLISH.md`](GITHUB_PUBLISH.md)
 
 ---

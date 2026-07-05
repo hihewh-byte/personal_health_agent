@@ -2,6 +2,7 @@
 
 ## v0.4.0-beta（Wave 4a · 开源发行版整备 · 2026-07-05）
 
+- **Dashboard UI i18n**：默认 **英文**（`PHA_UI_LANG=en`）；顶栏 English/中文 切换 · `pha/static/js/i18n.js`
 - **PII 绝育**：`reports/chb/**/brief_*.json` 移出仓库；`.gitignore` 加固；合成 CHB fixture `tests/fixtures/chb/`
 - **Wave 4a Spec**：[`docs/wave4a-open-source-readiness-spec.md`](docs/wave4a-open-source-readiness-spec.md) v1.0
 - **Enterprise Future RFC**：device ingestion adapter · multi-tenant gateway（DOC-only，零厂商硬编码）

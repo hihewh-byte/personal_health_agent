@@ -23,6 +23,7 @@
   - [`docs/rfcs/rfc-device-ingestion-adapter.md`](rfcs/rfc-device-ingestion-adapter.md) — 双层标签 · `DeviceIngestAdapter`
   - [`docs/rfcs/rfc-enterprise-multi-tenant.md`](rfcs/rfc-enterprise-multi-tenant.md) — 复合 `user_id` · Gateway RBAC · FSM 零改
 - **发行标签**：`v0.4.0-beta`（开源整备 · build marker 仍 `pha-v2.3.32-full-import-only`）
+- **UI i18n**：Dashboard 默认 **英文**（`PHA_UI_LANG=en`）；顶栏可切换中文；`pha/static/js/i18n.js`
 - **验收**：`run_selfchecks.sh` · `pha_chb_compiler_selfcheck` · P1 tier F 回归
 
 ---

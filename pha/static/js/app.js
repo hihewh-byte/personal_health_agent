@@ -1,5 +1,11 @@
 window.pdfParsing = false;
 (function () {
+  var t = function (k, vars) {
+    return (window.phaI18n && window.phaI18n.t(k, vars)) || k;
+  };
+  var localeTag = function () {
+    return (window.phaI18n && window.phaI18n.localeTag()) || 'en-US';
+  };
   var COLORS = { steps: '#2ecc71', hrv: '#3498db', sleep: '#9b59b6', rhr: '#e67e22' };
   var chat = document.getElementById('chat-stream');
   var chatStatusBar = document.getElementById('chat-status-bar');
@@ -74,7 +80,7 @@ window.pdfParsing = false;
 
   function showChatStatus(msg, opts) {
     if (!chatStatusBar || !chatStatusText) return;
-    var text = (msg || '').trim() || '处理中…';
+    var text = (msg || '').trim() || t('chat.processing');
     chatStatusBar.classList.remove('hidden');
     chatStatusText.textContent = text;
     if (opts && opts.pin) pinnedTemporalStatus = text;
@@ -91,7 +97,7 @@ window.pdfParsing = false;
       if (typ === 'status' || typ === 'info') {
         var m = ev.message || ev.status || ev.info || '';
         if (ev.code === 'background_too_long') {
-          showToast(m || '生活背景内容过长，已跳过落库。', 'error');
+          showToast(m || t('toast.bg.long'), 'error');
         }
       if (/已合并|定账\s+\d+\s+行/.test(m)) {
         showToast(m, 'success');
@@ -132,14 +138,14 @@ window.pdfParsing = false;
       return;
     }
     if (typ === 'attach_error') {
-      showChatStatus('📎 附件解析失败：' + (ev.message || ev.code || 'unknown'), { pin: true });
+      showChatStatus(t('chat.attach.fail', { detail: ev.message || ev.code || 'unknown' }), { pin: true });
       loadHealthAssets();
       return;
     }
     if (typ === 'clarify') {
       pinnedTemporalStatus = '';
       hideChatStatus();
-      var clarifyPrompt = ev.prompt || '请选择一项以继续。';
+      var clarifyPrompt = ev.prompt || t('chat.clarify');
       var clarifyChoices = ev.choices || [];
       if (streamingAssistantBubble) {
         finalizeStreamingAssistantBubble(clarifyPrompt, [], clarifyPrompt);
@@ -197,7 +203,7 @@ window.pdfParsing = false;
       return;
     }
     if (typ === 'error') {
-      throw new Error(ev.message || '对话失败');
+      throw new Error(ev.message || t('chat.fail'));
     }
   }
 
@@ -211,7 +217,7 @@ window.pdfParsing = false;
     row.className = 'pha-chat-row pha-chat-row--assistant';
     var shell = document.createElement('div');
     shell.className = 'pha-chat-audit-wrap';
-    shell.innerHTML = '<div class="pha-audit-panel"><strong>🔬 数据流水线审计</strong>' + inner + '</div>';
+    shell.innerHTML = '<div class="pha-audit-panel"><strong>🔬 ' + esc(t('audit.pipeline')) + '</strong>' + inner + '</div>';
     row.appendChild(shell);
     chat.appendChild(row);
     chat.scrollTop = chat.scrollHeight;
@@ -270,7 +276,7 @@ window.pdfParsing = false;
   }
 
   function appendError(res, detail) {
-    var html = '<div class="text-red-400 font-semibold">请求失败</div><div class="text-sm text-slate-400">HTTP ' + esc(res.status) + '</div><pre class="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded border border-gray-700 bg-black/30 p-2 text-xs">' + esc(detail) + '</pre>';
+    var html = '<div class="text-red-400 font-semibold">' + esc(t('error.request.fail')) + '</div><div class="text-sm text-slate-400">HTTP ' + esc(res.status) + '</div><pre class="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded border border-gray-700 bg-black/30 p-2 text-xs">' + esc(detail) + '</pre>';
     appendChat(html, 'assistant');
   }
 
@@ -333,8 +339,8 @@ window.pdfParsing = false;
     var stored = '__auto__';
     try { stored = localStorage.getItem(PDF_MODEL_OVERRIDE_KEY) || '__auto__'; } catch (e) { /* ignore */ }
     var rootOpts = [
-      { v: '__auto__', t: '智能选择 (Auto-Detect)' },
-      { v: 'FALLBACK_TO_HEURISTIC', t: '纯规则提取 (Heuristic)' }
+      { v: '__auto__', t: t('event.pdf.auto') },
+      { v: 'FALLBACK_TO_HEURISTIC', t: t('event.pdf.heuristic') }
     ];
     pdfModelOverrideSelect.innerHTML = '';
     rootOpts.forEach(function (o) {
@@ -354,7 +360,7 @@ window.pdfParsing = false;
     if (stored === '__auto__' && autoModel) {
       var hint = document.getElementById('vision-status');
       if (hint && !window.pdfParsing) {
-        hint.textContent = 'PDF 智能解析将使用: ' + autoModel;
+        hint.textContent = t('event.pdf.using', { model: autoModel });
       }
     }
   }
@@ -431,8 +437,8 @@ window.pdfParsing = false;
     var modal = document.getElementById('error-debug-modal');
     var pre = document.getElementById('error-debug-pre');
     var tit = document.getElementById('error-debug-title');
-    if (tit) tit.textContent = title || '调试输出';
-    if (pre) pre.textContent = (snippet && String(snippet)) || '(无片段)';
+    if (tit) tit.textContent = title || t('error.debug.default');
+    if (pre) pre.textContent = (snippet && String(snippet)) || t('error.debug.empty');
     if (modal) modal.showModal();
   }
 
@@ -446,7 +452,7 @@ window.pdfParsing = false;
       try { snip = JSON.stringify(parsed.detailObj, null, 2); } catch (e) { snip = String(parsed.detailObj); }
     }
     if (!snip) snip = typeof parsed.detail === 'string' ? parsed.detail : '';
-    openErrorDebugModal('HTTP ' + res.status + ' · 解析/服务错误', snip.slice(0, 12000));
+    openErrorDebugModal('HTTP ' + res.status + ' · ' + t('error.debug.title'), snip.slice(0, 12000));
   }
 
 
@@ -456,7 +462,7 @@ window.pdfParsing = false;
     if (loading) {
       pdfSubmit.disabled = true;
       pdfSubmit.classList.add('loading');
-      pdfSubmit.textContent = '解析中…';
+      pdfSubmit.textContent = t('vision.parsing');
     } else {
       pdfSubmit.classList.remove('loading');
       updatePdfSubmitState();
@@ -476,11 +482,11 @@ window.pdfParsing = false;
     if (window.pdfParsing || !pdfSubmit) return;
     if (!pdfFiles.length) {
       pdfSubmit.disabled = false;
-      pdfSubmit.textContent = '手动重新上传';
+      pdfSubmit.textContent = t('vision.reupload');
       return;
     }
     pdfSubmit.disabled = false;
-    pdfSubmit.textContent = '手动重新上传 (' + pdfFiles.length + ')';
+    pdfSubmit.textContent = t('vision.reupload.n', { count: pdfFiles.length });
   }
 
   function renderMedicalAlertItems(items, count) {
@@ -489,10 +495,10 @@ window.pdfParsing = false;
     var summary = document.getElementById('medical-alerts-summary');
     if (!modal || !list || !summary) return;
     var n = count != null ? count : (items ? items.length : 0);
-    summary.textContent = '共 ' + n + ' 项异常指标';
+    summary.textContent = t('modal.alerts.summary', { count: n });
     list.innerHTML = '';
     if (!items || !items.length) {
-      list.innerHTML = '<p class="opacity-60 py-4">暂无异常记录</p>';
+      list.innerHTML = '<p class="opacity-60 py-4">' + esc(t('modal.alerts.none')) + '</p>';
       modal.showModal();
       return;
     }
@@ -504,8 +510,8 @@ window.pdfParsing = false;
       var unit = it.unit ? ' ' + it.unit : '';
       row.innerHTML =
         '<div class="font-semibold text-slate-100">' + esc(label) + ' <span class="text-amber-400">(' + esc(it.metric_code || '') + ')</span></div>' +
-        '<div class="mt-1">报告日 ' + esc(it.report_date) + ' · 值 <span class="font-mono">' + esc(val) + esc(unit) + '</span></div>' +
-        '<div class="text-xs opacity-70 mt-1">参考 ' + esc(it.reference_range || '—') + '</div>';
+        '<div class="mt-1">' + esc(t('modal.alerts.report', { date: it.report_date, value: val, unit: unit })) + '</div>' +
+        '<div class="text-xs opacity-70 mt-1">' + esc(t('modal.alerts.ref', { ref: it.reference_range || '—' })) + '</div>';
       list.appendChild(row);
     });
     modal.showModal();
@@ -517,7 +523,7 @@ window.pdfParsing = false;
     var list = document.getElementById('medical-alerts-list');
     var summary = document.getElementById('medical-alerts-summary');
     if (!modal || !list || !summary) return;
-    summary.textContent = '加载中…';
+    summary.textContent = t('trends.loading');
     list.innerHTML = '';
     modal.showModal();
     try {
@@ -571,14 +577,14 @@ window.pdfParsing = false;
     var name = (file.name || '').toLowerCase();
     if (/\.(png|jpe?g|webp|gif|bmp)$/i.test(name)) {
       var vm = (visionState && visionState.model) ? visionState.model : 'llama3.2-vision:11b';
-      vs.textContent = '图片视觉解析将使用: ' + vm;
+      vs.textContent = t('event.vision.using', { model: vm });
       return;
     }
     if (/\.pdf$/i.test(name)) {
       var sel = pdfModelOverrideSelect && pdfModelOverrideSelect.value;
-      if (sel === '__auto__') vs.textContent = 'PDF 文本解析：智能选择本地最大文本模型';
-      else if (sel === 'FALLBACK_TO_HEURISTIC') vs.textContent = 'PDF 解析：纯规则提取（不调用 LLM）';
-      else if (sel) vs.textContent = 'PDF 智能解析将使用: ' + sel;
+      if (sel === '__auto__') vs.textContent = t('event.pdf.auto.hint');
+      else if (sel === 'FALLBACK_TO_HEURISTIC') vs.textContent = t('event.pdf.heuristic.hint');
+      else if (sel) vs.textContent = t('event.pdf.using', { model: sel });
     }
   }
 
@@ -670,10 +676,10 @@ window.pdfParsing = false;
     }
     if (aiDoctorBtn) {
       if (cached && cached.user_id === uid) {
-        aiDoctorBtn.textContent = '✓ AI 医生已审阅 · 点击重新审阅';
+        aiDoctorBtn.textContent = t('hero.doctor.done');
         aiDoctorBtn.className = 'done';
       } else {
-        aiDoctorBtn.textContent = '⚙️ AI 医生离线静默中 / 点击重新审阅';
+        aiDoctorBtn.textContent = t('hero.doctor.idle');
         aiDoctorBtn.className = '';
       }
     }
@@ -763,7 +769,7 @@ window.pdfParsing = false;
     });
     if (moreMetricsSummary && metricsPayload) {
       var extra = metricsPayload.medical_count || 0;
-      moreMetricsSummary.textContent = '展开更多健康指标报告 (查看全量 ' + extra + '+ 项体检与长尾体征)';
+      moreMetricsSummary.textContent = t('trends.more', { extra: extra });
     }
   }
 
@@ -784,20 +790,20 @@ window.pdfParsing = false;
       }
       await renderDynamicMetricCharts();
     } catch (e) {
-      if (goldenTagsEl) goldenTagsEl.innerHTML = '<span class="text-slate-500 text-xs">指标目录加载失败</span>';
+      if (goldenTagsEl) goldenTagsEl.innerHTML = '<span class="text-slate-500 text-xs">' + esc(t('trends.catalog.fail')) + '</span>';
     }
   }
 
   function runAiDoctorReview(background) {
     var uid = (userIdInput.value || 'default').trim() || 'default';
     if (aiDoctorBtn) {
-      aiDoctorBtn.textContent = '🧠 AI 医生深度审阅中…';
+      aiDoctorBtn.textContent = t('hero.doctor.running');
       aiDoctorBtn.className = 'running';
     }
     var streamUrl = '/dashboard/medical-alerts/stream?user_id=' + encodeURIComponent(uid) + '&refresh=1';
     var finished = function (data, err) {
       if (err) {
-        if (aiDoctorBtn) { aiDoctorBtn.textContent = '⚠️ 审阅失败 · 点击重试'; aiDoctorBtn.className = ''; }
+        if (aiDoctorBtn) { aiDoctorBtn.textContent = t('hero.doctor.fail'); aiDoctorBtn.className = ''; }
         return;
       }
       saveAlertsCache(data, uid);
@@ -863,8 +869,8 @@ window.pdfParsing = false;
         var sub = document.createElement('p');
         sub.className = 'sub';
         sub.textContent = rawPts.length > pts.length
-          ? pts.length + ' 点（由 ' + rawPts.length + ' 降采样）'
-          : (pts.length ? pts.length + ' 个数据点' : '暂无历史数据');
+          ? t('chart.downsampled', { count: pts.length, raw: rawPts.length })
+          : (pts.length ? t('chart.points', { count: pts.length }) : t('chart.no.data'));
         var host = document.createElement('div');
         host.className = 'chart-canvas-host';
         var canvas = document.createElement('canvas');
@@ -898,7 +904,7 @@ window.pdfParsing = false;
       if (!anyData) {
         var onlyActivity = selected.length === 1 && String(selected[0]).toLowerCase() === 'activity_kcal';
         if (onlyActivity && trendsEmpty) {
-          trendsEmpty.textContent = '无活动消耗数据，请先导入 Apple Health';
+          trendsEmpty.textContent = t('trends.no.activity');
         }
         trendsEmpty.classList.remove('hidden');
       }
@@ -936,11 +942,11 @@ window.pdfParsing = false;
 
   function formatAssetSourceTag(kind) {
     var k = String(kind || 'pdf').toLowerCase();
-    if (k === 'chat_ingest') return '[聊天归仓]';
-    if (k === 'event_drawer') return '[事件归仓]';
-    if (k === 'screenshot') return '[截图解析]';
-    if (k === 'scan') return '[扫描解析]';
-    return '[PDF解析]';
+    if (k === 'chat_ingest') return t('source.chat');
+    if (k === 'event_drawer') return t('source.event');
+    if (k === 'screenshot') return t('source.screenshot');
+    if (k === 'scan') return t('source.scan');
+    return t('source.pdf');
   }
 
   function formatAssetMetricsPreview(raw) {
@@ -1017,7 +1023,7 @@ window.pdfParsing = false;
       var details = document.createElement('details');
       details.className = 'pha-asset-details';
       var summary = document.createElement('summary');
-      summary.textContent = '点击查看指标预览';
+      summary.textContent = t('event.preview');
       var pre = document.createElement('pre');
       pre.className = 'pha-asset-preview-body';
       pre.textContent = previewText;
@@ -1031,7 +1037,7 @@ window.pdfParsing = false;
       var jsonLink = document.createElement('button');
       jsonLink.type = 'button';
       jsonLink.className = 'pha-asset-json-link';
-      jsonLink.textContent = '📋 原始 JSON';
+      jsonLink.textContent = t('event.raw.json');
       jsonLink.addEventListener('click', function (e) {
         e.stopPropagation();
         openAssetJsonModal(it.id);
@@ -1046,13 +1052,13 @@ window.pdfParsing = false;
     var delBtn = document.createElement('button');
     delBtn.type = 'button';
     delBtn.className = 'pha-asset-del-btn';
-    delBtn.textContent = '🗑️ 删除';
+    delBtn.textContent = t('event.delete.one');
     delBtn.addEventListener('click', function (e) {
       e.stopPropagation();
-      if (!confirm('彻底删除该日体检数据与关联文件？不可恢复。')) return;
+      if (!confirm(t('event.delete.one.confirm'))) return;
       delBtn.disabled = true;
       deleteHealthAssetsBatch([String(it.id)], [it.report_date || '']).then(function () {
-        showToast('已连根拔起删除', 'success');
+        showToast(t('event.deleted.one'), 'success');
         animateAssetRowsExit(wrap, function () {
           loadHealthAssets({ animateIn: true });
           loadTrends();
@@ -1083,7 +1089,7 @@ window.pdfParsing = false;
     });
     if (!res.ok) {
       var err = await readHttpErrorDetail(res);
-      throw new Error(err.detail || '删除失败');
+      throw new Error(err.detail || t('chat.fail'));
     }
     return res.json();
   }
@@ -1106,7 +1112,7 @@ window.pdfParsing = false;
       if (toolbar) toolbar.classList.toggle('hidden', !healthAssetsCache.length);
       if (selectAll) selectAll.checked = false;
       if (!healthAssetsCache.length) {
-        list.innerHTML = '<p class="opacity-50 text-xs py-2">暂无归档；上传 PDF 或截图后将显示于此</p>';
+        list.innerHTML = '<p class="opacity-50 text-xs py-2">' + esc(t('event.no.archived')) + '</p>';
         return;
       }
       healthAssetsCache.forEach(function (it, idx) {
@@ -1142,10 +1148,10 @@ window.pdfParsing = false;
           if (cb.dataset.reportDate) dates.push(cb.dataset.reportDate);
         });
         if (!ids.length && !dates.length) {
-          showToast('请先勾选要删除的资产', 'error');
+          showToast(t('event.select.first'), 'error');
           return;
         }
-        if (!confirm('将物理删除选中附件并清空对应 SQLite 指标/叙事，确定？')) return;
+        if (!confirm(t('event.delete.confirm'))) return;
         batchBtn.disabled = true;
         var checkedRows = [];
         document.querySelectorAll('.pha-asset-cb:checked').forEach(function (cb) {
@@ -1153,7 +1159,7 @@ window.pdfParsing = false;
           if (row) checkedRows.push(row);
         });
         deleteHealthAssetsBatch(ids, dates).then(function (r) {
-          showToast('已删除 ' + (r.report_dates || []).length + ' 个体检日资产', 'success');
+          showToast(t('event.deleted', { count: (r.report_dates || []).length }), 'success');
           animateAssetRowsExit(checkedRows, function () {
             loadHealthAssets({ animateIn: true });
             loadTrends();
@@ -1172,7 +1178,7 @@ window.pdfParsing = false;
     var meta = document.getElementById('asset-json-meta');
     if (!modal || !pre) return;
     var uid = (userIdInput.value || 'default').trim() || 'default';
-    pre.textContent = '加载中…';
+    pre.textContent = t('trends.loading');
     meta.textContent = '';
     modal.showModal();
     try {
@@ -1204,7 +1210,7 @@ window.pdfParsing = false;
     try {
       var d = new Date(iso);
       if (isNaN(d.getTime())) return String(iso).slice(0, 19);
-      return d.toLocaleString('zh-CN', { hour12: false });
+      return d.toLocaleString(localeTag(), { hour12: false });
     } catch (e) { return String(iso).slice(0, 19); }
   }
 
@@ -1285,15 +1291,12 @@ window.pdfParsing = false;
       }
       if (syncCountsLine && d.counts) {
         syncCountsLine.textContent =
-          '睡眠 ' + (d.counts.sleep_segments || 0).toLocaleString() + ' 条 · ' +
-          '运动(步数) ' + (d.counts.steps_samples || 0).toLocaleString() + ' 条 · ' +
-          '锻炼会话 ' + (d.counts.workout_sessions || 0).toLocaleString() + ' 条 · ' +
-          '日聚合 ' + (d.counts.daily_days || 0).toLocaleString() + ' 天';
+          t('sync.counts', { sleep: (d.counts.sleep_segments || 0).toLocaleString(), steps: (d.counts.steps_samples || 0).toLocaleString(), workouts: (d.counts.workout_sessions || 0).toLocaleString(), days: (d.counts.daily_days || 0).toLocaleString() });
       }
       if (syncStatusMessage) {
         var msg = d.message || '';
         if (d.workout_backfill_needed) {
-          msg = (msg ? msg + ' · ' : '') + '锻炼数据未入库：请选择 export.zip 与「锻炼 (HKWorkout)」模块后增量同步';
+          msg = (msg ? msg + ' · ' : '') + t('sync.workout.hint');
         }
         syncStatusMessage.textContent = msg;
       }
@@ -1328,11 +1331,11 @@ window.pdfParsing = false;
       var elMed = document.getElementById('stat-medical');
       if (elMed) elMed.textContent = d.medical_alerts != null ? d.medical_alerts : '—';
       if (d.db_samples != null) {
-        dbStatusText.textContent = (d.db_samples / 1e6 >= 1 ? (d.db_samples / 1e6).toFixed(1) + 'M' : d.db_samples.toLocaleString()) + ' 行';
+        dbStatusText.textContent = t('db.rows', { count: (d.db_samples / 1e6 >= 1 ? (d.db_samples / 1e6).toFixed(1) + 'M' : d.db_samples.toLocaleString()) });
         dbBadge.className = 'inline-flex items-center gap-1 rounded-md border border-emerald-600/40 bg-emerald-950/20 px-2 py-1 text-xs text-emerald-200';
       }
       if (d.db_max_timestamp) {
-        dbBadge.title = '最新: ' + d.db_max_timestamp.slice(0, 10);
+        dbBadge.title = t('db.latest', { date: d.db_max_timestamp.slice(0, 10) });
       }
     } catch (e) { /* ignore */ }
     finally {
@@ -1350,16 +1353,16 @@ window.pdfParsing = false;
   }
 
   async function loadModels() {
-    modelHint.textContent = '探测模型…';
+    modelHint.textContent = t('model.probing');
     connBadge.className = 'inline-flex items-center gap-1 rounded-md border border-amber-600/50 bg-amber-950/30 px-2 py-1 text-xs text-amber-200';
-    connBadge.innerHTML = '<span class="inline-block h-3 w-3 animate-spin rounded-full border-2 border-amber-400 border-t-transparent mr-1 align-middle"></span> 连接中';
+    connBadge.innerHTML = '<span class="inline-block h-3 w-3 animate-spin rounded-full border-2 border-amber-400 border-t-transparent mr-1 align-middle"></span> ' + esc(t('conn.connecting'));
     modelSelect.innerHTML = '';
     try {
       var res = await fetch('/llm/models');
       if (!res.ok) throw new Error((await readHttpErrorDetail(res)).detail);
       var data = await res.json();
       var models = data.models || [];
-      if (!models.length) throw new Error('未检测到 Ollama 模型');
+      if (!models.length) throw new Error(t('model.none'));
       models.forEach(function (m) {
         var o = document.createElement('option');
         o.value = m; o.textContent = m;
@@ -1368,21 +1371,21 @@ window.pdfParsing = false;
       selectDefaultModel(models);
       lastLoadedModel = modelSelect.value || '';
       updateActiveModelLabel();
-      modelHint.textContent = '已连接 · 默认 ' + (modelSelect.value || '（自动）');
+      modelHint.textContent = t('model.connected', { model: (modelSelect.value || t('model.auto')) });
       connBadge.className = 'inline-flex items-center gap-1 rounded-md border border-emerald-600/40 bg-emerald-950/20 px-2 py-1 text-xs text-emerald-200';
-      connBadge.textContent = 'Ollama 在线';
+      connBadge.textContent = t('conn.online');
       sendBtn.disabled = false;
     } catch (e) {
       modelHint.textContent = String(e.message || e);
       connBadge.className = 'inline-flex items-center gap-1 rounded-md border border-red-600/50 bg-red-950/30 px-2 py-1 text-xs text-red-200';
-      connBadge.textContent = '未连接';
+      connBadge.textContent = t('conn.offline');
       sendBtn.disabled = true;
     }
   }
 
   async function loadTrends() {
     var uid = (userIdInput.value || 'default').trim() || 'default';
-    trendsPre.textContent = '加载中…';
+    trendsPre.textContent = t('trends.loading');
     try {
       var res = await fetch('/user/context?user_id=' + encodeURIComponent(uid));
       if (!res.ok) throw new Error((await readHttpErrorDetail(res)).detail);
@@ -1458,7 +1461,7 @@ window.pdfParsing = false;
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'pha-ingest-gold-btn';
-    btn.textContent = '保存到健康档案';
+    btn.textContent = t('ingest.save');
     btn.addEventListener('click', function () {
       ingestChatPayload(userMessageId, ingestPayload, tracks, btn);
     });
@@ -1469,7 +1472,7 @@ window.pdfParsing = false;
 
   async function ingestChatPayload(userMessageId, ingestPayload, tracks, btn) {
     var uid = (userIdInput.value || 'default').trim() || 'default';
-    if (btn) { btn.disabled = true; btn.textContent = '归仓中…'; }
+    if (btn) { btn.disabled = true; btn.textContent = t('ingest.saving'); }
     try {
       var res = await fetch('/api/chat/messages/' + encodeURIComponent(userMessageId) + '/ingest', {
         method: 'POST',
@@ -1484,17 +1487,17 @@ window.pdfParsing = false;
       });
       if (!res.ok) {
         var err = await readHttpErrorDetail(res);
-        showToast(err.detail || '归仓失败', 'error');
-        if (btn) { btn.disabled = false; btn.textContent = '保存到健康档案'; }
+        showToast(err.detail || t('ingest.fail'), 'error');
+        if (btn) { btn.disabled = false; btn.textContent = t('ingest.save'); }
         return;
       }
       var data = await res.json();
-      showToast('已归仓：指标 ' + (data.metrics_stored || 0) + ' · 叙事 ' + (data.narratives_stored || 0), 'success');
-      if (btn) { btn.textContent = '✓ 已归仓'; btn.disabled = true; }
+      showToast(t('ingest.done', { metrics: (data.metrics_stored || 0), narratives: (data.narratives_stored || 0) }), 'success');
+      if (btn) { btn.textContent = t('ingest.saved'); btn.disabled = true; }
       loadTrends();
     } catch (e) {
       showToast(String(e), 'error');
-      if (btn) { btn.disabled = false; btn.textContent = '📥 识别结果一键归仓（存入 SQLite 趋势表）'; }
+      if (btn) { btn.disabled = false; btn.textContent = t('ingest.btn.long'); }
     }
   }
 
@@ -1558,13 +1561,13 @@ window.pdfParsing = false;
       var mods = data.modules || [];
       syncModuleSelect.innerHTML = '';
       if (!mods.length) {
-        syncModuleSelect.innerHTML = '<option value="">（无已注册模块）</option>';
+        syncModuleSelect.innerHTML = '<option value="">' + esc(t('module.none')) + '</option>';
         updateSyncModuleSubmitState();
         return;
       }
       var placeholder = document.createElement('option');
       placeholder.value = '';
-      placeholder.textContent = '选择增量同步模块…';
+      placeholder.textContent = t('module.placeholder');
       syncModuleSelect.appendChild(placeholder);
       mods.forEach(function (m) {
         var opt = document.createElement('option');
@@ -1581,7 +1584,7 @@ window.pdfParsing = false;
       }
       updateSyncModuleSubmitState();
     } catch (e) {
-      syncModuleSelect.innerHTML = '<option value="">模块列表加载失败</option>';
+      syncModuleSelect.innerHTML = '<option value="">' + esc(t('module.load.fail')) + '</option>';
       updateSyncModuleSubmitState();
     }
   }
@@ -1619,18 +1622,18 @@ window.pdfParsing = false;
           clearInterval(t);
           if (uploadProgress) uploadProgress.value = 100;
           if (importSubmit) importSubmit.disabled = false;
-          showParseToast('✅ Apple Health 同步完成', 'success');
+          showParseToast(t('import.done'), 'success');
           await Promise.all([loadTrends(), loadSyncStatus()]);
         } else if (st.status === 'failed') {
           clearInterval(t);
           if (uploadStatus) uploadStatus.classList.add('text-error');
           if (importSubmit) importSubmit.disabled = false;
-          showParseToast('❌ 导入失败：' + (st.message || st.error || ''), 'error');
+          showParseToast(t('import.fail', { detail: (st.message || st.error || '') }), 'error');
           await loadSyncStatus();
         }
       } catch (e) {
         clearInterval(t);
-        showToast('❌ 导入状态轮询失败：' + (e.message || String(e)), 'error');
+        showToast(t('import.poll.fail', { detail: (e.message || String(e)) }), 'error');
       }
     }, 2000);
   }
@@ -1640,7 +1643,7 @@ window.pdfParsing = false;
       var fd = new FormData();
       fd.append('file', f, f.name);
       fd.append('user_id', uid);
-      if (uploadStatus) uploadStatus.textContent = '上传 ' + f.name + ' (' + (idx + 1) + '/' + total + ')…';
+      if (uploadStatus) uploadStatus.textContent = t('import.uploading', { name: f.name, idx: idx + 1, total: total });
       var xhr = new XMLHttpRequest();
       xhr.open('POST', '/data/upload');
       xhr.upload.onprogress = function (e) {
@@ -1651,7 +1654,7 @@ window.pdfParsing = false;
           try { resolve(JSON.parse(xhr.responseText || '{}')); } catch (e) { resolve({}); }
         } else reject(new Error('HTTP ' + xhr.status));
       };
-      xhr.onerror = function () { reject(new Error('网络错误')); };
+      xhr.onerror = function () { reject(new Error(t('network.error'))); };
       xhr.send(fd);
     });
   }
@@ -1659,12 +1662,12 @@ window.pdfParsing = false;
   function uploadSyncModuleZip(f, uid, moduleId) {
     return new Promise(function (resolve, reject) {
       var mid = (moduleId || '').trim();
-      if (!mid) return reject(new Error('未选择同步模块'));
+      if (!mid) return reject(new Error(t('module.not.selected')));
       var fd = new FormData();
       fd.append('file', f, f.name);
       fd.append('user_id', uid);
       fd.append('clear_existing', 'false');
-      if (uploadStatus) uploadStatus.textContent = '增量同步 ' + mid + '：' + f.name + '…';
+      if (uploadStatus) uploadStatus.textContent = t('import.module', { module: mid, name: f.name });
       var xhr = new XMLHttpRequest();
       xhr.open('POST', '/data/sync-module/' + encodeURIComponent(mid));
       xhr.onload = function () {
@@ -1672,7 +1675,7 @@ window.pdfParsing = false;
           try { resolve(JSON.parse(xhr.responseText || '{}')); } catch (e) { resolve({}); }
         } else reject(new Error('HTTP ' + xhr.status));
       };
-      xhr.onerror = function () { reject(new Error('网络错误')); };
+      xhr.onerror = function () { reject(new Error(t('network.error'))); };
       xhr.send(fd);
     });
   }
@@ -1688,10 +1691,10 @@ window.pdfParsing = false;
     try {
       var rep = await uploadSyncModuleZip(zipFiles[0], uid, mod);
       if (rep.job_id) pollImportJob(rep.job_id);
-      else showParseToast('模块同步已提交', 'success');
+      else showParseToast(t('import.module.done'), 'success');
       await loadSyncStatus();
     } catch (e) {
-      showToast('模块同步失败：' + (e.message || String(e)), 'error');
+      showToast(t('import.module.fail', { detail: (e.message || String(e)) }), 'error');
     } finally {
       updateSyncModuleSubmitState();
       if (importSubmit) importSubmit.disabled = !zipFiles.length;
@@ -1719,11 +1722,11 @@ window.pdfParsing = false;
                 await loadSyncStatus();
                 if (st.status === 'complete') {
                   clearInterval(t);
-                  showParseToast('✅ Apple Health 同步完成', 'success');
+                  showParseToast(t('import.done'), 'success');
                   resolve();
                 } else if (st.status === 'failed') {
                   clearInterval(t);
-                  showParseToast('❌ 导入失败：' + (st.message || st.error || ''), 'error');
+                  showParseToast(t('import.fail', { detail: (st.message || st.error || '') }), 'error');
                   resolve();
                 }
               } catch (e) { clearInterval(t); resolve(); }
@@ -1735,7 +1738,7 @@ window.pdfParsing = false;
       await Promise.all([loadTrends(), loadSyncStatus()]);
     } catch (e) {
       if (uploadStatus) uploadStatus.textContent = String(e.message || e);
-      showParseToast('❌ 上传失败：' + (e.message || e), 'error');
+      showParseToast(t('import.upload.fail', { detail: (e.message || e) }), 'error');
     } finally {
       if (importSubmit) importSubmit.disabled = false;
     }
@@ -1746,9 +1749,9 @@ window.pdfParsing = false;
   if (factoryResetBtn) {
     factoryResetBtn.addEventListener('click', async function () {
       var uid = (userIdInput.value || 'default').trim() || 'default';
-      if (!window.confirm('将永久删除 ' + uid + ' 的全部可穿戴与体检数据。确定继续？')) return;
+      if (!window.confirm(t('danger.reset.confirm', { uid: uid }))) return;
       factoryResetBtn.disabled = true;
-      if (factoryResetStatus) factoryResetStatus.textContent = '正在清空…';
+      if (factoryResetStatus) factoryResetStatus.textContent = t('danger.resetting');
       try {
         var res = await fetch(
           '/data/factory-reset?user_id=' + encodeURIComponent(uid) + '&confirm=true',
@@ -1756,12 +1759,12 @@ window.pdfParsing = false;
         );
         if (!res.ok) throw new Error((await readHttpErrorDetail(res)).detail);
         var data = await res.json();
-        if (factoryResetStatus) factoryResetStatus.textContent = data.message || '已清空';
-        showParseToast('✅ ' + (data.message || '数据已清空'), 'success');
+        if (factoryResetStatus) factoryResetStatus.textContent = data.message || t('factory.cleared');
+        showParseToast('✅ ' + (data.message || t('factory.cleared')), 'success');
         await Promise.all([loadSyncStatus(), loadHeroStats(), loadTrends(), loadHealthAssets()]);
       } catch (e) {
         if (factoryResetStatus) factoryResetStatus.textContent = String(e.message || e);
-        showParseToast('❌ 清空失败：' + (e.message || e), 'error');
+        showParseToast(t('factory.clear.fail', { detail: (e.message || e) }), 'error');
       } finally {
         factoryResetBtn.disabled = false;
       }
@@ -1774,7 +1777,7 @@ window.pdfParsing = false;
     recomputeBtn.addEventListener('click', async function () {
       var uid = (userIdInput.value || 'default').trim() || 'default';
       recomputeBtn.disabled = true;
-      if (recomputeStatus) recomputeStatus.textContent = '正在去重并重算睡眠并集…';
+      if (recomputeStatus) recomputeStatus.textContent = t('danger.recomputing');
       try {
         var res = await fetch(
           '/data/recompute-integrity?user_id=' + encodeURIComponent(uid),
@@ -1782,8 +1785,8 @@ window.pdfParsing = false;
         );
         if (!res.ok) throw new Error((await readHttpErrorDetail(res)).detail);
         var data = await res.json();
-        if (recomputeStatus) recomputeStatus.textContent = data.message || '重算完成';
-        showParseToast(data.message || '数据完整性重算完成');
+        if (recomputeStatus) recomputeStatus.textContent = data.message || t('recompute.done');
+        showParseToast(data.message || t('recompute.done'));
         flashHeroStats();
         await Promise.all([loadHeroStats(), loadTrends(), loadHealthAssets()]);
       } catch (e) {
@@ -1982,14 +1985,14 @@ window.pdfParsing = false;
 
   function ledgerChipCountLabel(entry) {
     if (!entry || entry.status === 'pending') return '…';
-    if (entry.status === 'skipped') return '跳过';
+    if (entry.status === 'skipped') return t('page.skipped');
     var captured = ledgerPageCapturedCount(entry);
     var m = (entry.metrics || []).length;
     var narr = (entry.narratives || []).length;
     var det = entry.total_detected_rows;
-    if (det != null && det > captured) return captured + '/' + det + ' 项';
+    if (det != null && det > captured) return t('page.items.ratio', { captured: captured, detected: det });
     if (narr > 0) return m + '+' + narr;
-    return captured + ' 项';
+    return t('page.items', { count: captured });
   }
 
   function renderPageLedger() {
@@ -2001,7 +2004,7 @@ window.pdfParsing = false;
       chip.className = 'pha-page-chip ' + ledgerChipStatus(entry) + (idx === activeLedgerPageIndex ? ' active' : '');
       chip.setAttribute('role', 'tab');
       chip.setAttribute('aria-selected', idx === activeLedgerPageIndex ? 'true' : 'false');
-      chip.title = '第 ' + entry.pageNum + ' 页';
+      chip.title = t('page.n', { n: entry.pageNum });
       chip.innerHTML = '<span>P' + entry.pageNum + '</span><span class="chip-count">' + esc(ledgerChipCountLabel(entry)) + '</span>';
       chip.addEventListener('click', function () { selectLedgerPage(idx); });
       visionPageLedger.appendChild(chip);
@@ -2123,7 +2126,7 @@ window.pdfParsing = false;
       else eventMetricsTableWrap.classList.add('hidden');
     }
     if (eventMetricsPageLabel && opts.pageNum) {
-      eventMetricsPageLabel.textContent = '版块 A · 第 ' + opts.pageNum + ' 页数字指标（' + (rows || []).length + ' 项）';
+      eventMetricsPageLabel.textContent = t('block.a.page', { page: opts.pageNum, count: (rows || []).length });
     }
     if (eventAbnormalHint) {
       eventAbnormalHint.textContent = abnormalN
@@ -2164,7 +2167,7 @@ window.pdfParsing = false;
       if (!content.trim()) return;
       var trimmed = content.trim();
       out.push({
-        category: cat.trim() || '未分类',
+        category: cat.trim() || t('narr.uncategorized'),
         content: trimmed,
         summary: trimmed.length > 50 ? trimmed.slice(0, 50) + '…' : trimmed
       });
@@ -2180,9 +2183,9 @@ window.pdfParsing = false;
       var card = document.createElement('div');
       card.className = 'pha-narrative-card';
       card.innerHTML =
-        '<label>板块归类</label><input class="pha-narrative-category" value="' + esc(n.category || '') + '" />' +
-        '<label style="margin-top:0.35rem">原文描述</label><textarea class="pha-narrative-content">' + esc(n.content || '') + '</textarea>' +
-        '<button type="button" class="pha-narrative-remove" data-i="' + idx + '">删除本段</button>';
+        '<label>' + esc(t('narr.category')) + '</label><input class="pha-narrative-category" value="' + esc(n.category || '') + '" />' +
+        '<label style="margin-top:0.35rem">' + esc(t('narr.content')) + '</label><textarea class="pha-narrative-content">' + esc(n.content || '') + '</textarea>' +
+        '<button type="button" class="pha-narrative-remove" data-i="' + idx + '">' + esc(t('narr.remove')) + '</button>';
       eventNarrativesList.appendChild(card);
     });
     if (eventNarrativesEmpty) {
@@ -2190,7 +2193,7 @@ window.pdfParsing = false;
       else eventNarrativesEmpty.classList.remove('hidden');
     }
     if (eventNarrativesLabel && opts.pageNum) {
-      eventNarrativesLabel.textContent = '版块 B · 第 ' + opts.pageNum + ' 页健康叙事（' + (narratives || []).length + ' 段）';
+      eventNarrativesLabel.textContent = t('block.b.page', { page: opts.pageNum, count: (narratives || []).length });
     }
     eventNarrativesList.querySelectorAll('.pha-narrative-remove').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -2217,7 +2220,7 @@ window.pdfParsing = false;
     return ext.narratives.map(function (n) {
       var content = n.content || '';
       return {
-        category: n.category || '未分类',
+        category: n.category || t('narr.uncategorized'),
         content: content,
         summary: n.summary || (content.length > 50 ? content.slice(0, 50) + '…' : content),
         hospital: hosp
@@ -2408,24 +2411,24 @@ window.pdfParsing = false;
       visionParseProgress.classList.remove('hidden');
       visionParseProgress.value = 0;
     }
-    if (visionStatus) visionStatus.textContent = 'AI 正在阅片…';
+    if (visionStatus) visionStatus.textContent = t('vision.reading');
 
     var isPdf = /\.pdf$/i.test(file.name || '');
     var total = 1;
 
     if (isPdf) {
-      if (visionStatus) visionStatus.textContent = '正在分析 PDF 页数…';
+      if (visionStatus) visionStatus.textContent = t('vision.pdf.pages');
       var infoFd = new FormData();
       infoFd.append('file', file, file.name);
       var infoRes = await fetch('/vision/pdf-info', { method: 'POST', body: infoFd });
       if (!infoRes.ok) {
         var ie = await readHttpErrorDetail(infoRes);
-        throw new Error(ie.detail || '无法读取 PDF 页数');
+        throw new Error(ie.detail || t('vision.pdf.fail.pages'));
       }
       var info = await infoRes.json();
       total = info.pages_to_process || info.total_pages || 1;
       if (info.total_pages > info.pages_to_process) {
-        showToast('PDF 共 ' + info.total_pages + ' 页，将处理前 ' + total + ' 页', 'info');
+        showToast(t('vision.pdf.truncate', { total: info.total_pages, n: total }), 'info');
       }
     }
 
@@ -2440,14 +2443,14 @@ window.pdfParsing = false;
       if (visionParseProgress) visionParseProgress.value = Math.min(99, pct);
       if (err) {
         updatePageLedgerEntry(pi, null, err);
-        if (visionStatus) visionStatus.textContent = '第 ' + (pi + 1) + '/' + tot + ' 页失败: ' + (err.message || err);
+        if (visionStatus) visionStatus.textContent = t('vision.page.fail', { page: pi + 1, total: tot, detail: (err.message || err) });
         return;
       }
       updatePageLedgerEntry(pi, data, null);
       var pack = collectAllNarrativesFromLedger();
       var n = collectAllMetricsFromLedger().length;
       if (visionStatus) {
-        visionStatus.textContent = '第 ' + (pi + 1) + '/' + tot + ' 页完成 · 合并数字 ' + n + ' 项 + 叙事 ' + pack.narratives.length + ' 段';
+        visionStatus.textContent = t('vision.page.done', { page: pi + 1, total: tot, metrics: n, narr: pack.narratives.length });
       }
       if (visionStatus) {
         visionStatus.textContent = '第 ' + (pi + 1) + '/' + tot + ' 页完成';
@@ -2458,7 +2461,7 @@ window.pdfParsing = false;
     var mergedN = collectAllMetricsFromLedger().length;
     var mergedPack = collectAllNarrativesFromLedger();
     if (visionStatus) {
-      visionStatus.textContent = '全部 ' + total + ' 页完成：数字 ' + mergedN + ' 项 + 叙事 ' + mergedPack.narratives.length + ' 段';
+      visionStatus.textContent = t('vision.all.done', { total: total, metrics: mergedN, narr: mergedPack.narratives.length });
     }
     if (!opts.skipAutoIngest) {
       if (mergedN || mergedPack.narratives.length) {
@@ -2472,17 +2475,17 @@ window.pdfParsing = false;
             visionStatus.textContent +=
               ' · 已自动入库 ' + (ing.metrics_stored || 0) + ' 项（可核对后提交事件）';
           }
-          showToast('✅ 抽屉阅片已自动入库 SQLite', 'success');
+          showToast(t('vision.auto.ok'), 'success');
           await loadHealthAssets({ animateIn: true });
           await loadHeroStats();
         } catch (ingErr) {
-          showToast('⚠ 自动入库失败: ' + (ingErr.message || ingErr), 'error');
+          showToast(t('vision.auto.fail', { detail: (ingErr.message || ingErr) }), 'error');
           if (visionStatus) {
             visionStatus.textContent += ' · 自动入库失败，请点「提交事件」';
           }
         }
       } else {
-        showToast('⚠ 阅片未提取到可入库指标，请检查文件或视觉模型', 'error');
+        showToast(t('vision.no.metrics'), 'error');
       }
     }
   }
@@ -2517,13 +2520,13 @@ window.pdfParsing = false;
     eventNarrativesAdd.addEventListener('click', function () {
       if (!pageLedger.length) {
         var narr = collectNarrativesFromDom();
-        narr.push({ category: '未分类', content: '', summary: '' });
+        narr.push({ category: t('narr.uncategorized'), content: '', summary: '' });
         renderPageNarratives(narr);
         return;
       }
       syncPageEditsToLedger(activeLedgerPageIndex);
       var entry = pageLedger[activeLedgerPageIndex];
-      entry.narratives = (entry.narratives || []).concat([{ category: '未分类', content: '', summary: '' }]);
+      entry.narratives = (entry.narratives || []).concat([{ category: t('narr.uncategorized'), content: '', summary: '' }]);
       entry.extractedCount = ledgerPageCapturedCount(entry);
       entry.status = ledgerPageCapturedCount(entry) ? 'success' : entry.status;
       renderPageNarratives(entry.narratives, { pageNum: entry.pageNum, ledgerMode: true });
@@ -2596,7 +2599,7 @@ window.pdfParsing = false;
       persist_narratives: narrPack.narratives.length > 0
     };
     var es = document.getElementById('event-status');
-    if (es) es.textContent = '正在提交…';
+    if (es) es.textContent = t('vision.submitting');
     try {
     var res = await fetch('/events', {
         method: 'POST',
@@ -2609,9 +2612,9 @@ window.pdfParsing = false;
       }
       var data = await res.json();
       if (es) {
-        es.textContent = data.message || ('已保存，入库 ' + (data.metrics_stored || 0) + ' 项');
+        es.textContent = data.message || t('vision.submitted', { count: (data.metrics_stored || 0) });
       }
-      showParseToast('✅ ' + (data.message || '事件与指标已保存'), 'success');
+      showParseToast('✅ ' + (data.message || t('vision.submit.ok')), 'success');
       flashHeroStats();
       await Promise.all([loadHeroStats(), loadHealthAssets()]);
       pendingEventParse = { metrics: [], vision_model: '', source_filename: '' };
@@ -2838,7 +2841,7 @@ window.pdfParsing = false;
     btn.classList.toggle('is-audit-loading', !!loading);
     if (loading) {
       btn.dataset.auditLabel = btn.textContent;
-      btn.textContent = '深度审计进行中…';
+      btn.textContent = t('audit.running');
     } else if (btn.dataset.auditLabel) {
       btn.textContent = btn.dataset.auditLabel;
     }
@@ -2866,21 +2869,21 @@ window.pdfParsing = false;
     var reportPre = document.getElementById('consultation-report-pre');
     var meta = document.getElementById('consultation-meta');
     var shimmer = document.getElementById('consultation-cot-shimmer');
-    var cotDefault = 'M4 显存已满载 · 本地 DeepSeek-R1:14b 正在疯狂推导中...';
+    var cotDefault = t('audit.cot.shimmer');
     auditReportMarkdownBuf = '';
     if (thinkPre) thinkPre.textContent = '';
     if (reportPre) reportPre.innerHTML = '';
-    if (meta) meta.textContent = '路由锁定 deepseek-r1:14b · 正在打包 SQLite 双轨卷宗…';
+    if (meta) meta.textContent = t('audit.meta');
     if (shimmer) shimmer.textContent = cotDefault;
     if (modal) modal.showModal();
     setAuditButtonLoading(true);
     auditStreamBusy = true;
-    showToast('PHA 大脑 v1.6 · DeepSeek-R1:14b 大审计已启动', 'info');
+    showToast(t('audit.started'), 'info');
     try {
       var res = await fetch('/analytics/global-audit?user_id=' + encodeURIComponent(uid), { method: 'POST' });
       if (!res.ok) {
         var er = await readHttpErrorDetail(res);
-        throw new Error(er.detail || '大审计请求失败');
+        throw new Error(er.detail || t('audit.fail', { detail: '' }));
       }
       if (!res.body || !res.body.getReader) {
         throw new Error('浏览器不支持流式响应');
@@ -2936,16 +2939,16 @@ window.pdfParsing = false;
           renderAuditReportMarkdown();
         } else if (ev.event === 'done') {
           if (meta) meta.textContent = (ev.model || 'deepseek-r1:14b') + ' · ' + (ev.generated_on || '');
-          if (shimmer) shimmer.textContent = '思维链已闭合 · 大白皮书渲染完成';
+          if (shimmer) shimmer.textContent = t('audit.cot.done');
           if (thinkPre && ev.thinking && !thinkPre.textContent) thinkPre.textContent = ev.thinking;
           if (ev.report_markdown) {
             auditReportMarkdownBuf = ev.report_markdown;
             lastAuditReportMarkdown = ev.report_markdown;
             renderAuditReportMarkdown();
           }
-          showToast('✅ PHA 历史上第一次纯离线大审计已完成', 'success');
+          showToast(t('audit.done'), 'success');
         } else if (ev.event === 'error') {
-          throw new Error(ev.message || '大审计失败');
+          throw new Error(ev.message || t('audit.fail', { detail: '' }));
         }
       }
 
@@ -2957,9 +2960,9 @@ window.pdfParsing = false;
       }
       drainAuditStreamBuffer(true).forEach(handleAuditStreamEvent);
     } catch (e) {
-      if (meta) meta.textContent = '审计失败 · ' + (e.message || e);
-      if (shimmer) shimmer.textContent = '推理中断，请检查 Ollama 与 deepseek-r1:14b';
-      showToast('❌ 大审计异常：' + (e.message || e), 'error');
+      if (meta) meta.textContent = t('audit.fail.meta', { detail: (e.message || e) });
+      if (shimmer) shimmer.textContent = t('audit.cot.interrupted');
+      showToast(t('audit.fail', { detail: (e.message || e) }), 'error');
     } finally {
       auditStreamBusy = false;
       setAuditButtonLoading(false);
@@ -2982,7 +2985,7 @@ window.pdfParsing = false;
   function updateActiveModelLabel() {
     if (!activeModelLabel) return;
     var m = (modelSelect && modelSelect.value) ? modelSelect.value : '—';
-    activeModelLabel.textContent = '算力引擎 · ' + m;
+    activeModelLabel.textContent = t('chat.engine', { model: m });
   }
 
   async function unloadOllamaModel(modelName) {
@@ -3016,13 +3019,13 @@ window.pdfParsing = false;
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'pha-chat-session-btn';
-      btn.textContent = s.title || '新会话';
+      btn.textContent = s.title || t('chat.new.session');
       btn.dataset.sessionId = s.id;
       var del = document.createElement('button');
       del.type = 'button';
       del.className = 'pha-chat-session-del';
       del.textContent = '×';
-      del.title = '删除会话';
+      del.title = t('chat.delete.title');
       del.dataset.sessionId = s.id;
       li.appendChild(btn);
       li.appendChild(del);
@@ -3123,7 +3126,7 @@ window.pdfParsing = false;
       renderAttachPreview(files);
       var uid = (userIdInput.value || 'default').trim() || 'default';
       try {
-        showChatStatus('📎 正在上传 ' + files.length + ' 个附件…', { pin: false });
+        showChatStatus(t('chat.uploading', { count: files.length }), { pin: false });
         var paths = [];
         var names = [];
         for (var fi = 0; fi < files.length; fi++) {
@@ -3140,14 +3143,14 @@ window.pdfParsing = false;
             : ('已上传：' + names[0]);
         }
         showChatStatus(
-          '📎 已上传，可直接输入问题并发送（服务端将 OCR + 视觉解析）',
+          t('chat.upload.ready'),
           { pin: false }
         );
         loadHealthAssets();
       } catch (e) {
         pendingAttachBundle = null;
         pendingAttachMeta = null;
-        if (chatAttachLabel) chatAttachLabel.textContent = '上传异常';
+        if (chatAttachLabel) chatAttachLabel.textContent = t('chat.upload.error');
         showChatStatus(String(e.message || e), { pin: true });
       }
     });
@@ -3161,7 +3164,7 @@ window.pdfParsing = false;
     card.className = 'pha-fact-card';
     var title = document.createElement('div');
     title.className = 'pha-fact-card-title';
-    title.textContent = '数字卡（Manifest T0）';
+    title.textContent = t('chat.fact.card');
     card.appendChild(title);
     ev.items.slice(0, 8).forEach(function (it) {
       var line = document.createElement('div');
@@ -3222,7 +3225,7 @@ window.pdfParsing = false;
 
   async function sendClarifyChoice(choiceId, label) {
     var model = (modelSelect.value || '').trim();
-    if (!model) return appendError({ status: 0 }, '未选择模型');
+    if (!model) return appendError({ status: 0 }, t('chat.no.model'));
     if (!choiceId) return;
     var msg = (label || choiceId).trim();
     appendChat(msg, 'user');
@@ -3251,7 +3254,7 @@ window.pdfParsing = false;
         hideChatStatus();
         return appendError(res, _pe.detail);
       }
-      if (!res.body || !res.body.getReader) throw new Error('浏览器不支持流式响应');
+      if (!res.body || !res.body.getReader) throw new Error(t('chat.no.stream'));
       var reader = res.body.getReader();
       var decoder = new TextDecoder();
       var buf = '';
@@ -3280,7 +3283,7 @@ window.pdfParsing = false;
 
   async function sendAsk() {
     var model = (modelSelect.value || '').trim();
-    if (!model) return appendError({ status: 0 }, '未选择模型');
+    if (!model) return appendError({ status: 0 }, t('chat.no.model'));
     var msg = (q.value || '').trim();
     if (!msg && !(pendingAttachBundle && pendingAttachBundle.paths && pendingAttachBundle.paths.length)) return;
     var attachLabel = '';
@@ -3295,7 +3298,7 @@ window.pdfParsing = false;
     pinnedTemporalStatus = '';
     auditPanelShownThisTurn = false;
     if (/睡眠|步数|心率|hrv|体检|分析|对比|20\d{2}/i.test(msg)) {
-      showChatStatus('AI 正在勾兑时间轴：等待服务端确认年份与体检锚点…', { pin: false });
+      showChatStatus(t('chat.timeline'), { pin: false });
     }
     beginStreamingAssistantBubble();
     var uid = (userIdInput.value || 'default').trim() || 'default';
@@ -3337,7 +3340,7 @@ window.pdfParsing = false;
         hideChatStatus();
         return appendError(res, _pe.detail);
       }
-      if (!res.body || !res.body.getReader) throw new Error('浏览器不支持流式响应');
+      if (!res.body || !res.body.getReader) throw new Error(t('chat.no.stream'));
       var reader = res.body.getReader();
       var decoder = new TextDecoder();
       var buf = '';
@@ -3367,9 +3370,9 @@ window.pdfParsing = false;
   function exportConsultationMarkdown() {
     var reportEl = document.getElementById('consultation-report-pre');
     var thinkEl = document.getElementById('consultation-thinking-pre');
-    var md = '# PHA 深度健康审计报告\n\n';
+    var md = t('audit.md.title') + '\n\n';
     if (thinkEl && thinkEl.textContent.trim()) {
-      md += '## 思维链\n\n' + thinkEl.textContent.trim() + '\n\n';
+      md += t('audit.md.cot') + '\n\n' + thinkEl.textContent.trim() + '\n\n';
     }
     md += (reportEl && reportEl.innerText) ? reportEl.innerText.trim() : (lastAuditReportMarkdown || '');
     var blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
@@ -3383,15 +3386,15 @@ window.pdfParsing = false;
   function followUpFromAudit() {
     var reportEl = document.getElementById('consultation-report-pre');
     var md = (reportEl && reportEl.innerText) ? reportEl.innerText.trim() : (lastAuditReportMarkdown || '');
-    if (!md) return showToast('暂无审计报告可追问', 'error');
+    if (!md) return showToast(t('audit.no.report'), 'error');
     chatExtraSystemContext = '[System Context: 深度审计报告内容]\n' + md.slice(0, 12000);
     var modal = document.getElementById('consultation-modal');
     if (modal) modal.close();
     if (q) {
-      q.value = '基于这份刚刚生成的深度审计报告，我想追问：';
+      q.value = t('audit.followup.q');
       q.focus();
     }
-    showToast('已注入审计报告上下文，请继续提问', 'success');
+    showToast(t('audit.followup.injected'), 'success');
   }
 
   var onboardingOpenImport = document.getElementById('onboarding-open-import');
@@ -3404,7 +3407,7 @@ window.pdfParsing = false;
   if (onboardingSamplePrompt) {
     onboardingSamplePrompt.addEventListener('click', function () {
       if (q) {
-        q.value = '帮我看看最近一周的步数和睡眠趋势，并给出可执行建议';
+        q.value = t('sample.onboarding');
         q.focus();
       }
     });
@@ -3416,6 +3419,24 @@ window.pdfParsing = false;
   loadPdfTextModels();
   loadChatConfig();
   loadChatSessions();
+
+  function refreshUiLocale() {
+    if (window.phaI18n) window.phaI18n.applyDom();
+    loadModels();
+    loadSyncStatus();
+    loadHealth();
+    refreshVisionStatus();
+    loadChatSessions();
+    if (moreMetricsSummary && metricsPayload) {
+      var extra = Math.max(0, (metricCatalog.length || 0) - DEFAULT_METRIC_PICKS.length);
+      moreMetricsSummary.textContent = t('trends.more', { extra: extra });
+    }
+    if (aiDoctorBtn && !aiDoctorBtn.disabled) {
+      aiDoctorBtn.textContent = t('hero.doctor.idle');
+    }
+  }
+  window.addEventListener('pha-locale-change', refreshUiLocale);
+
   if (chatSessionNewBtn) chatSessionNewBtn.addEventListener('click', createNewChatSession);
   if (chatSessionListEl) {
     chatSessionListEl.addEventListener('click', async function (e) {
@@ -3425,7 +3446,7 @@ window.pdfParsing = false;
       if (!sid) return;
       var uid = (userIdInput.value || 'default').trim() || 'default';
       if (t.classList.contains('pha-chat-session-del')) {
-        if (!confirm('删除此会话？')) return;
+        if (!confirm(t('chat.delete.session'))) return;
         await fetch('/api/chat/sessions/' + encodeURIComponent(sid) + '?user_id=' + encodeURIComponent(uid), { method: 'DELETE' });
         if (currentChatSessionId === sid) { currentChatSessionId = null; if (chat) chat.innerHTML = ''; }
         await loadChatSessions();

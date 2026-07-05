@@ -20,6 +20,7 @@
 - **Lab / supplement attachment QA** — vision parse, episodic focus, numerics manifest compliance
 - **Harness evidence engine** — TurnEvidencePlan, Catalog fetch, Tier0 budget assembly
 - **Metric Registry** — config-driven compare rows + wearable metric catalog
+- **Dashboard UI i18n** — default **English** (`PHA_UI_LANG=en`); switch to 中文 in the top bar
 - **Dashboard** — hero stats, dynamic metric charts, SSE chat, data import drawer
 
 ---
@@ -75,6 +76,7 @@ Open http://127.0.0.1:8788
 | `OLLAMA_MODEL` | `qwen2.5:7b-instruct` | Default chat model |
 | `OLLAMA_MEDICAL_MODEL` | `qwen2.5:7b-instruct` | Vision / medical parse |
 | `PHA_ENV_DEMO_ANCHOR` | _(unset)_ | Optional demo “today” floor (YYYY-MM-DD) |
+| `PHA_UI_LANG` | `en` | Dashboard UI locale: `en` or `zh` (user can override in UI) |
 
 Full list: [.env.example](.env.example)
 

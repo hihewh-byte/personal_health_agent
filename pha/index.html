@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PHA · 个人健康 AI 中心</title>
+  <title>PHA · Personal Health AI</title>
   <!-- Tailwind 可选：国内常无法解析 cdn.tailwindcss.com，布局由下方 pha-layout.css 保证 -->
   <script src="https://cdn.tailwindcss.com" async onerror="window.__phaTailwindFailed=true"></script>
   <script>
@@ -1022,6 +1022,16 @@
     }
     .pha-align-hint.warn { color: #fcd34d; }
     .pha-align-hint.ok { color: #86efac; }
+    .pha-locale-label { font-size: 0.7rem; color: #64748b; margin-left: 0.5rem; }
+    .pha-locale-select {
+      font-size: 0.7rem;
+      padding: 0.15rem 0.35rem;
+      border-radius: 0.35rem;
+      border: 1px solid #475569;
+      background: #0f172a;
+      color: #e2e8f0;
+      margin-left: 0.25rem;
+    }
   </style>
 </head>
 <body class="pha-app">
@@ -1033,29 +1043,34 @@
       <div class="pha-sidebar-scroll">
           <div class="pha-sidebar-logo">PHA</div>
         <p class="pha-sidebar-tag">Health OS</p>
-        <span class="pha-nav-label">菜单</span>
-        <a href="#pha-main-top" class="pha-nav-link">仪表盘</a>
-        <label for="data-drawer" class="pha-nav-link">历史资产</label>
-        <label for="data-drawer" id="open-import-trigger-btn" class="pha-nav-link">数据导入</label>
+        <span class="pha-nav-label" data-i18n="nav.menu">Menu</span>
+        <a href="#pha-main-top" class="pha-nav-link" data-i18n="nav.dashboard">Dashboard</a>
+        <label for="data-drawer" class="pha-nav-link" data-i18n="nav.assets">Health assets</label>
+        <label for="data-drawer" id="open-import-trigger-btn" class="pha-nav-link" data-i18n="nav.import">Data import</label>
         <div class="pha-chat-sessions">
           <div class="pha-chat-sessions-head">
-            <span>历史健康会话</span>
-            <button type="button" id="chat-session-new" title="新建会话">+ 新建</button>
+            <span data-i18n="chat.sessions">Chat history</span>
+            <button type="button" id="chat-session-new" data-i18n-title="chat.new.title" data-i18n="chat.new">+ New</button>
           </div>
-          <ul id="chat-session-list" aria-label="历史会话列表"></ul>
+          <ul id="chat-session-list" data-i18n-aria="chat.sessions"></ul>
         </div>
       </div>
       <div class="pha-sidebar-foot">
-        <button type="button" id="sidebar-deep-audit">生成深度审计报告</button>
+        <button type="button" id="sidebar-deep-audit" data-i18n="sidebar.deep_audit">Generate deep audit report</button>
       </div>
     </aside>
 
     <main id="pha-main-top" class="pha-main-panel">
       <div class="pha-topbar">
         <div class="pha-badges">
-          <span id="conn-badge" class="pha-badge">连接中</span>
+          <span id="conn-badge" class="pha-badge" data-i18n="conn.connecting">Connecting</span>
           <span id="db-badge" class="pha-badge"><span id="db-status-text">DB</span></span>
           <span id="pha-build" class="hidden">…</span>
+          <label for="pha-locale-select" class="pha-locale-label" data-i18n="lang.label">Language</label>
+          <select id="pha-locale-select" class="pha-locale-select" aria-label="Language">
+            <option value="en">English</option>
+            <option value="zh">中文</option>
+          </select>
         </div>
       </div>
       <div class="pha-controls">
@@ -1063,41 +1078,41 @@
         <input id="user-id" type="text" value="default" placeholder="user_id" />
         <p id="model-hint"></p>
       </div>
-      <div id="pha-onboarding-card" class="pha-onboarding-card" role="region" aria-label="首次使用引导">
-        <h3>👋 欢迎使用 PHA — 本地个人健康智能体</h3>
-        <p>当前数仓为空。导入 Apple Health <code>export.zip</code> 后，即可查看步数/HRV/睡眠趋势，并用 AI 对话做 90 天指标对比。</p>
+      <div id="pha-onboarding-card" class="pha-onboarding-card" role="region" aria-label="Getting started">
+        <h3 data-i18n="onboarding.title">👋 Welcome to PHA — local personal health agent</h3>
+        <p data-i18n="onboarding.body">Your warehouse is empty. Import an Apple Health export.zip to see steps/HRV/sleep trends and chat with evidence-grounded AI for 90-day comparisons.</p>
         <div class="pha-onboarding-actions">
-          <button type="button" id="onboarding-open-import">打开数据导入</button>
-          <button type="button" id="onboarding-sample-prompt">试试示例提问</button>
+          <button type="button" id="onboarding-open-import" data-i18n="onboarding.import">Open data import</button>
+          <button type="button" id="onboarding-sample-prompt" data-i18n="onboarding.sample">Try sample question</button>
         </div>
       </div>
       <div class="pha-hero-grid">
-        <div class="pha-card"><p class="pha-card-label">今日步数</p><p id="today-steps" class="pha-card-value">—</p><p class="pha-card-desc">近 7 日</p></div>
-        <div class="pha-card"><p class="pha-card-label">平均 HRV</p><p id="avg-hrv" class="pha-card-value">—</p><p class="pha-card-desc">RMSSD · ms</p></div>
-        <div class="pha-card"><p class="pha-card-label">睡眠时长</p><p id="sleep-duration" class="pha-card-value">—</p><p class="pha-card-desc">近 7 日均 · h</p></div>
-        <div id="stat-medical-card" class="pha-card" role="button" tabindex="0"><p class="pha-card-label">体检预警</p><p id="stat-medical" class="pha-card-value">—</p><p class="pha-card-desc">LLM 医生慢路径</p><button type="button" id="ai-doctor-review-btn">⚙️ AI 医生离线静默中</button></div>
+        <div class="pha-card"><p class="pha-card-label" data-i18n="hero.steps">Steps today</p><p id="today-steps" class="pha-card-value">—</p><p class="pha-card-desc" data-i18n="hero.last7">Last 7 days</p></div>
+        <div class="pha-card"><p class="pha-card-label" data-i18n="hero.hrv">Avg HRV</p><p id="avg-hrv" class="pha-card-value">—</p><p class="pha-card-desc">RMSSD · ms</p></div>
+        <div class="pha-card"><p class="pha-card-label" data-i18n="hero.sleep">Sleep</p><p id="sleep-duration" class="pha-card-value">—</p><p class="pha-card-desc" data-i18n="hero.last7">Last 7 days · h</p></div>
+        <div id="stat-medical-card" class="pha-card" role="button" tabindex="0"><p class="pha-card-label" data-i18n="hero.medical">Lab alerts</p><p id="stat-medical" class="pha-card-value">—</p><p class="pha-card-desc" data-i18n="hero.medical.desc">LLM slow-path review</p><button type="button" id="ai-doctor-review-btn" data-i18n="hero.doctor.idle">⚙️ AI doctor idle · tap to review</button></div>
       </div>
       <div class="pha-section">
         <div class="pha-section-head">
-          <h2>趋势分析</h2>
+          <h2 data-i18n="trends.title">Trends</h2>
           <div class="pha-tabs">
-            <button type="button" class="tab-trends tab-active" data-trends-tab="charts">图表</button>
-            <button type="button" class="tab-trends" data-trends-tab="raw">原始数据</button>
+            <button type="button" class="tab-trends tab-active" data-trends-tab="charts" data-i18n="trends.charts">Charts</button>
+            <button type="button" class="tab-trends" data-trends-tab="raw" data-i18n="trends.raw">Raw data</button>
           </div>
-          <button type="button" id="refresh-trends">刷新</button>
+          <button type="button" id="refresh-trends" data-i18n="trends.refresh">Refresh</button>
         </div>
         <div id="trends-charts-panel">
           <div class="pha-metric-picker-wrap">
-            <p class="pha-metric-picker-label">黄金核心指标 · 全自动无感穿戴（点击切换 · 图表即时刷新）</p>
+            <p class="pha-metric-picker-label" data-i18n="trends.golden">Core wearable metrics · click to switch chart</p>
             <div id="golden-metric-tags" class="pha-golden-tags"></div>
             <details id="more-metrics-container" class="pha-more-metrics">
-              <summary id="more-metrics-summary">展开更多健康指标报告 (查看全量体检与长尾体征)</summary>
-              <input type="text" id="metric-search-bar" placeholder="🔍 输入指标名称或英文缩写快速定位...（如 血糖、HDL）" autocomplete="off" />
+              <summary id="more-metrics-summary" data-i18n="trends.more">Show more health metrics</summary>
+              <input type="text" id="metric-search-bar" data-i18n-placeholder="trends.search" placeholder="🔍 Search metrics by name or code (e.g. glucose, HDL)" autocomplete="off" />
               <div id="grouped-metrics-list"></div>
             </details>
             <select id="metric-trend-picker" multiple class="pha-metric-picker" aria-hidden="true" tabindex="-1"></select>
           </div>
-          <div id="trends-empty" class="hidden">暂无趋势数据，请上传 export.zip 或归仓体检报告</div>
+          <div id="trends-empty" class="hidden" data-i18n="trends.empty">No trend data — upload export.zip or ingest lab reports</div>
           <div id="dynamic-charts-grid" class="pha-dynamic-charts-grid"></div>
         </div>
         <div id="trends-raw-panel" class="hidden">
@@ -1107,127 +1122,127 @@
 
       <div class="pha-chat-panel">
         <div class="pha-chat-head">
-          <h2 style="margin:0;font-size:1rem;color:#f1f5f9">健康 AI 对话</h2>
-          <span style="font-size:0.75rem;color:#64748b">Cmd/Ctrl+Enter 发送 · SSE 流式</span>
+          <h2 style="margin:0;font-size:1rem;color:#f1f5f9" data-i18n="chat.title">Health AI chat</h2>
+          <span style="font-size:0.75rem;color:#64748b" data-i18n="chat.hint">Cmd/Ctrl+Enter to send · SSE streaming</span>
         </div>
-        <p id="active-model-chip"><span id="active-model-label">算力引擎：探测中…</span></p>
+        <p id="active-model-chip"><span id="active-model-label" data-i18n="chat.engine.probing">Engine: detecting…</span></p>
         <div id="chat-stream"></div>
 
         <div id="chat-status-bar" class="hidden" style="padding:0.5rem 0;font-size:0.75rem;color:#94a3b8">
-          <span class="pha-spinner"></span> <span id="chat-status-text">处理中…</span>
+          <span class="pha-spinner"></span> <span id="chat-status-text" data-i18n="chat.processing">Processing…</span>
         </div>
         <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.5rem;flex-wrap:wrap">
-          <label for="chat-attach-file" class="pha-chat-attach-btn" title="上传体检/化验单（物理落盘）">📎 附件</label>
+          <label for="chat-attach-file" class="pha-chat-attach-btn" data-i18n-title="chat.attach.title" data-i18n="chat.attach">📎 Attach</label>
           <input id="chat-attach-file" type="file" accept=".pdf,image/*" multiple class="pha-hidden-file-input" />
           <span id="chat-attach-label" style="font-size:0.75rem;color:#94a3b8"></span>
         </div>
-        <div id="chat-attach-preview" class="pha-attach-preview" aria-label="附件预览"></div>
-        <textarea id="q" placeholder="向 PHA 提问：趋势解读、指标对比、训练建议…"></textarea>
-        <button type="button" id="send" disabled>发送</button>
+        <div id="chat-attach-preview" class="pha-attach-preview" aria-label="Attachment preview"></div>
+        <textarea id="q" data-i18n-placeholder="chat.placeholder" placeholder="Ask PHA: trends, comparisons, training advice…"></textarea>
+        <button type="button" id="send" disabled data-i18n="chat.send">Send</button>
       </div>
     </main>
   </div>
 
   <div class="pha-drawer-backdrop" aria-hidden="true"></div>
-  <aside id="data-import-panel" class="pha-drawer-panel" aria-label="数据导入">
+  <aside id="data-import-panel" class="pha-drawer-panel" aria-label="Data import">
     <div class="pha-drawer-head">
-      <h2>数据导入</h2>
-      <label for="data-drawer" style="cursor:pointer;color:#94a3b8;font-size:0.875rem">关闭</label>
+      <h2 data-i18n="drawer.title">Data import</h2>
+      <label for="data-drawer" style="cursor:pointer;color:#94a3b8;font-size:0.875rem" data-i18n="drawer.close">Close</label>
     </div>
     <div class="pha-drawer-body">
       <section>
-        <p style="font-size:0.75rem;color:#64748b;margin:0 0 0.5rem">Apple Health export.zip（可多选队列）</p>
+        <p style="font-size:0.75rem;color:#64748b;margin:0 0 0.5rem" data-i18n="import.zip.hint">Apple Health export.zip (queue multiple)</p>
         <div id="drop-zone-zip" class="pha-drop" tabindex="0" role="button">
-          <p>拖拽 export.zip 到此处 或点击选择</p>
+          <p data-i18n="import.drop">Drop export.zip here or click to choose</p>
           <input id="zip-file" class="pha-hidden-file-input" type="file" accept=".zip" multiple />
         </div>
         <p id="import-filename" style="font-size:0.75rem;color:#64748b;margin:0.5rem 0"></p>
-        <button type="button" id="import-submit" disabled>开始导入</button>
-        <p style="font-size:0.7rem;color:#64748b;margin:0.75rem 0 0">Apple Health 每次导出均为<strong>全量</strong> export.zip（无官方增量包）。请使用上方「开始导入」；将清空本用户旧穿戴数据后写入最新导出。</p>
+        <button type="button" id="import-submit" disabled data-i18n="import.start">Start import</button>
+        <p style="font-size:0.7rem;color:#64748b;margin:0.75rem 0 0" data-i18n="import.zip.note">Each Apple Health export is a full snapshot (no official delta). Import replaces wearable data for this user.</p>
         <progress id="upload-progress" class="hidden" max="100" value="0" style="width:100%;margin-top:0.5rem"></progress>
         <p id="upload-status" style="font-size:0.75rem;color:#94a3b8;margin-top:0.5rem"></p>
       </section>
       <section>
-        <h3 style="margin:0 0 0.75rem;font-size:0.875rem;color:#f1f5f9">同步状态</h3>
-        <p style="margin:0.25rem 0;font-size:0.875rem"><span style="color:#64748b">状态</span> <span id="sync-status-label">—</span></p>
-        <p style="margin:0.25rem 0;font-size:0.875rem"><span style="color:#64748b">最后记录</span> <span id="sync-last-time">—</span></p>
+        <h3 style="margin:0 0 0.75rem;font-size:0.875rem;color:#f1f5f9" data-i18n="sync.title">Sync status</h3>
+        <p style="margin:0.25rem 0;font-size:0.875rem"><span style="color:#64748b" data-i18n="sync.status">Status</span> <span id="sync-status-label">—</span></p>
+        <p style="margin:0.25rem 0;font-size:0.875rem"><span style="color:#64748b" data-i18n="sync.last">Last record</span> <span id="sync-last-time">—</span></p>
         <p id="sync-counts-line" style="margin:0.25rem 0;font-size:0.75rem;color:#94a3b8"></p>
         <progress id="sync-job-progress" class="hidden" max="100" value="0" style="width:100%;margin:0.5rem 0"></progress>
         <p id="sync-status-message" style="font-size:0.75rem;color:#94a3b8"></p>
       </section>
       <section>
-        <h3 style="margin:0 0 0.75rem;font-size:0.875rem;color:#ef4444">危险操作</h3>
+        <h3 style="margin:0 0 0.75rem;font-size:0.875rem;color:#ef4444" data-i18n="danger.title">Danger zone</h3>
         <div style="display:flex;flex-wrap:wrap;gap:0.5rem">
-          <button type="button" id="recompute-integrity-btn">重算数据库</button>
-          <button type="button" id="factory-reset-btn">清空所有健康数据</button>
+          <button type="button" id="recompute-integrity-btn" data-i18n="danger.recompute">Recompute database</button>
+          <button type="button" id="factory-reset-btn" data-i18n="danger.reset">Erase all health data</button>
         </div>
         <p id="recompute-integrity-status" style="font-size:0.75rem;color:#94a3b8;margin-top:0.5rem"></p>
         <p id="factory-reset-status" style="font-size:0.75rem;color:#94a3b8"></p>
       </section>
       <section>
-        <h3 style="margin:0 0 0.75rem;font-size:0.875rem;color:#f1f5f9">事件录入 · 报告解析</h3>
-        <p style="font-size:0.75rem;color:#64748b;margin:0 0 0.5rem">上传 → AI 阅片 → 预览修改 → 提交（事件流 + SQLite 指标）</p>
+        <h3 style="margin:0 0 0.75rem;font-size:0.875rem;color:#f1f5f9" data-i18n="event.title">Events · report parsing</h3>
+        <p style="font-size:0.75rem;color:#64748b;margin:0 0 0.5rem" data-i18n="event.hint">Upload → AI read → preview → submit (events + SQLite metrics)</p>
         <input id="report-file" class="pha-hidden-file-input" type="file" accept=".pdf,.png,.jpg,.jpeg,image/*" multiple />
         <div class="pha-report-upload-row" style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;margin-bottom:0.5rem">
-          <button type="button" id="report-pick" style="flex:1;min-width:10rem">上传报告图/PDF</button>
-          <select id="pdf-model-override-selector" style="flex:1;min-width:11rem;font-size:0.75rem" title="PDF 文本结构化模型">
-            <option value="__auto__">智能选择 (Auto-Detect)</option>
-            <option value="FALLBACK_TO_HEURISTIC">纯规则提取 (Heuristic)</option>
+          <button type="button" id="report-pick" style="flex:1;min-width:10rem" data-i18n="event.pick">Upload report image/PDF</button>
+          <select id="pdf-model-override-selector" style="flex:1;min-width:11rem;font-size:0.75rem" title="PDF text model">
+            <option value="__auto__" data-i18n="event.pdf.auto">Smart select (Auto-Detect)</option>
+            <option value="FALLBACK_TO_HEURISTIC" data-i18n="event.pdf.heuristic">Heuristic only (no LLM)</option>
           </select>
         </div>
         <p id="vision-status" style="font-size:0.75rem;color:#94a3b8;margin:0.35rem 0"></p>
         <progress id="vision-parse-progress" class="hidden" max="100" value="0" style="width:100%"></progress>
         <div id="vision-page-ledger-wrap" class="hidden">
-          <p style="font-size:0.75rem;color:#64748b;margin:0.5rem 0 0">页面对账账本（点击页码查看/补录该页指标）</p>
+          <p style="font-size:0.75rem;color:#64748b;margin:0.5rem 0 0" data-i18n="event.page.ledger">Page ledger (click page to view/edit metrics)</p>
           <p id="vision-page-ledger-hint" style="font-size:0.7rem;color:#94a3b8;margin:0 0 0.25rem"></p>
           <div id="vision-page-ledger" class="pha-page-ledger-grid" role="tablist" aria-label="PDF 页面对账"></div>
         </div>
         <div style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.75rem">
           <input id="event-date" type="date" />
           <select id="event-type">
-            <option value="lab_report">化验</option>
-            <option value="visit">就诊</option>
-            <option value="medication">用药</option>
-            <option value="note">备注</option>
+            <option value="lab_report" data-i18n="event.type.lab">Lab</option>
+            <option value="visit" data-i18n="event.type.visit">Visit</option>
+            <option value="medication" data-i18n="event.type.medication">Medication</option>
+            <option value="note" data-i18n="event.type.note">Note</option>
           </select>
-          <input id="event-title" type="text" placeholder="标题" />
-          <input id="event-hospital" type="text" placeholder="医院 / 体检机构（可选，阅片自动回填）" />
-          <textarea id="event-summary" placeholder="描述 / AI 摘要" rows="3"></textarea>
+          <input id="event-title" type="text" data-i18n-placeholder="event.title.ph" placeholder="Title" />
+          <input id="event-hospital" type="text" data-i18n-placeholder="event.hospital.ph" placeholder="Hospital / clinic (optional)" />
+          <textarea id="event-summary" data-i18n-placeholder="event.summary.ph" placeholder="Description / AI summary" rows="3"></textarea>
           <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.875rem">
-            <input id="event-milestone" type="checkbox" /> 里程碑
+            <input id="event-milestone" type="checkbox" /> <span data-i18n="event.milestone">Milestone</span>
           </label>
         </div>
         <div id="event-page-preview" class="pha-dual-track hidden">
           <p id="event-align-hint" class="pha-align-hint"></p>
-          <section id="pha-track-metrics-panel" class="pha-track-panel pha-track-panel--metrics" aria-label="结构化数字指标">
-          <p id="event-metrics-page-label" class="pha-track-panel-head">版块 A · 结构化数字指标</p>
+          <section id="pha-track-metrics-panel" class="pha-track-panel pha-track-panel--metrics" aria-label="Structured metrics">
+          <p id="event-metrics-page-label" class="pha-track-panel-head" data-i18n="event.track.a">Block A · structured metrics</p>
           <p id="event-abnormal-hint" style="font-size:0.75rem;color:#fbbf24;margin:0 0 0.35rem"></p>
-          <p id="event-metrics-empty" class="pha-track-empty hidden">本页无可量化数字指标</p>
+          <p id="event-metrics-empty" class="pha-track-empty hidden" data-i18n="event.metrics.empty">No quantifiable metrics on this page</p>
           <div id="event-metrics-table-wrap" style="max-height:200px;overflow:auto;border:1px solid #374151;border-radius:0.5rem">
             <table id="event-metrics-table" class="pha-metrics-table">
-              <thead><tr><th>项目</th><th>值</th><th>单位</th><th>参考</th></tr></thead>
+              <thead><tr><th data-i18n="event.col.item">Item</th><th data-i18n="event.col.value">Value</th><th data-i18n="event.col.unit">Unit</th><th data-i18n="event.col.ref">Reference</th></tr></thead>
               <tbody id="event-metrics-body"></tbody>
             </table>
           </div>
-          <button type="button" id="event-metrics-add-row">+ 添加指标一行</button>
+          <button type="button" id="event-metrics-add-row" data-i18n="event.add.metric">+ Add metric row</button>
           </section>
-          <section id="pha-track-narratives-panel" class="pha-track-panel pha-track-panel--narratives" aria-label="健康叙事">
-            <p id="event-narratives-label" class="pha-track-panel-head">版块 B · 非结构化健康叙事</p>
-            <p id="event-narratives-empty" class="pha-track-empty hidden">本页暂无叙事段落，可点击下方添加</p>
+          <section id="pha-track-narratives-panel" class="pha-track-panel pha-track-panel--narratives" aria-label="Health narratives">
+            <p id="event-narratives-label" class="pha-track-panel-head" data-i18n="event.track.b">Block B · health narratives</p>
+            <p id="event-narratives-empty" class="pha-track-empty hidden" data-i18n="event.narratives.empty">No narrative blocks — add below</p>
             <div id="event-narratives-list"></div>
-            <button type="button" id="event-narratives-add">+ 添加叙事段落</button>
+            <button type="button" id="event-narratives-add" data-i18n="event.add.narrative">+ Add narrative block</button>
           </section>
         </div>
-        <button type="button" id="event-submit" style="width:100%;margin-top:0.75rem">提交事件并入库指标</button>
+        <button type="button" id="event-submit" style="width:100%;margin-top:0.75rem" data-i18n="event.submit">Submit event & store metrics</button>
         <p id="event-status" style="font-size:0.75rem;color:#94a3b8"></p>
         <div style="margin-top:1rem">
-          <p style="font-size:0.75rem;color:#64748b;margin:0 0 0.5rem">已归档报告</p>
+          <p style="font-size:0.75rem;color:#64748b;margin:0 0 0.5rem" data-i18n="event.archived">Archived reports</p>
           <div id="health-assets-toolbar" class="pha-assets-toolbar hidden">
             <label class="pha-assets-select-all">
-              <input type="checkbox" id="health-assets-select-all" /> ☑️ 全选
+              <input type="checkbox" id="health-assets-select-all" /> <span data-i18n="event.select.all">☑️ Select all</span>
             </label>
-            <button type="button" id="health-assets-delete-batch" class="pha-assets-delete-batch">
-              💥 清空选中历史资产
+            <button type="button" id="health-assets-delete-batch" class="pha-assets-delete-batch" data-i18n="event.delete.selected">
+              💥 Delete selected assets
             </button>
           </div>
           <div id="health-assets-list" class="pha-assets-list"></div>
@@ -1240,18 +1255,18 @@
 
   <dialog id="error-debug-modal">
     <form method="dialog" style="margin:0">
-      <h3 id="error-debug-title" style="margin:0 0 1rem">解析错误</h3>
+      <h3 id="error-debug-title" style="margin:0 0 1rem" data-i18n="modal.parse.error">Parse error</h3>
       <pre id="error-debug-pre" style="max-height:60vh;overflow:auto;font-size:12px;white-space:pre-wrap"></pre>
-      <button type="submit" style="margin-top:1rem">关闭</button>
+      <button type="submit" style="margin-top:1rem" data-i18n="modal.close">Close</button>
     </form>
   </dialog>
 
   <dialog id="medical-alerts-modal">
     <form method="dialog" style="margin:0;min-width:min(32rem,90vw)">
-      <h3 style="margin:0 0 0.5rem">体检预警</h3>
+      <h3 style="margin:0 0 0.5rem" data-i18n="modal.alerts.title">Lab alerts</h3>
       <p id="medical-alerts-summary" style="font-size:0.875rem;color:#94a3b8"></p>
       <div id="medical-alerts-list" style="margin:1rem 0;max-height:50vh;overflow:auto;display:flex;flex-direction:column;gap:0.5rem"></div>
-      <button type="submit">关闭</button>
+      <button type="submit" data-i18n="modal.close">Close</button>
     </form>
   </dialog>
 
@@ -1259,31 +1274,33 @@
     <form method="dialog" style="margin:0;min-width:min(36rem,92vw)">
       <p id="asset-json-meta" style="font-size:0.75rem;color:#64748b"></p>
       <pre id="asset-json-pre" style="max-height:60vh;overflow:auto;font-size:12px;white-space:pre-wrap"></pre>
-      <button type="submit" style="margin-top:1rem">关闭</button>
+      <button type="submit" style="margin-top:1rem" data-i18n="modal.close">Close</button>
     </form>
   </dialog>
 
   <dialog id="consultation-modal" style="max-width:min(52rem,96vw)">
     <form method="dialog" style="margin:0">
-      <h3 style="margin:0 0 0.35rem">PHA 大脑 v1.7 · 工业级离线大审计</h3>
+      <h3 style="margin:0 0 0.35rem" data-i18n="audit.title">PHA Brain v1.7 · offline deep audit</h3>
       <p id="consultation-meta" style="font-size:0.75rem;color:#64748b"></p>
-      <section class="pha-audit-cot-section" aria-label="本地核心思维链">
-        <p class="pha-audit-cot-head">⚙️ 本地核心思维链 (CoT)</p>
-        <p id="consultation-cot-shimmer" class="pha-cot-shimmer">M4 显存已满载 · 本地 DeepSeek-R1:14b 正在疯狂推导中...</p>
+      <section class="pha-audit-cot-section" aria-label="Chain of thought">
+        <p class="pha-audit-cot-head" data-i18n="audit.cot">⚙️ Local chain-of-thought (CoT)</p>
+        <p id="consultation-cot-shimmer" class="pha-cot-shimmer" data-i18n="audit.cot.shimmer">GPU loaded · local DeepSeek-R1:14b reasoning…</p>
         <pre id="consultation-thinking-pre" aria-live="polite"></pre>
       </section>
-      <section class="pha-audit-report-section" aria-label="终极健康大白皮书">
-        <p class="pha-audit-report-head">📄 终极健康大白皮书</p>
+      <section class="pha-audit-report-section" aria-label="Audit report">
+        <p class="pha-audit-report-head" data-i18n="audit.report">📄 Health audit report</p>
         <div id="consultation-report-pre" class="prose-pha"></div>
       </section>
       <div class="pha-consultation-actions">
-        <button type="button" id="consultation-export-md">📥 导出 Markdown</button>
-        <button type="button" id="consultation-followup-chat">💬 带着报告去追问</button>
+        <button type="button" id="consultation-export-md" data-i18n="audit.export">📥 Export Markdown</button>
+        <button type="button" id="consultation-followup-chat" data-i18n="audit.followup">💬 Follow up in chat</button>
       </div>
-      <button type="submit" style="margin-top:0.85rem">关闭</button>
+      <button type="submit" style="margin-top:0.85rem" data-i18n="modal.close">Close</button>
     </form>
   </dialog>
 
+  <script>window.__PHA_UI_DEFAULT_LOCALE__="__PHA_UI_DEFAULT_LOCALE__";</script>
+  <script src="/static/js/i18n.js?v=__PHA_ASSET_VERSION__"></script>
   <script src="/static/js/app.js?v=__PHA_ASSET_VERSION__"></script>
 </body>
 </html>
