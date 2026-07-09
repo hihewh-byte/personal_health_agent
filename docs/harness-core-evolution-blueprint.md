@@ -100,9 +100,9 @@ Those belong to **Gateway / Ingest** layers (see §5). Putting them in Core woul
 
 | Gap | Priority | Notes |
 |-----|----------|-------|
-| Structured `plan_vs_actual[]` (or equivalent machine-diff) | **P0** | Today only string `warnings` |
-| No-LLM golden run with human-readable card | **P0** | Delivered in Phase A script |
-| Align `docs/tax-harness-build-report-schema.md` to **v2** | **P0** | Doc drift |
+| Structured `plan_vs_actual[]` (or equivalent machine-diff) | **P0** | ✅ `planVsActual` on `tax.harness_report/v2` (2026-07-09) |
+| No-LLM golden run with human-readable card | **P0** | ✅ `tax_agent/scripts/run_tax_harness_golden_run.py` |
+| Align `docs/tax-harness-build-report-schema.md` to **v2** | **P0** | ✅ local tax_agent docs (not published) |
 | Turn FSM / phase telemetry | **P1** | Soft enforce plan-before-LLM |
 | Profile registry generate + CI check | **P1** | Mirror PHA registry |
 | Richer tier0_integrity slot rows in report | **P1** | PHA has full/summary/min states |
@@ -144,8 +144,9 @@ Recommended Phase B (later): pick **one** ASI numeric-honesty slice; do **not** 
 
 - [x] This blueprint exists  
 - [x] `tax_agent` no-LLM golden run script exists and prints PASS  
-- [ ] Optional: tax `plan_vs_actual` structured field (P0 follow-up, not blocking this doc)  
-- [ ] No core package extraction; PHA `main` 5-minute path untouched  
+- [x] tax `planVsActual` structured field + schema doc v2 (local tax_agent only; **not** published to GitHub)  
+- [x] No core package extraction; PHA `main` 5-minute path untouched  
+- [x] **Policy**: do not upload tax_agent personal data or tax repo contents to public remotes without explicit necessity review
 
 ---
 
