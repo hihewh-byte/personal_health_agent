@@ -38,9 +38,9 @@ User message
 | Numerics audit | `numerics_manifest.py` | `numerics_audit.py` | ✅ whitelist ⊆ evidence |
 | Domain-extra audit | CompareTable (wearable) | `citation_audit` (policy) | ⚠️ both “post-gates”, different ops |
 | Build report | `harness_report` v1.2 rich | `tax.harness_report/v2` slim | ⚠️ same intent, tax thinner |
-| Turn FSM | `chat_turn_fsm.py` | sequential pipeline only | ❌ tax gap |
-| plan_vs_actual | `compute_plan_vs_actual()` | ad-hoc `warnings[]` only | ❌ tax gap (P0) |
-| Profile registry CI | `harness_profile_registry.py` | none | ❌ tax gap (P1) |
+| Turn FSM | `chat_turn_fsm.py` | `tax_agent/chat_turn_fsm.py` + wired in `chat_turn_service` | ✅ Phase A P1 |
+| plan_vs_actual | `compute_plan_vs_actual()` | `planVsActual` on `tax.harness_report/v2` | ✅ |
+| Profile registry CI | `harness_profile_registry.py` | `tax_agent/harness_profile_registry.py` | ✅ Phase A P1 |
 | No-LLM golden run | `scripts/pha_harness_golden_run.py` | `scripts/run_tax_harness_golden_run.py` | ✅ Phase A |
 | Code import | — | only `pha.llm_provider` / ollama bridge | ❌ harness is twin, not library |
 
@@ -103,9 +103,9 @@ Those belong to **Gateway / Ingest** layers (see §5). Putting them in Core woul
 | Structured `plan_vs_actual[]` (or equivalent machine-diff) | **P0** | ✅ `planVsActual` on `tax.harness_report/v2` (2026-07-09) |
 | No-LLM golden run with human-readable card | **P0** | ✅ `tax_agent/scripts/run_tax_harness_golden_run.py` |
 | Align `docs/tax-harness-build-report-schema.md` to **v2** | **P0** | ✅ local tax_agent docs (not published) |
-| Turn FSM / phase telemetry | **P1** | Soft enforce plan-before-LLM |
-| Profile registry generate + CI check | **P1** | Mirror PHA registry |
-| Richer tier0_integrity slot rows in report | **P1** | PHA has full/summary/min states |
+| Turn FSM / phase telemetry | **P1** | ✅ `chat_turn_fsm.py` + `resolve_chat_turn` phases (2026-07-09) |
+| Profile registry generate + CI check | **P1** | ✅ `harness_profile_registry.py` + selfcheck `--generate/--check` |
+| Richer tier0_integrity slot rows in report | **P1** | ✅ `tier0Integrity` + tax compliance `assertions[]` |
 | English dry-run cases in golden run | **P2** | Builder onboarding |
 | Extract shared package | **P2+** | Only after adapters proven |
 
