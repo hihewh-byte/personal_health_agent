@@ -51,10 +51,11 @@ Reusable **patterns** live under `pha/harness_*.py`, `pha/numerics_manifest.py`,
 | Turn FSM | `pha/chat_turn_fsm.py` |
 | Orchestrator | `pha/chat_turn_orchestrator.py` |
 
-Offline dry-run (no LLM):
+Offline dry-run (no LLM) — ~1s after deps installed:
 
 ```bash
 PYTHONPATH=. python scripts/pha_harness_golden_run.py
+# → RESULT: PASS — harness planned and assembled evidence without calling an LLM.
 ```
 
 ## Call for feedback

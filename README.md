@@ -30,6 +30,20 @@ If you are learning to **build agents that stay honest under weak local LLMs**, 
 
 ---
 
+## 30-second No-LLM Golden Run (see the harness first)
+
+No Ollama, no API keys. After `pip install -r requirements.txt`:
+
+```bash
+PYTHONPATH=. python scripts/pha_harness_golden_run.py
+```
+
+You should see two dry-run turns (`supplement_manifest`, `combined_review`) with **profile**, **Tier0 slots**, **tools_allowed**, and `RESULT: PASS`. That is the control plane: Plan → Tier0 assembly → BuildReport — before any model call.
+
+Builder notes: [docs/harness-builder-overview.md](docs/harness-builder-overview.md)
+
+---
+
 ## 5-minute Quick Start (native · recommended first try)
 
 **Honest timing**
@@ -107,6 +121,15 @@ Full list: [.env.example](.env.example)
 
 ## Architecture (short)
 
+```mermaid
+flowchart LR
+  A[User input] --> B[Plan-before-LLM<br/>evidence freeze]
+  B --> C[Tier0 assembly<br/>protected budget]
+  C --> D[LLM compose]
+  D --> E[Numerics / Compare<br/>audit gate]
+  E --> F[Safe reply<br/>or weak lane]
+```
+
 ```text
 User message → Harness TurnEvidencePlan → Tier0 evidence blocks
             → Ollama (chat / tools / catalog) → Numerics / Compare audit
@@ -120,8 +143,9 @@ Deep dive: [docs/pha-architecture-evolution-v2.3.md](docs/pha-architecture-evolu
 ## Self-checks
 
 ```bash
-bash scripts/run_selfchecks.sh         # offline regression suite (~47 checks)
-python scripts/doctor.py               # runtime environment
+PYTHONPATH=. python scripts/pha_harness_golden_run.py   # no LLM
+bash scripts/run_selfchecks.sh                          # full offline suite (~47 checks)
+python scripts/doctor.py                                # runtime environment
 ```
 
 ---

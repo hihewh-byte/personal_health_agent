@@ -1,18 +1,27 @@
 #!/usr/bin/env python3
-"""Phase 1 golden cases — dry-run HarnessBuildReport without LLM."""
+"""No-LLM harness golden dry-run — Plan / Tier0 / BuildReport without calling Ollama.
+
+Usage (from repo root, after ``pip install -r requirements.txt``)::
+
+    PYTHONPATH=. python scripts/pha_harness_golden_run.py
+
+Exit 0 = assertions passed. No Ollama / no API keys required.
+"""
 
 from __future__ import annotations
 
-import json
 import os
 import sys
+import tempfile
+from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 os.environ.setdefault("PHA_HARNESS_DEBUG", "1")
-os.environ["PHA_HARNESS_REPORT_PATH"] = "/tmp/pha-harness-golden.jsonl"
+_DEFAULT_JSONL = str(Path(tempfile.gettempdir()) / "pha-harness-golden.jsonl")
+os.environ.setdefault("PHA_HARNESS_REPORT_PATH", _DEFAULT_JSONL)
 
 from pha.harness_report import (  # noqa: E402
     REPORT_SCHEMA,
@@ -42,10 +51,35 @@ def _slot_ok(report: dict, slot_id: str) -> bool:
     return False
 
 
+def _print_builder_card(case_id: str, report: dict) -> None:
+    """Human-readable card for OSS visitors (no LLM involved)."""
+    plan = report.get("plan") or {}
+    integrity = report.get("tier0_integrity") or {}
+    slots = integrity.get("slots") or []
+    present = [
+        f"{r.get('id')}={r.get('state')}({r.get('chars') or 0}c)"
+        for r in slots
+        if (r.get("chars") or 0) > 0
+    ]
+    tools = plan.get("tools_allowed") or []
+    forbidden = plan.get("forbidden") or []
+    print(f"\n--- {case_id} ---")
+    print(f"  profile        : {plan.get('profile')}")
+    print(f"  runtime_mode   : {report.get('runtime_mode')}")
+    print(f"  tools_allowed  : {tools or '(none)'}")
+    print(f"  forbidden      : {forbidden[:6]}{'…' if len(forbidden) > 6 else ''}")
+    print(f"  tier0 slots    : {', '.join(present) if present else '(empty)'}")
+    print(f"  tier0 used     : {integrity.get('used_chars') or 0} chars")
+    print(f"  plan_vs_actual : {report.get('plan_vs_actual') or []}")
+    print(f"  summary        : {format_harness_summary(report)}")
+
+
 def main() -> int:
-    open(os.environ["PHA_HARNESS_REPORT_PATH"], "w").close()
+    report_path = os.environ["PHA_HARNESS_REPORT_PATH"]
+    open(report_path, "w").close()
     cases = [("T1_supplement", T1_SUPPLEMENT), ("T2_combined", T2_COMBINED)]
-    print("=== PHA Harness golden dry-run (harness_report v1.1) ===\n")
+    print("=== PHA Harness — 30s No-LLM Golden Run ===")
+    print("Control plane only: Plan → Tier0 assembly → BuildReport (no Ollama call).\n")
     failed = 0
     for case_id, msg in cases:
         report = dry_run_harness_report(msg)
@@ -55,12 +89,7 @@ def main() -> int:
         pva = report.get("plan_vs_actual") or []
         integrity = report.get("tier0_integrity") or {}
         errs = integrity.get("errors") or []
-        print(f"\n--- {case_id} ---")
-        print(format_harness_summary(report))
-        print("plan.profile:", plan.get("profile"))
-        print("runtime_mode:", report.get("runtime_mode"))
-        print("tier0_integrity.errors:", errs)
-        print("plan_vs_actual:", pva)
+        _print_builder_card(case_id, report)
         if case_id == "T1_supplement":
             if plan.get("profile") != "supplement_manifest":
                 print("FAIL: expected supplement_manifest")
@@ -124,8 +153,12 @@ def main() -> int:
             if "dynamic_slots" not in report:
                 print("FAIL: dynamic_slots block missing")
                 failed += 1
-    print(f"\nJSONL: {os.environ['PHA_HARNESS_REPORT_PATH']}")
-    return 1 if failed else 0
+    print(f"\nJSONL report: {report_path}")
+    if failed:
+        print(f"RESULT: FAIL ({failed} assertion(s))")
+        return 1
+    print("RESULT: PASS — harness planned and assembled evidence without calling an LLM.")
+    return 0
 
 
 if __name__ == "__main__":
