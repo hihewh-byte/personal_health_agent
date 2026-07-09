@@ -1,69 +1,91 @@
 # Personal Health Agent (PHA)
 
-**Local-first personal health intelligence** — import Apple Health exports, parse lab reports and wearable screenshots, and chat with evidence-grounded AI. All data stays on your machine.
+**Local-first personal health intelligence** — import Apple Health exports, parse lab reports and wearable screenshots, and chat with an evidence-grounded AI. All data stays on your machine.
 
-> **Medical disclaimer:** PHA is **not** a medical device and does **not** provide medical advice, diagnosis, or treatment. Outputs are for personal wellness tracking only. Always consult qualified healthcare professionals for medical decisions.
+> **Not a medical device.** PHA does **not** provide medical advice, diagnosis, or treatment. Outputs are for personal wellness tracking only. Always consult qualified healthcare professionals.
+
+![PHA dashboard — English UI, evidence chat, numerics audit](docs/assets/pha-demo-hero.jpg)
 
 | | |
 |---|---|
 | **License** | [Apache-2.0](LICENSE) |
 | **Python** | 3.10+ |
-| **LLM runtime** | [Ollama](https://ollama.com) (local) |
-| **Current build** | `pha-v2.3.32-full-import-only` |
+| **LLM** | [Ollama](https://ollama.com) (local) |
+| **Release** | [`v0.4.0-beta.1`](https://github.com/hihewh-byte/personal_health_agent/releases/tag/v0.4.0-beta.1) |
+| **Build** | `pha-v2.3.32-full-import-only` |
+
+---
+
+## Why PHA?
+
+Most “health chatbots” let the LLM invent numbers. PHA flips the control plane:
+
+1. **Harness plans first** — each turn freezes which evidence slots are allowed (`TurnEvidencePlan`)
+2. **Tier0 budget** — critical facts are protected; the model cannot crowd them out
+3. **Numerics / Compare audit** — user-visible numbers must match injected evidence or the reply is downgraded
+
+If you are learning to **build agents that stay honest under weak local LLMs**, the harness layer is the interesting part — not the chat UI.
+
+> ⚠️ **Beta (`v0.4.0-beta.1`)** — Core anti-hallucination paths are covered by offline selfchecks. Adaptive reply language (RLP) and large English asset corpora are **not** fully stress-tested. If something breaks, [open an Issue](https://github.com/hihewh-byte/personal_health_agent/issues) — edge cases fuel Phase 2.
+
+---
+
+## 5-minute Quick Start (native · recommended first try)
+
+**Honest timing**
+
+| Machine state | Time to open UI |
+|---------------|-----------------|
+| Ollama + `qwen2.5:7b-instruct` already installed | **~3–5 min** |
+| Cold start (first model pull ~4–5 GB) | **15–40 min** (network-bound) |
+
+### Prerequisites
+
+- macOS or Linux, Python 3.10+
+- [Ollama](https://ollama.com) running (`ollama serve` or Ollama Desktop)
+- Optional later: Tesseract (OCR for screenshots)
+
+### Steps
+
+```bash
+git clone https://github.com/hihewh-byte/personal_health_agent.git
+cd personal_health_agent
+
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+cp .env.example .env
+# Minimum chat model (skip the full pull-models.sh on first try)
+ollama pull qwen2.5:7b-instruct
+
+python scripts/doctor.py
+PYTHONPATH=. python -m pha.main
+```
+
+Open **http://127.0.0.1:8788**
+
+**Smoke check (another terminal):**
+
+```bash
+curl -s http://127.0.0.1:8788/health
+# → {"pha_build":"pha-v2.3.32-full-import-only", ...}
+```
+
+Empty warehouse is OK — you can chat immediately; import Apple Health `export.zip` from the **Data import** drawer when ready.
+
+**Docker path** (needs Docker Desktop + host Ollama): see [docs/INSTALL.md](docs/INSTALL.md).
 
 ---
 
 ## Features
 
-- **Apple Health import** — `export.zip` → SQLite warehouse (steps, sleep, HRV, workouts, lipids from reports)
-- **Wearable screenshot review** — 6-panel Apple Watch OCR → 90-day CompareTable with audit + hybrid fallback
-- **Lab / supplement attachment QA** — vision parse, episodic focus, numerics manifest compliance
-- **Harness evidence engine** — TurnEvidencePlan, Catalog fetch, Tier0 budget assembly
-- **Metric Registry** — config-driven compare rows + wearable metric catalog
-- **Dashboard UI i18n** — default **English** (`PHA_UI_LANG=en`); switch to 中文 in the top bar
-- **Adaptive reply language (RLP)** — chat replies follow UI locale / user language (`PHA_RESPONSE_LOCALE`, `response_locale` API); no hardcoded Chinese in harness souls
-- **Dashboard** — hero stats, dynamic metric charts, SSE chat, data import drawer
-
----
-
-## Quick Start (Docker — recommended)
-
-**Prerequisites:** Docker Desktop, Ollama on the host (for GPU on macOS).
-
-```bash
-git clone https://github.com/hihewh-byte/personal_health_agent.git
-cd personal_health_agent
-cp .env.example .env
-bash scripts/pull-models.sh          # pull models into host Ollama
-docker compose up -d --build
-open http://127.0.0.1:8788
-```
-
-PHA container connects to host Ollama via `host.docker.internal:11434`.
-
-**Bundled Ollama (CPU-only servers, no host Ollama):**
-
-```bash
-docker compose --profile bundled up -d --build
-```
-
-See [docs/INSTALL.md](docs/INSTALL.md) for native install, model list, and troubleshooting.
-
----
-
-## Quick Start (native / macOS)
-
-```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-brew install tesseract ollama          # macOS
-cp .env.example .env
-bash scripts/pull-models.sh
-python scripts/doctor.py                 # environment check
-PYTHONPATH=. python -m pha.main
-```
-
-Open http://127.0.0.1:8788
+- **Apple Health import** — `export.zip` → SQLite warehouse (steps, sleep, HRV, workouts, labs)
+- **Wearable screenshot review** — Watch OCR → 90-day CompareTable + audit / hybrid fallback
+- **Lab / supplement attachment QA** — vision parse, episodic focus, numerics compliance
+- **Harness evidence engine** — TurnEvidencePlan, Tier0 budget, Catalog fetch, C-layer audit
+- **Metric Registry** — config-driven compare rows + wearable catalog
+- **Dashboard UI i18n** — default English (`PHA_UI_LANG=en`); switch to 中文 in the top bar
+- **Adaptive reply language (RLP)** — replies follow UI / user language (`PHA_RESPONSE_LOCALE`)
 
 ---
 
@@ -76,11 +98,31 @@ Open http://127.0.0.1:8788
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Ollama API |
 | `OLLAMA_MODEL` | `qwen2.5:7b-instruct` | Default chat model |
 | `OLLAMA_MEDICAL_MODEL` | `qwen2.5:7b-instruct` | Vision / medical parse |
-| `PHA_ENV_DEMO_ANCHOR` | _(unset)_ | Optional demo “today” floor (YYYY-MM-DD) |
-| `PHA_UI_LANG` | `en` | Dashboard UI locale: `en` or `zh` (user can override in UI) |
-| `PHA_RESPONSE_LOCALE` | `en` | LLM reply language default when API omits `response_locale` (usually matches UI) |
+| `PHA_UI_LANG` | `en` | Dashboard UI: `en` \| `zh` |
+| `PHA_RESPONSE_LOCALE` | `en` | LLM reply default when API omits `response_locale` |
 
 Full list: [.env.example](.env.example)
+
+---
+
+## Architecture (short)
+
+```text
+User message → Harness TurnEvidencePlan → Tier0 evidence blocks
+            → Ollama (chat / tools / catalog) → Numerics / Compare audit
+            → SSE reply + SQLite persistence
+```
+
+Deep dive: [docs/pha-architecture-evolution-v2.3.md](docs/pha-architecture-evolution-v2.3.md) · Harness for builders: [docs/harness-builder-overview.md](docs/harness-builder-overview.md) · Consensus: [docs/harness-consensus-opus48-2026-06-08.md](docs/harness-consensus-opus48-2026-06-08.md)
+
+---
+
+## Self-checks
+
+```bash
+bash scripts/run_selfchecks.sh         # offline regression suite (~47 checks)
+python scripts/doctor.py               # runtime environment
+```
 
 ---
 
@@ -97,40 +139,14 @@ Full list: [.env.example](.env.example)
 
 ---
 
-## Self-checks
-
-```bash
-bash scripts/run_selfchecks.sh         # offline regression suite
-python scripts/doctor.py               # runtime environment
-bash scripts/pha_restart_accept.sh     # restart + curl acceptance
-```
-
-E2E scripts under `scripts/pha_e2e_*` require a running Ollama instance.
-
----
-
-## Architecture (short)
-
-```text
-User message → Harness TurnEvidencePlan → Tier0 evidence blocks
-            → Ollama (chat / tools / catalog) → Numerics / Compare audit
-            → SSE reply + SQLite persistence
-```
-
-Deep dive: [docs/pha-architecture-evolution-v2.3.md](docs/pha-architecture-evolution-v2.3.md)
-
----
-
 ## Future Work (Enterprise · not in personal OSS v0.4)
-
-PHA personal edition ships as a **local-first single-user** agent. Multi-tenant clinical deployment and third-party device ingestion are **designed but not implemented**:
 
 | RFC | Scope |
 |-----|--------|
-| [docs/rfcs/rfc-device-ingestion-adapter.md](docs/rfcs/rfc-device-ingestion-adapter.md) | Universal MQTT/BLE/API ingest · dual-layer provenance · zero FSM change |
-| [docs/rfcs/rfc-enterprise-multi-tenant.md](docs/rfcs/rfc-enterprise-multi-tenant.md) | Enterprise Gateway · RBAC · composite `user_id` namespace |
+| [docs/rfcs/rfc-device-ingestion-adapter.md](docs/rfcs/rfc-device-ingestion-adapter.md) | Universal MQTT/BLE/API ingest · dual-layer provenance |
+| [docs/rfcs/rfc-enterprise-multi-tenant.md](docs/rfcs/rfc-enterprise-multi-tenant.md) | Enterprise Gateway · RBAC · composite `user_id` |
 
-Open-source release checklist: [docs/wave4a-open-source-readiness-spec.md](docs/wave4a-open-source-readiness-spec.md)
+Checklist: [docs/wave4a-open-source-readiness-spec.md](docs/wave4a-open-source-readiness-spec.md)
 
 ---
 
@@ -138,26 +154,6 @@ Open-source release checklist: [docs/wave4a-open-source-readiness-spec.md](docs/
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Run `bash scripts/run_selfchecks.sh` before opening a PR.
 
-### Startup consensus (cross-agent)
+Building agents / fighting numerical hallucination? Star the repo or [open an Issue](https://github.com/hihewh-byte/personal_health_agent/issues) with your edge case — that feedback drives Phase 2 more than vanity metrics.
 
-For any startup/availability related changes (service boot, scripts, ports, process lifecycle), follow:
-
-- Plan: [docs/startup-availability-remediation-plan-2026-06-08.md](docs/startup-availability-remediation-plan-2026-06-08.md)
-- Stability notes: [docs/startup-stability-2026-06-07.md](docs/startup-stability-2026-06-07.md)
-- Change log (must update in same PR): [docs/startup-change-log.md](docs/startup-change-log.md)
-
-### Harness consensus (cross-agent)
-
-For harness architecture changes, follow:
-
-- Baseline: [docs/harness-consensus-opus48-2026-06-08.md](docs/harness-consensus-opus48-2026-06-08.md)
-- Evolution context: [docs/pha-architecture-evolution-v2.3.md](docs/pha-architecture-evolution-v2.3.md)
-- Change log (must update in same PR): [docs/harness-change-log.md](docs/harness-change-log.md)
-
-Security: [SECURITY.md](SECURITY.md)
-
----
-
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md). Release tags: `v0.4.0-beta.x` (build marker in `pha/build_marker.py`).
+Security: [SECURITY.md](SECURITY.md) · Changelog: [CHANGELOG.md](CHANGELOG.md)
