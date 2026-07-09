@@ -136,7 +136,7 @@ User message → Harness TurnEvidencePlan → Tier0 evidence blocks
             → SSE reply + SQLite persistence
 ```
 
-Deep dive: [docs/pha-architecture-evolution-v2.3.md](docs/pha-architecture-evolution-v2.3.md) · Harness for builders: [docs/harness-builder-overview.md](docs/harness-builder-overview.md) · Consensus: [docs/harness-consensus-opus48-2026-06-08.md](docs/harness-consensus-opus48-2026-06-08.md)
+Deep dive: [docs/pha-architecture-evolution-v2.3.md](docs/pha-architecture-evolution-v2.3.md) · Harness for builders: [docs/harness-builder-overview.md](docs/harness-builder-overview.md) · Dual-domain blueprint: [docs/harness-core-evolution-blueprint.md](docs/harness-core-evolution-blueprint.md) · Consensus: [docs/harness-consensus-opus48-2026-06-08.md](docs/harness-consensus-opus48-2026-06-08.md)
 
 ---
 

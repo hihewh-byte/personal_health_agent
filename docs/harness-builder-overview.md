@@ -39,6 +39,8 @@ message → plan (profile / slots / forbidden / tools)
 
 Reusable **patterns** live under `pha/harness_*.py`, `pha/numerics_manifest.py`, `pha/chat_turn_fsm.py`. Extracting a core package is a Phase-2 engineering track, not part of `v0.4.0-beta.1`.
 
+Dual-domain map (PHA ↔ tax_agent): [harness-core-evolution-blueprint.md](harness-core-evolution-blueprint.md).
+
 ## Key entry points
 
 | Concern | Module |
