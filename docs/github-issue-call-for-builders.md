@@ -4,6 +4,8 @@ PHA ships a **harness-first** control plane (Plan → Tier0 → LLM → Numerics
 
 Today that harness is **embedded in PHA** (not a pip package). Before we invest in extracting `agent-harness-core`, we want signal from builders who actually clone/read the code.
 
+We already have a **second in-house domain** (tax / filing agent) that mirrors the same philosophy with a parallel implementation — that increases the case for a shared core, but we still want external builder feedback before packaging.
+
 ## 30s demo (no Ollama)
 
 ```bash
@@ -16,7 +18,9 @@ PYTHONPATH=. python scripts/pha_harness_golden_run.py
 
 You should see `RESULT: PASS` with profile / Tier0 slots / tools — no model call.
 
-Docs: [docs/harness-builder-overview.md](../blob/main/docs/harness-builder-overview.md)
+Docs:
+- https://github.com/hihewh-byte/personal_health_agent/blob/main/docs/harness-builder-overview.md
+- https://github.com/hihewh-byte/personal_health_agent/blob/main/README.md#30-second-no-llm-golden-run-see-the-harness-first
 
 ## Questions for you
 
