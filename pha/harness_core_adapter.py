@@ -1,8 +1,11 @@
-"""Thin bridge: PHA plans/phases → local ``harness_core`` (sibling package).
+"""Thin bridge: PHA plans/phases → in-repo / sibling ``harness_core``.
 
-Does not replace ``pha.harness_plan`` / ``pha.chat_turn_fsm``. Soft-import:
-if ``harness_core`` is absent (public clone without sibling), helpers raise
-``HarnessCoreUnavailable`` so callers can skip.
+Does not replace ``pha.harness_plan`` / ``pha.chat_turn_fsm``.
+
+Resolution order:
+1. Already importable ``harness_core``
+2. In-repo vendored package: ``packages/harness_core/src`` (public clone)
+3. Optional sibling / ``HARNESS_CORE_SRC`` override (local monorepo)
 """
 
 from __future__ import annotations
@@ -14,13 +17,16 @@ from typing import Any, Mapping, Sequence
 
 
 class HarnessCoreUnavailable(ImportError):
-    """Sibling ``harness_core`` not on PYTHONPATH."""
+    """``harness_core`` not on PYTHONPATH and not found under packages/."""
 
 
 def _candidate_src_dirs() -> list[Path]:
     here = Path(__file__).resolve()
-    # pha/harness_core_adapter.py → myAgents/harness_core/src
+    # pha/harness_core_adapter.py → personal_health_agent/packages/harness_core/src
+    pha_root = here.parents[1]
     roots = [
+        pha_root / "packages" / "harness_core" / "src",
+        # Legacy local sibling (myAgents/harness_core)
         here.parents[2] / "harness_core" / "src",
         here.parents[1].parent / "harness_core" / "src",
     ]
@@ -31,7 +37,7 @@ def _candidate_src_dirs() -> list[Path]:
 
 
 def ensure_harness_core() -> None:
-    """Insert sibling harness_core/src onto sys.path if needed."""
+    """Insert vendored or sibling harness_core/src onto sys.path if needed."""
     try:
         import harness_core  # noqa: F401
 
@@ -50,8 +56,8 @@ def ensure_harness_core() -> None:
             except ImportError:
                 continue
     raise HarnessCoreUnavailable(
-        "harness_core not found; set HARNESS_CORE_SRC or keep "
-        "myAgents/harness_core next to personal_health_agent"
+        "harness_core not found; expected packages/harness_core/src in this repo "
+        "(or set HARNESS_CORE_SRC)"
     )
 
 

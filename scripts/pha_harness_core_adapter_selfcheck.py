@@ -22,8 +22,8 @@ def main() -> int:
     from pha.harness_plan import build_turn_evidence_plan
 
     if not harness_core_available():
-        print("SKIP pha_harness_core_adapter_selfcheck (harness_core not found)")
-        return 0
+        print("FAIL: vendored packages/harness_core required")
+        return 1
 
     plan = build_turn_evidence_plan(
         "以下是我的补剂方案：蛋白粉30g + 鱼油 + 镁300mg"

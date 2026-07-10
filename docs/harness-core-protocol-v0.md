@@ -1,9 +1,9 @@
 # Harness Core Protocol v0 — Interface Design (Week 2)
 
-> **Status**: Design + local skeleton only (2026-07-10)  
+> **Status**: Phase A complete · Core vendored in-repo (2026-07-10) · **No PyPI yet**  
 > **Parent**: [harness-core-evolution-blueprint.md](harness-core-evolution-blueprint.md)  
-> **Rule**: **Interfaces first, no big-bang move.** PHA / tax keep their twins until Week 3 adapters.  
-> **Out of scope**: ASI, clinical multi-tenant Gateway, PyPI publish.
+> **In-repo package**: [`packages/harness_core/`](../packages/harness_core/)  
+> **Out of scope**: ASI, clinical multi-tenant Gateway, publishing tax_agent
 
 ---
 
@@ -236,24 +236,20 @@ Implementations stay in PHA / tax. Core may later ship a trivial “substring al
 
 ---
 
-## 8. Package layout (local skeleton)
+## 8. Package layout
 
-Sibling under `myAgents/` (not inside tax; not published):
+**Public (this repo):**
 
 ```text
-myAgents/harness_core/
+personal_health_agent/packages/harness_core/
   README.md
-  pyproject.toml          # name=harness-core, version=0.0.0a1
+  pyproject.toml
   src/harness_core/
-    __init__.py
-    turn_plan.py          # Protocol + TurnPlanData
-    turn_fsm.py           # CoreTurnPhase + PhaseRecorder
-    integrity.py          # IntegrityResult + helpers
-    plan_vs_actual.py     # compute_plan_vs_actual
+    turn_plan.py · turn_fsm.py · integrity.py · plan_vs_actual.py
   tests/
-    test_turn_fsm.py
-    test_plan_vs_actual.py
 ```
+
+**Local twin (not published):** `myAgents/harness_core/` may still exist as a working copy; PHA prefers the vendored tree above.
 
 **Week 2 Done criteria (this doc + skeleton):**
 
@@ -265,11 +261,12 @@ myAgents/harness_core/
 
 **Week 3 Done criteria (adapter integration — 2026-07-10):**
 
-- [x] `pha/harness_core_adapter.py` + `tax_agent/harness_core_adapter.py`  
-- [x] Golden runs assert adapter smoke (PHA soft / tax required)  
-- [x] Soft tax runtime telemetry: `corePhases` on `resolve_chat_turn` when Core present  
-- [ ] Optional later: domain FSM **delegates** `assert_plan_before_compose` to Core (not required for green wall)  
-- [x] `pha_harness_golden_run` + `run_tax_harness_golden_run` PASS with adapters
+- [x] `pha/harness_core_adapter.py` + `tax_agent/harness_core_adapter.py` (tax local-only)  
+- [x] Golden runs assert adapter smoke  
+- [x] Soft tax runtime telemetry: `corePhases` when Core present (local)  
+- [x] **Vendored Core in public PHA:** `packages/harness_core/` (clone-and-run; not PyPI)  
+- [ ] Optional later: domain FSM **delegates** `assert_plan_before_compose` to Core  
+- [x] `pha_harness_golden_run` PASS with in-repo Core
 
 ---
 

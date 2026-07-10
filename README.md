@@ -44,6 +44,28 @@ Builder notes: [docs/harness-builder-overview.md](docs/harness-builder-overview.
 
 ---
 
+## Harness milestone (Phase A · 2026-07)
+
+We treated “framework complete” as **dual-domain proof of the control plane**, not as a PyPI product yet.
+
+| Layer | Status |
+|-------|--------|
+| **PHA (this repo)** | Plan → Tier0 → audit; 30s no-LLM golden run; UI on `:8788` |
+| **Protocol v0** | [`docs/harness-core-protocol-v0.md`](docs/harness-core-protocol-v0.md) — Core spine + Adapter contract |
+| **Blueprint** | [`docs/harness-core-evolution-blueprint.md`](docs/harness-core-evolution-blueprint.md) — PHA ↔ second domain map |
+| **Thin adapter** | `pha/harness_core_adapter.py` — bridges PHA plans/phases to Core |
+| **Vendored Core** | [`packages/harness_core/`](packages/harness_core/) — TurnPlan / FSM / Integrity / plan_vs_actual (in-repo; **not** PyPI) |
+
+**Honest boundaries**
+
+- A second domain (tax / filing) validated the same philosophy in a **local sandbox** with its own golden run. That domain is **not** published here: financial PII stays offline by policy.
+- `harness_core` is **vendored in this repo** for clone-and-run proof, but **not** published to PyPI as a standalone package yet.
+- Extracting a separate PyPI package remains **demand-driven** (see [Issue #1](https://github.com/hihewh-byte/personal_health_agent/issues/1)).
+
+If you only want to **use PHA as an app**: follow Quick Start above. If you care about the harness: run the golden script (it should print a `PASS harness_core adapter` line), then read the protocol + blueprint docs.
+
+---
+
 ## 5-minute Quick Start (native · recommended first try)
 
 **Honest timing**

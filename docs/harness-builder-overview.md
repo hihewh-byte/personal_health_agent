@@ -33,11 +33,14 @@ message → plan (profile / slots / forbidden / tools)
 
 ## What it is *not* (today)
 
-- Not a `pip install agent-harness` package
-- Not domain-agnostic — slots and audits are health/wearable-specific
+- Not a `pip install agent-harness` package (no PyPI yet) — Core is **vendored** under [`packages/harness_core/`](../packages/harness_core/)
+- Not a full dual-domain OSS monorepo — the second domain (tax) stays **local-only** for privacy
+- Not domain-agnostic in the PHA plugin layer — health slots / CompareTable stay in PHA
 - Not a multi-agent swarm framework
 
-Reusable **patterns** live under `pha/harness_*.py`, `pha/numerics_manifest.py`, `pha/chat_turn_fsm.py`. Extracting a core package is a Phase-2 engineering track, not part of `v0.4.0-beta.1`.
+**What *is* done (Phase A):** dual-domain philosophy proven in a local sandbox; public protocol v0 + in-repo Core + thin adapter (`pha/harness_core_adapter.py`). See [harness-core-protocol-v0.md](harness-core-protocol-v0.md) and [harness-core-evolution-blueprint.md](harness-core-evolution-blueprint.md).
+
+Reusable **patterns** also live under `pha/harness_*.py`, `pha/numerics_manifest.py`, `pha/chat_turn_fsm.py`. Publishing a standalone core package is demand-driven (Issue #1), not part of `v0.4.0-beta.1`.
 
 Dual-domain map (PHA ↔ tax_agent): [harness-core-evolution-blueprint.md](harness-core-evolution-blueprint.md).
 
@@ -51,6 +54,7 @@ Dual-domain map (PHA ↔ tax_agent): [harness-core-evolution-blueprint.md](harne
 | Numerics audit | `pha/numerics_manifest.py` |
 | Wearable compare audit | `pha/wearable_compare_table_v1.py` |
 | Turn FSM | `pha/chat_turn_fsm.py` |
+| Optional Core bridge | `pha/harness_core_adapter.py` → vendored [`packages/harness_core/`](../packages/harness_core/) |
 | Orchestrator | `pha/chat_turn_orchestrator.py` |
 
 Offline dry-run (no LLM) — ~1s after deps installed:

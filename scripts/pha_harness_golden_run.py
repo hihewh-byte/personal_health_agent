@@ -177,7 +177,8 @@ def main() -> int:
                 f"profile={smoke['core_profile']} core_phases={smoke['core_phases']}"
             )
         else:
-            print("SKIP harness_core adapter (sibling package not found)")
+            print("FAIL: vendored packages/harness_core missing (adapter unavailable)")
+            return 1
     except Exception as exc:  # noqa: BLE001 — golden must surface adapter bugs
         print("FAIL: harness_core adapter:", exc)
         return 1
