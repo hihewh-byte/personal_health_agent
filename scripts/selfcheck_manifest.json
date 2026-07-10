@@ -13,6 +13,7 @@
     {"id": "numerics_manifest", "script": "scripts/pha_numerics_manifest_selfcheck.py"},
     {"id": "harness_report_v11", "script": "scripts/pha_harness_report_v11_selfcheck.py"},
     {"id": "harness_golden_run", "script": "scripts/pha_harness_golden_run.py", "tags": ["golden"]},
+    {"id": "harness_core_adapter", "script": "scripts/pha_harness_core_adapter_selfcheck.py", "tags": ["harness", "core"]},
     {"id": "structured_log", "script": "scripts/pha_structured_log_selfcheck.py", "tags": ["observability"]},
     {"id": "health_turn_resolver", "script": "scripts/pha_health_turn_resolver_selfcheck.py", "tags": ["stage3c", "multi-turn"]},
     {"id": "goal_arbiter", "script": "scripts/pha_goal_arbiter_selfcheck.py", "tags": ["stage3f", "harness"]},

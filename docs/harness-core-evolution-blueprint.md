@@ -155,7 +155,7 @@ ASI (`agentic_sales_intelligence`) is a **pipeline / evidence-tier / delivery** 
 ## 8. Next after Phase A (Week 2–3)
 
 1. ~~Close tax P0/P1 gaps~~ ✅  
-2. **Week 2 (now)**: freeze [harness-core-protocol-v0.md](harness-core-protocol-v0.md) + local `../harness_core/` skeleton — **interfaces only, no big-bang move**  
-3. **Week 3**: thin Adapters for PHA + tax; both no-LLM golden runs must stay green  
+2. ~~Week 2: freeze protocol + local `harness_core` skeleton~~ ✅  
+3. ~~Week 3 thin Adapters + golden green wall~~ ✅ (`pha/harness_core_adapter.py`, `tax_agent/harness_core_adapter.py`)  
 4. Optional later: ASI numeric slice **or** Device/Gateway DOC→prototype — **outside** Core  
-5. PyPI only after adapters proven
+5. PyPI only after you explicitly want a published package (adapters already prove the interface)

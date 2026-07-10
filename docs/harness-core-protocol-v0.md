@@ -260,15 +260,16 @@ myAgents/harness_core/
 - [x] Protocol doc in PHA `docs/harness-core-protocol-v0.md`  
 - [x] Local `myAgents/harness_core/` skeleton (TurnPlan / FSM / Integrity / plan_vs_actual)  
 - [x] Unit tests for FSM + plan_vs_actual  
-- [x] **No** change to PHA/tax runtime imports yet  
-- [ ] Push protocol doc to public `main` when ready (Desktop / explicit ask)  
-- [ ] Both domain golden runs remain green without depending on `harness_core` (smoke after any later adapter work)
+- [x] Protocol doc on public `main` (`77cde06`)  
+- [x] Both domain golden runs green **without** requiring Core for public PHA clone (soft skip)
 
-**Week 3 Done criteria (later):**
+**Week 3 Done criteria (adapter integration — 2026-07-10):**
 
-- [ ] `pha.harness_core_adapter` / `tax_agent.harness_core_adapter` map plans + phases  
-- [ ] Optional: domain FSM delegates `assert_plan_before_compose` to Core  
-- [ ] `pha_harness_golden_run` + `run_tax_harness_golden_run` still PASS  
+- [x] `pha/harness_core_adapter.py` + `tax_agent/harness_core_adapter.py`  
+- [x] Golden runs assert adapter smoke (PHA soft / tax required)  
+- [x] Soft tax runtime telemetry: `corePhases` on `resolve_chat_turn` when Core present  
+- [ ] Optional later: domain FSM **delegates** `assert_plan_before_compose` to Core (not required for green wall)  
+- [x] `pha_harness_golden_run` + `run_tax_harness_golden_run` PASS with adapters
 
 ---
 

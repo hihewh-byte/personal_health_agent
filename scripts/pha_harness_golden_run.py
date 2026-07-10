@@ -157,6 +157,31 @@ def main() -> int:
     if failed:
         print(f"RESULT: FAIL ({failed} assertion(s))")
         return 1
+
+    # Optional: sibling harness_core adapter bridge (soft — public clone may omit it)
+    try:
+        from pha.harness_core_adapter import harness_core_available, smoke_adapter_roundtrip
+        from pha.harness_plan import build_turn_evidence_plan
+
+        if harness_core_available():
+            plan_obj = build_turn_evidence_plan(T1_SUPPLEMENT)
+            smoke = smoke_adapter_roundtrip(plan_obj)
+            if smoke.get("core_profile") != "supplement_manifest":
+                print("FAIL: harness_core adapter profile mismatch", smoke)
+                return 1
+            if "plan" not in (smoke.get("core_phases") or []):
+                print("FAIL: harness_core adapter missing PLAN spine", smoke)
+                return 1
+            print(
+                f"PASS harness_core adapter "
+                f"profile={smoke['core_profile']} core_phases={smoke['core_phases']}"
+            )
+        else:
+            print("SKIP harness_core adapter (sibling package not found)")
+    except Exception as exc:  # noqa: BLE001 — golden must surface adapter bugs
+        print("FAIL: harness_core adapter:", exc)
+        return 1
+
     print("RESULT: PASS — harness planned and assembled evidence without calling an LLM.")
     return 0
 
