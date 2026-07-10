@@ -1,8 +1,9 @@
 # Harness Core Evolution Blueprint — PHA ↔ tax_agent
 
-> **Status**: Phase A working doc (2026-07-09) · **No code extraction yet**  
-> **Repos**: [harness-builder-overview.md](harness-builder-overview.md) · [harness-consensus-opus48-2026-06-08.md](harness-consensus-opus48-2026-06-08.md)  
-> **Second domain**: `../tax_agent/` (sibling repo under `myAgents/`)
+> **Status**: Phase A complete (2026-07-09) · **Week 2**: protocol isolation started  
+> **Repos**: [harness-builder-overview.md](harness-builder-overview.md) · [harness-consensus-opus48-2026-06-08.md](harness-consensus-opus48-2026-06-08.md) · [harness-core-protocol-v0.md](harness-core-protocol-v0.md)  
+> **Second domain**: `../tax_agent/` (sibling repo under `myAgents/`)  
+> **Local core skeleton**: `../harness_core/` (interfaces only — not published)
 
 ---
 
@@ -126,17 +127,17 @@ Wave 4a explicitly **excludes** multi-tenant SaaS and vendor device integrations
 
 ---
 
-## 6. ASI fitness (sales intelligence)
+## 6. ASI fitness (sales intelligence) — deferred
 
 ASI (`agentic_sales_intelligence`) is a **pipeline / evidence-tier / delivery** system. It does **not** currently implement PHA’s Plan → Tier0 → Numerics hard gate.
 
 | Question | Verdict |
 |----------|---------|
+| Is ASI required to declare harness “framework complete”? | **No** — dual-domain (PHA ↔ tax) is sufficient |
 | Should ASI be rewritten onto PHA harness wholesale? | **No** — wrong shape (multi-module M1/M3/M5, cloud/local mix) |
-| Can ASI benefit from harness philosophy on a **narrow slice**? | **Yes** — e.g. finance metrics / quote numbers / training scorecard where invented digits are unacceptable |
-| Is ASI the same as PHA enterprise toB RFCs? | **No** — ASI = sales intel product; PHA toB RFCs = clinical multi-patient + device ingest |
+| Optional later slice? | Possible numeric-honesty gateway — **not** on the critical path |
 
-Recommended Phase B (later): pick **one** ASI numeric-honesty slice; do **not** “port ASI to PHA framework” as a big-bang.
+**2026-07-10 decision**: skip ASI Phase B1; mainline = Core protocol isolation → adapters.
 
 ---
 
@@ -145,13 +146,16 @@ Recommended Phase B (later): pick **one** ASI numeric-honesty slice; do **not** 
 - [x] This blueprint exists  
 - [x] `tax_agent` no-LLM golden run script exists and prints PASS  
 - [x] tax `planVsActual` structured field + schema doc v2 (local tax_agent only; **not** published to GitHub)  
-- [x] No core package extraction; PHA `main` 5-minute path untouched  
+- [x] tax P1: Turn FSM + profile registry + richer `tier0Integrity` (local only)  
+- [x] No runtime extraction into PHA yet; PHA `main` 5-minute path untouched  
 - [x] **Policy**: do not upload tax_agent personal data or tax repo contents to public remotes without explicit necessity review
 
 ---
 
-## 8. Next after Phase A
+## 8. Next after Phase A (Week 2–3)
 
-1. Close tax P0 gaps (`plan_vs_actual`, schema doc)  
-2. Narrow toB: either ASI numeric slice **or** start Device/Gateway spike **only** as DOC→thin prototype — not Core  
-3. Extract `harness-core` only when two adapters (PHA + tax) can call the same interface without twins
+1. ~~Close tax P0/P1 gaps~~ ✅  
+2. **Week 2 (now)**: freeze [harness-core-protocol-v0.md](harness-core-protocol-v0.md) + local `../harness_core/` skeleton — **interfaces only, no big-bang move**  
+3. **Week 3**: thin Adapters for PHA + tax; both no-LLM golden runs must stay green  
+4. Optional later: ASI numeric slice **or** Device/Gateway DOC→prototype — **outside** Core  
+5. PyPI only after adapters proven
