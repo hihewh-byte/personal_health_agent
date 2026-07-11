@@ -34,7 +34,8 @@ done
 
 find_python310() {
   local cmd ver major minor
-  for cmd in ${PHA_PYTHON:-} python3.12 python3.11 python3.10 python3; do
+  # Prefer `python` (setup-python / active venv) before versioned binaries (CI mismatch fix).
+  for cmd in ${PHA_PYTHON:-} python python3.12 python3.11 python3.10 python3; do
     [[ -n "$cmd" ]] || continue
     if ! command -v "$cmd" >/dev/null 2>&1; then
       continue

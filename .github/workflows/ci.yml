@@ -30,7 +30,7 @@ jobs:
           pip install -e packages/harness_core
 
       - name: Clone bootstrap (golden run)
-        run: bash scripts/bootstrap.sh --skip-venv --verify-only
+        run: PHA_PYTHON=python bash scripts/bootstrap.sh --skip-venv --verify-only
 
       - name: Doctor (offline — Ollama expected to fail)
         run: python scripts/doctor.py --quick || true
