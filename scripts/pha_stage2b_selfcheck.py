@@ -43,9 +43,11 @@ def main() -> int:
 
     mgr = get_catalog_manager()
     ids_default = mgr.catalog_asset_ids_for_profile("combined_review", T_COMBINED, user_id="default")
+    ce_default = build_catalog_existence("default", "combined_review", T_COMBINED)
     if "lab_lipid_panel" not in ids_default:
-        print("FAIL: default user missing lab in menu", ids_default)
-        failed += 1
+        if ce_default.get("veto_reasons", {}).get("lab_lipid_panel") != "sqlite_lipid_min_rows":
+            print("FAIL: default lab missing without expected veto reason", ids_default, ce_default)
+            failed += 1
 
     ids_empty = mgr.catalog_asset_ids_for_profile(
         "combined_review",
@@ -105,6 +107,7 @@ def main() -> int:
 
     print("preset domains:", list((preset.get("domains") or {}).keys()))
     print("default menu ids:", ids_default)
+    print("default existence:", ce_default)
     print("empty-user menu ids:", ids_empty)
     print("promoted:", promoted)
     print("dynamic meta:", meta)

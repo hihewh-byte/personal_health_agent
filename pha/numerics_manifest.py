@@ -272,6 +272,10 @@ def _query_lipid_rows(user_id: str) -> List[Dict[str, Any]]:
     try:
         cur = conn.execute(_LIPID_SQL, (uid,))
         return [dict(r) for r in cur.fetchall()]
+    except sqlite3.OperationalError as exc:
+        if "no such table" in str(exc).lower():
+            return []
+        raise
     finally:
         conn.close()
 

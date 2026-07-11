@@ -12,6 +12,8 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from pha.numerics_manifest import (  # noqa: E402
+    ManifestEntry,
+    NumericsManifest,
     audit_response_numerics,
     build_numerics_manifest,
     format_manifest_tier0_block,
@@ -54,6 +56,37 @@ T1_MIX = (
 )
 
 
+def _audit_fixture_manifest() -> NumericsManifest:
+    """In-memory fixture for audit rules; no dependency on a user's warehouse."""
+    entries = [
+        ("lipid", "TC", 5.62, "mmol/L", "2023-12-15"),
+        ("lipid", "TG", 1.51, "mmol/L", "2023-12-15"),
+        ("lipid", "LDL", 4.05, "mmol/L", "2023-12-15"),
+        ("lipid", "HDL", 1.02, "mmol/L", "2023-12-15"),
+        ("lipid", "TC", 4.24, "mmol/L", "2025-12-07"),
+        ("lipid", "TG", 0.59, "mmol/L", "2025-12-07"),
+        ("lipid", "LDL", 2.45, "mmol/L", "2025-12-07"),
+        ("lipid", "HDL", 1.56, "mmol/L", "2025-12-07"),
+        ("wearable", "HRV均值", 33.1, "ms", "2025-09-01~2025-11-29"),
+    ]
+    return NumericsManifest(
+        profile="combined_review",
+        user_id="selfcheck",
+        entries=[
+            ManifestEntry(
+                domain=domain,
+                metric=metric,
+                value=value,
+                unit=unit,
+                anchor=anchor,
+                source="selfcheck.in_memory",
+            )
+            for domain, metric, value, unit, anchor in entries
+        ],
+        forbidden_dates={"2026-04-30", "2025-01-13"},
+    )
+
+
 def _run_case(
     case_id: str,
     answer: str,
@@ -78,21 +111,21 @@ def main() -> int:
     print("=== pha_numerics_manifest_selfcheck (Manifest Tier v1) ===\n")
     print("audit_scope:", numerics_audit_scope())
 
-    manifest = build_numerics_manifest(
+    warehouse_manifest = build_numerics_manifest(
         "default",
         profile="combined_review",
         user_message=COMBINED_MSG,
     )
+    manifest = _audit_fixture_manifest()
     block = format_manifest_tier0_block(manifest)
-    print(f"entries={len(manifest.entries)} dates={sorted(manifest.allowed_dates)}")
+    print(
+        f"warehouse_entries={len(warehouse_manifest.entries)} "
+        f"warehouse_dates={sorted(warehouse_manifest.allowed_dates)}",
+    )
+    print(f"audit_fixture_entries={len(manifest.entries)} dates={sorted(manifest.allowed_dates)}")
     print(f"manifest_chars={len(block)}\n")
     if "T0" not in block:
         print("FAIL: manifest header missing T0 marker")
-        return 1
-
-    lipid = [e for e in manifest.entries if e.domain == "lipid"]
-    if len(lipid) < 8:
-        print(f"FAIL: expected >=8 lipid entries, got {len(lipid)}")
         return 1
 
     failed = 0

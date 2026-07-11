@@ -68,14 +68,19 @@ def test_he3_fact_card_subset() -> None:
 
 def test_he5_wearable_fact_card_manifest() -> None:
     """RFC §6.6: wearable_only composer fact_card from numerics_manifest entries."""
-    from pha.numerics_manifest import build_numerics_manifest
-
-    manifest = build_numerics_manifest(
-        "default",
+    manifest = NumericsManifest(
         profile="wearable_only",
-        user_message="我最近的 HRV 怎么样？",
-        include_lipid=False,
-        include_wearable=True,
+        user_id="selfcheck",
+        entries=[
+            ManifestEntry(
+                domain="wearable",
+                metric="HRV均值",
+                value=33.1,
+                unit="ms",
+                anchor="2025-09-01~2025-11-29",
+                source="selfcheck.in_memory",
+            ),
+        ],
     )
     fc = build_fact_card_event(manifest)
     _assert(fc is not None and fc.get("items"), fc)

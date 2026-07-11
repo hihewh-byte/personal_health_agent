@@ -142,7 +142,7 @@ Priority for replies: explicit user instruction → API `response_locale` → me
 |---------|-----|
 | `Python 3.10+ is required` / bootstrap fails on macOS | System `python3` is often 3.9 — `brew install python@3.12` then `PHA_PYTHON=python3.12 bash scripts/bootstrap.sh` |
 | `.venv uses Python < 3.10` | `rm -rf .venv` then re-run `bash scripts/bootstrap.sh` |
-| Golden run fails after clone | Re-run `bash scripts/bootstrap.sh`; ensure `tests/fixtures/golden/pha_storage_min.db` exists (bootstrap seeds `data/pha_storage.db` automatically) |
+| Golden run fails after clone | Re-run `bash scripts/bootstrap.sh`; paste the output in an Issue if it still fails |
 | `Connection refused` on :8788 | Process not up — re-run `python -m pha.main` / `docker compose ps` |
 | Ollama timeout | Check `OLLAMA_BASE_URL`; run `ollama list` |
 | OCR empty / vision fail | `brew install tesseract` (optional until screenshots) |

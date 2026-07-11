@@ -547,11 +547,13 @@ def test_false_no_baseline_claim_when_comparable() -> bool:
     )
 
     ocr = load_golden_ocr()
+    cmp_fix = load_golden_compare_table()
     panels = ocr.get("panels") or []
     parts = [{"ocr_text": p["ocr_text"], "document_family": "wearable"} for p in panels]
     parsed = finalize_wearable_attachment(parts[0], attachment_count=len(parts), parts=parts)
     table = build_wearable_compare_table_v1(
         parsed,
+        baseline_override=cmp_fix["inputs"]["baseline_90d"],
         reference_date=date.fromisoformat("2026-05-30"),
     )
     deep = next((r for r in table.rows if r.metric_id == "sleep_deep"), None)
@@ -680,11 +682,13 @@ def test_respiratory_range_endpoint_authorized() -> bool:
     from pha.wearable_compare_table_v1 import audit_wearable_compare_table
 
     ocr = load_golden_ocr()
+    cmp_fix = load_golden_compare_table()
     panels = ocr.get("panels") or []
     parts = [{"ocr_text": p["ocr_text"], "document_family": "wearable"} for p in panels]
     parsed = finalize_wearable_attachment(parts[0], attachment_count=len(parts), parts=parts)
     table = build_wearable_compare_table_v1(
         parsed,
+        baseline_override=cmp_fix["inputs"]["baseline_90d"],
         reference_date=date.fromisoformat("2026-05-30"),
     )
     answer = (
