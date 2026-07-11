@@ -15,6 +15,7 @@ storage/attachments/
 *.db
 *.sqlite
 *.sqlite3
+!tests/fixtures/golden/pha_storage_min.db
 
 # Runtime reports (may contain personal health data or local paths)
 reports/loop/

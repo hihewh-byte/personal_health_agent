@@ -131,6 +131,24 @@ else
   echo "==> --verify-only: skipping pip install"
 fi
 
+seed_golden_fixture_db() {
+  local fixture="$ROOT/tests/fixtures/golden/pha_storage_min.db"
+  local target="$ROOT/data/pha_storage.db"
+  mkdir -p "$ROOT/data"
+  if [[ -f "$target" ]]; then
+    return 0
+  fi
+  if [[ ! -f "$fixture" ]]; then
+    echo "ERROR: missing golden fixture: tests/fixtures/golden/pha_storage_min.db" >&2
+    echo "       Run: python scripts/build_golden_fixture_db.py" >&2
+    return 1
+  fi
+  cp "$fixture" "$target"
+  echo "==> Seeded data/pha_storage.db from golden fixture (synthetic demo; safe for OSS)"
+}
+
+seed_golden_fixture_db || exit 1
+
 echo ""
 echo "==> No-LLM golden run (Plan → Tier0 → BuildReport; no Ollama)"
 if ! "$PY" scripts/pha_harness_golden_run.py; then
