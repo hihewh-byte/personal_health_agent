@@ -30,17 +30,40 @@ If you are learning to **build agents that stay honest under weak local LLMs**, 
 
 ---
 
-## 30-second No-LLM Golden Run (see the harness first)
+## Clone & verify (60 seconds · no Ollama)
 
-No Ollama, no API keys. After `pip install -r requirements.txt`:
+After clone, one script installs deps and proves the harness runs **without any LLM**:
 
 ```bash
-PYTHONPATH=. python scripts/pha_harness_golden_run.py
+git clone https://github.com/hihewh-byte/personal_health_agent.git
+cd personal_health_agent
+bash scripts/bootstrap.sh
+```
+
+You should see `RESULT: PASS` and `PASS harness_core adapter`.  
+**Requires Python 3.10+.** On macOS, if `python3` is 3.9, use:
+
+```bash
+brew install python@3.12
+PHA_PYTHON=python3.12 bash scripts/bootstrap.sh
+```
+
+Re-check anytime: `bash scripts/bootstrap.sh --verify-only`
+
+Builder notes: [docs/harness-builder-overview.md](docs/harness-builder-overview.md)
+
+---
+
+## 30-second No-LLM Golden Run (manual)
+
+If you already installed deps (`bash scripts/bootstrap.sh`), or prefer manual steps:
+
+```bash
+source .venv/bin/activate   # created by bootstrap.sh
+python scripts/pha_harness_golden_run.py
 ```
 
 You should see two dry-run turns (`supplement_manifest`, `combined_review`) with **profile**, **Tier0 slots**, **tools_allowed**, and `RESULT: PASS`. That is the control plane: Plan → Tier0 assembly → BuildReport — before any model call.
-
-Builder notes: [docs/harness-builder-overview.md](docs/harness-builder-overview.md)
 
 ---
 
@@ -87,15 +110,12 @@ If you only want to **use PHA as an app**: follow Quick Start above. If you care
 git clone https://github.com/hihewh-byte/personal_health_agent.git
 cd personal_health_agent
 
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+bash scripts/bootstrap.sh          # creates .venv, installs deps, golden PASS
+source .venv/bin/activate
 
-cp .env.example .env
-# Minimum chat model (skip the full pull-models.sh on first try)
-ollama pull qwen2.5:7b-instruct
-
+ollama pull qwen2.5:7b-instruct    # skip if already installed
 python scripts/doctor.py
-PYTHONPATH=. python -m pha.main
+python -m pha.main
 ```
 
 Open **http://127.0.0.1:8788**
@@ -165,7 +185,8 @@ Deep dive: [docs/pha-architecture-evolution-v2.3.md](docs/pha-architecture-evolu
 ## Self-checks
 
 ```bash
-PYTHONPATH=. python scripts/pha_harness_golden_run.py   # no LLM
+source .venv/bin/activate
+python scripts/pha_harness_golden_run.py   # no LLM
 bash scripts/run_selfchecks.sh                          # full offline suite (~47 checks)
 python scripts/doctor.py                                # runtime environment
 ```

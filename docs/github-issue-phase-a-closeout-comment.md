@@ -14,7 +14,7 @@ Thanks to everyone watching this thread. Short status update:
 - **Dual-domain basement (local sandbox):** PHA (public) and a second **tax/filing** domain (local-only) both run the same control-plane philosophy: Plan → Tier0 → post-audit, with no-LLM golden runs.
 - **Protocol v0:** [`docs/harness-core-protocol-v0.md`](https://github.com/hihewh-byte/personal_health_agent/blob/main/docs/harness-core-protocol-v0.md) freezes the thin spine (`INIT → SESSION → PLAN → COMPOSE → POST_AUDIT → DONE`) and Core ← Adapter ← Plugin layering.
 - **Blueprint checklist:** [`docs/harness-core-evolution-blueprint.md`](https://github.com/hihewh-byte/personal_health_agent/blob/main/docs/harness-core-evolution-blueprint.md) — tax P0/P1 gaps marked done **in the local twin**; public repo documents the map without shipping tax sources.
-- **Thin PHA adapter:** `pha/harness_core_adapter.py` bridges `TurnEvidencePlan` / phase aliases to a sibling `harness_core` when present; golden run soft-skips if the sibling is absent (public clone stays green).
+- **Thin PHA adapter + vendored Core:** `pha/harness_core_adapter.py` + in-repo [`packages/harness_core/`](https://github.com/hihewh-byte/personal_health_agent/tree/main/packages/harness_core). Public golden run should print `PASS harness_core adapter` with Core spine phases.
 
 ### Honest boundaries (please read)
 

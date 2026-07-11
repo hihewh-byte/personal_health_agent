@@ -120,6 +120,9 @@ Personal OSS (`v0.4.0-beta.1`) is **single-user local**. Industry / clinical toB
 |-----|--------|---------------------|
 | [`rfcs/rfc-device-ingestion-adapter.md`](rfcs/rfc-device-ingestion-adapter.md) | Any wearable/IoT → L1 daily rows; dual-layer `source_vendor` | **Ingest L0**; CompareTable/FSM **unchanged** |
 | [`rfcs/rfc-enterprise-multi-tenant.md`](rfcs/rfc-enterprise-multi-tenant.md) | Hospital → doctor → many patients; Gateway RBAC; `effective_user_id = tenant:patient` | **HTTP Gateway**; Core still sees one `user_id` |
+| [`rfcs/rfc-hospital-iot-ops-agent.md`](rfcs/rfc-hospital-iot-ops-agent.md) | **Hospital IoT Ops Agent** product draft (HIO-A/G/R/D…); evidence-locked ops Q&A for medical IoT vendors | **Domain plugin + PoC plan**; consumes Core / Gateway / Ingest; **DOC-only / zero prod code** |
+| [`rfcs/product-definition-hio-ops-agent.md`](rfcs/product-definition-hio-ops-agent.md) | Sellable product definition (HIO-A P0) for vendor pre-sales / hospital device dept | Product packaging; acceptance criteria |
+| [`rfcs/handoff-tob-hio-agent.md`](rfcs/handoff-tob-hio-agent.md) | **ToB agent handoff**: mission, product judgment, reusable assets, iron rules, backlog | Entry point for dedicated HIO/ToB workstream |
 
 Wave 4a explicitly **excludes** multi-tenant SaaS and vendor device integrations from the open-source personal edition ([`wave4a-open-source-readiness-spec.md`](wave4a-open-source-readiness-spec.md) §1).
 

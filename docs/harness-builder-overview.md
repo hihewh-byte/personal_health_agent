@@ -57,10 +57,12 @@ Dual-domain map (PHA ↔ tax_agent): [harness-core-evolution-blueprint.md](harne
 | Optional Core bridge | `pha/harness_core_adapter.py` → vendored [`packages/harness_core/`](../packages/harness_core/) |
 | Orchestrator | `pha/chat_turn_orchestrator.py` |
 
-Offline dry-run (no LLM) — ~1s after deps installed:
+Offline dry-run (no LLM) — ~1s after bootstrap:
 
 ```bash
-PYTHONPATH=. python scripts/pha_harness_golden_run.py
+bash scripts/bootstrap.sh
+# or, if deps already installed:
+python scripts/pha_harness_golden_run.py
 # → RESULT: PASS — harness planned and assembled evidence without calling an LLM.
 ```
 
@@ -68,7 +70,7 @@ PYTHONPATH=. python scripts/pha_harness_golden_run.py
 
 If you clone PHA to study the harness:
 
-1. Run `bash scripts/run_selfchecks.sh`
+1. Run `bash scripts/bootstrap.sh` (or `bash scripts/run_selfchecks.sh` for the full suite)
 2. Skim this file + the consensus baseline
 3. [Open an Issue](https://github.com/hihewh-byte/personal_health_agent/issues) with: what you tried to reuse, what blocked you, which module felt most portable
 

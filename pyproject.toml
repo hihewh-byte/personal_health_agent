@@ -41,8 +41,8 @@ dev = ["pytest>=7.0"]
 pha-doctor = "pha.doctor_cli:main"
 
 [project.urls]
-Homepage = "https://github.com/YOUR_ORG/personal-health-agent"
-Documentation = "https://github.com/YOUR_ORG/personal-health-agent/blob/main/docs/INSTALL.md"
+Homepage = "https://github.com/hihewh-byte/personal_health_agent"
+Documentation = "https://github.com/hihewh-byte/personal_health_agent/blob/main/docs/INSTALL.md"
 
 [tool.setuptools.packages.find]
 where = ["."]

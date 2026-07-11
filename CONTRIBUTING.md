@@ -13,11 +13,9 @@ See [docs/wave4a-open-source-readiness-spec.md](docs/wave4a-open-source-readines
 ## Development setup
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-bash scripts/pull-models.sh
-export PYTHONPATH=.
+bash scripts/bootstrap.sh
+source .venv/bin/activate
+ollama pull qwen2.5:7b-instruct   # optional until chat E2E
 python -m pha.main
 ```
 

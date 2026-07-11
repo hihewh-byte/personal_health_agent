@@ -23,10 +23,17 @@ jobs:
           sudo apt-get install -y tesseract-ocr tesseract-ocr-eng
 
       - name: Install Python deps
-        run: pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt
+          pip install -e .
+          pip install -e packages/harness_core
+
+      - name: Clone bootstrap (golden run)
+        run: bash scripts/bootstrap.sh --skip-venv --verify-only
 
       - name: Doctor (offline — Ollama expected to fail)
-        run: PYTHONPATH=. python scripts/doctor.py --quick || true
+        run: python scripts/doctor.py --quick || true
 
       - name: Offline selfcheck suite
         run: bash scripts/run_selfchecks.sh

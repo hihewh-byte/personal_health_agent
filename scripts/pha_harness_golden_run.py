@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """No-LLM harness golden dry-run — Plan / Tier0 / BuildReport without calling Ollama.
 
-Usage (from repo root, after ``pip install -r requirements.txt``)::
+Usage (from repo root, after ``bash scripts/bootstrap.sh`` or editable install)::
 
-    PYTHONPATH=. python scripts/pha_harness_golden_run.py
+    python scripts/pha_harness_golden_run.py
 
 Exit 0 = assertions passed. No Ollama / no API keys required.
 """

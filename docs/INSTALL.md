@@ -45,19 +45,21 @@ bash scripts/pull-models.sh
 git clone https://github.com/hihewh-byte/personal_health_agent.git
 cd personal_health_agent
 
-python3 -m venv .venv
+bash scripts/bootstrap.sh          # Python 3.10+; creates .venv + golden PASS
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-
-cp .env.example .env
-# Defaults: PHA_PORT=8788, PHA_UI_LANG=en, PHA_RESPONSE_LOCALE=en
 
 ollama pull qwen2.5:7b-instruct    # skip if already installed
 python scripts/doctor.py
 
-export PYTHONPATH=.
 python -m pha.main
 # → http://127.0.0.1:8788
+```
+
+**macOS note:** system `python3` is often 3.9. If bootstrap fails, install Python 3.10+:
+
+```bash
+brew install python@3.12
+PHA_PYTHON=python3.12 bash scripts/bootstrap.sh
 ```
 
 Verify:
@@ -138,6 +140,9 @@ Priority for replies: explicit user instruction → API `response_locale` → me
 
 | Symptom | Fix |
 |---------|-----|
+| `Python 3.10+ is required` / bootstrap fails on macOS | System `python3` is often 3.9 — `brew install python@3.12` then `PHA_PYTHON=python3.12 bash scripts/bootstrap.sh` |
+| `.venv uses Python < 3.10` | `rm -rf .venv` then re-run `bash scripts/bootstrap.sh` |
+| Golden run fails after clone | Re-run `bash scripts/bootstrap.sh`; paste output in an Issue |
 | `Connection refused` on :8788 | Process not up — re-run `python -m pha.main` / `docker compose ps` |
 | Ollama timeout | Check `OLLAMA_BASE_URL`; run `ollama list` |
 | OCR empty / vision fail | `brew install tesseract` (optional until screenshots) |

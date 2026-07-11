@@ -11,12 +11,11 @@ We already have a **second in-house domain** (tax / filing agent) that mirrors t
 ```bash
 git clone https://github.com/hihewh-byte/personal_health_agent.git
 cd personal_health_agent
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-PYTHONPATH=. python scripts/pha_harness_golden_run.py
+bash scripts/bootstrap.sh
 ```
 
-You should see `RESULT: PASS` with profile / Tier0 slots / tools — no model call.
+You should see `RESULT: PASS` with profile / Tier0 slots / tools — no model call.  
+Requires **Python 3.10+** (macOS: `PHA_PYTHON=python3.12 bash scripts/bootstrap.sh` if `python3` is 3.9).
 
 Docs:
 - https://github.com/hihewh-byte/personal_health_agent/blob/main/docs/harness-builder-overview.md
