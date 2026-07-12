@@ -22,6 +22,8 @@ reports/chb/**/brief_*.json
 reports/p1_golden/*
 !reports/p1_golden/README.md
 !reports/chb/README.md
+reports/e2e/*.jsonl
+reports/e2e/question_manifest_*.json
 
 # PHA local snapshots (use git tags for releases)
 .pha-versions/
