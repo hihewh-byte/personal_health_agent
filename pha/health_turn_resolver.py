@@ -227,18 +227,42 @@ def _build_intent_scope_clarify(
     ref: date,
     uploaded_years: list[int],
     explicit_metrics: list[str],
+    response_locale: str | None = None,
 ) -> HealthTurnScope:
+    from pha.response_language import normalize_response_locale, resolve_response_locale
+
+    loc = normalize_response_locale(response_locale) or resolve_response_locale(
+        msg,
+        request_locale=response_locale,
+    )
     fp = episodic.focus_profile or ""
     ys = ", ".join(str(y) for y in uploaded_years)
     session_label = catalog_session_anchor_label(fp)
-    choices: list[dict[str, Any]] = [
-        {
-            "id": "continue_session",
-            "label": f"继续{session_label}",
-            "payload": {"action": "continue_session", "focus_profile": fp},
-        },
-    ]
-    choices.extend(_build_clarify_choices(uploaded_years))
+    if loc == "en":
+        choices: list[dict[str, Any]] = [
+            {
+                "id": "continue_session",
+                "label": f"Continue {session_label}",
+                "payload": {"action": "continue_session", "focus_profile": fp},
+            },
+        ]
+        for y in uploaded_years:
+            choices.append(
+                {
+                    "id": f"lab_year_{y}",
+                    "label": f"Year {y}",
+                    "payload": {"action": "lab_year", "year": y},
+                },
+            )
+    else:
+        choices = [
+            {
+                "id": "continue_session",
+                "label": f"继续{session_label}",
+                "payload": {"action": "continue_session", "focus_profile": fp},
+            },
+        ]
+        choices.extend(_build_clarify_choices(uploaded_years))
     return HealthTurnScope(
         metric_keys=explicit_metrics or (["ldl"] if message_has_lab_marker(msg) else []),
         metric_source="default",
@@ -247,7 +271,9 @@ def _build_intent_scope_clarify(
         needs_clarification=True,
         clarify_kind="intent_scope",
         clarify_prompt=(
-            f"您是在问{session_label}，还是查看历年化验记录（{ys}）？请选择一项。"
+            f"Are you asking about {session_label}, or reviewing multi-year lab records ({ys})? Please pick one."
+            if loc == "en"
+            else f"您是在问{session_label}，还是查看历年化验记录（{ys}）？请选择一项。"
         ),
         clarify_choices=choices,
         profile_hint=fp or hint or "lab_cross_year",
@@ -269,6 +295,7 @@ def _try_session_anchor_scope(
     uploaded_years: list[int],
     explicit_metrics: list[str],
     explicit_window: WearableWindow | None,
+    response_locale: str | None = None,
 ) -> HealthTurnScope | None:
     """Prefer active session anchor over naive lab-year clarify (cross-domain arbitration)."""
     if not (active or revived):
@@ -291,6 +318,7 @@ def _try_session_anchor_scope(
             ref=ref,
             uploaded_years=uploaded_years,
             explicit_metrics=explicit_metrics,
+            response_locale=response_locale,
         )
 
     inherited = (
@@ -321,6 +349,7 @@ def _try_session_anchor_scope(
                 ref=ref,
                 uploaded_years=uploaded_years,
                 explicit_metrics=explicit_metrics,
+                response_locale=response_locale,
             )
         return _continue_episodic_scope(
             msg,
@@ -363,6 +392,7 @@ def resolve_health_turn_scope(
     available_lab_years: list[int] | None = None,
     reference_date: date | None = None,
     profile_hint: str | None = None,
+    response_locale: str | None = None,
 ) -> HealthTurnScope:
     """Resolve effective health scope for the current turn (C-layer, deterministic)."""
     msg = (message or "").strip()
@@ -372,6 +402,12 @@ def resolve_health_turn_scope(
     explicit_metrics = infer_metrics_from_message(msg)
     explicit_years = extract_years_regex(msg, reference_date=ref)
     explicit_window = _parse_relative_wearable_window(msg, reference=ref)
+    from pha.response_language import normalize_response_locale, resolve_response_locale
+
+    loc = normalize_response_locale(response_locale) or resolve_response_locale(
+        msg,
+        request_locale=response_locale,
+    )
 
     # --- Lab multi-year explicit scope ---
     if matches_multi_scope_lab(msg) and uploaded_years:
@@ -487,6 +523,7 @@ def resolve_health_turn_scope(
             uploaded_years=uploaded_years,
             explicit_metrics=explicit_metrics,
             explicit_window=explicit_window,
+            response_locale=response_locale,
         )
         if anchored is not None:
             return anchored
@@ -510,6 +547,17 @@ def resolve_health_turn_scope(
         and not matches_multi_scope_lab(msg)
     ):
         ys = ", ".join(str(y) for y in uploaded_years)
+        if loc == "en":
+            year_choices = [
+                {
+                    "id": str(y),
+                    "label": f"Year {y}",
+                    "payload": {"lab_years": [y], "action": "lab_year"},
+                }
+                for y in uploaded_years
+            ]
+        else:
+            year_choices = _build_clarify_choices(uploaded_years)
         return HealthTurnScope(
             metric_keys=explicit_metrics or ["ldl"],
             metric_source="default",
@@ -517,8 +565,12 @@ def resolve_health_turn_scope(
             year_source="clarify",
             needs_clarification=True,
             clarify_kind="lab_year",
-            clarify_prompt=f"您有多年的血脂/化验记录（{ys}）。请指定要查看的年份。",
-            clarify_choices=_build_clarify_choices(uploaded_years),
+            clarify_prompt=(
+                f"You have multi-year lipid/lab records ({ys}). Which year should we look at?"
+                if loc == "en"
+                else f"您有多年的血脂/化验记录（{ys}）。请指定要查看的年份。"
+            ),
+            clarify_choices=year_choices,
             profile_hint=hint or "lab_cross_year",
             wearable_window=_default_wearable_window(msg, reference=ref),
             time_source="default",

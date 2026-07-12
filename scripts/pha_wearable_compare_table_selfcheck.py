@@ -363,7 +363,9 @@ def test_fallback_summary_passes_audit() -> bool:
         baseline_override=cmp_fix["inputs"]["baseline_90d"],
         reference_date=date.fromisoformat(str(cmp_fix["reference_date"])),
     )
-    summary = polish_wearable_user_visible_reply(compare_table_to_user_summary(table))
+    summary = polish_wearable_user_visible_reply(
+        compare_table_to_user_summary(table, locale="zh"),
+    )
     audit = audit_wearable_compare_table(summary, table, user_message=user_msg)
     if not audit.get("passed"):
         print("FAIL polished fallback should pass compare audit", audit.get("violations"))

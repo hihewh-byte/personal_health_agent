@@ -369,6 +369,7 @@ def orchestrate_chat_turn_events(
                     raw_user_msg,
                     episodic=_health_episodic_focus,
                     available_lab_years=_lab_years_available,
+                    response_locale=response_locale,
                 )
             from pha.health_intent_catalog import (
                 health_intent_catalog_enabled,
@@ -748,6 +749,7 @@ def orchestrate_chat_turn_events(
             paths_in=_paths_in,
             numerics_manifest=numerics_manifest,
             wearable_compare_table_obj=wearable_compare_table_obj,
+            response_locale=_slot_ctx.response_locale,
         )
         for _skip_ev in _skip_eval.status_events:
             yield json.dumps(_skip_ev, ensure_ascii=False)
@@ -787,6 +789,7 @@ def orchestrate_chat_turn_events(
                     profile=plan.profile,
                     user_message=msg,
                     manifest=None,
+                    response_locale=_slot_ctx.response_locale,
                 )
                 if _wm_skip or skip_llm:
                     _composer_manifest = build_numerics_manifest(

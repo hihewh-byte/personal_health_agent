@@ -135,10 +135,24 @@ def fact_card_values_subset_of_manifest(
     return True
 
 
-def build_manifest_metric_focus_summary(manifest: NumericsManifest | None) -> str:
+def build_manifest_metric_focus_summary(
+    manifest: NumericsManifest | None,
+    *,
+    locale: str | None = None,
+) -> str:
     """Warehouse-only single-metric answer (no screenshot CompareTable)."""
     if manifest is None or not manifest.entries:
         return ""
+    from pha.response_language import default_response_locale, normalize_response_locale
+
+    loc = normalize_response_locale(locale) or default_response_locale()
+    if loc == "en":
+        lines = ["From your ~90-day health records:", ""]
+        for entry in manifest.entries[:6]:
+            val_s = f"{entry.value:g}{entry.unit or ''}"
+            metric_en = _WAREHOUSE_FOCUS_LABEL_EN.get(entry.metric, entry.metric)
+            lines.append(f"- **{metric_en}**: {val_s} ({entry.anchor})")
+        return "\n".join(lines).strip()
     lines = ["根据您近 90 天的健康记录：", ""]
     for entry in manifest.entries[:6]:
         val_s = f"{entry.value:g}{entry.unit or ''}"
@@ -155,6 +169,17 @@ _WAREHOUSE_FOCUS_LABEL_BY_CAT: dict[str, str] = {
     "respiratory_rate": "呼吸率均值",
     "activity_kcal": "活动消耗日均",
     "vo2max": "VO2max均值",
+}
+
+_WAREHOUSE_FOCUS_LABEL_EN: dict[str, str] = {
+    "HRV均值": "Mean HRV",
+    "步数均值": "Mean steps",
+    "睡眠均值": "Mean sleep",
+    "静息心率均值": "Mean resting HR",
+    "血氧均值": "Mean SpO2",
+    "呼吸率均值": "Mean respiratory rate",
+    "活动消耗日均": "Mean active kcal/day",
+    "VO2max均值": "Mean VO2max",
 }
 
 
@@ -199,6 +224,7 @@ def try_warehouse_metric_focus_skip(
     profile: str,
     user_message: str,
     manifest: NumericsManifest | None,
+    response_locale: str | None = None,
 ) -> str:
     """
     Pure warehouse wearable follow-up: skip LLM when manifest focus is available.
@@ -227,7 +253,7 @@ def try_warehouse_metric_focus_skip(
             include_wearable=True,
         )
     wm = _filter_manifest_to_metric_focus(wm, user_message)
-    return build_manifest_metric_focus_summary(wm)
+    return build_manifest_metric_focus_summary(wm, locale=response_locale)
 
 
 __all__ = [

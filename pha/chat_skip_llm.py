@@ -34,9 +34,28 @@ def evaluate_skip_llm_path(
     paths_in: List[str],
     numerics_manifest: Optional[NumericsManifest],
     wearable_compare_table_obj: Any,
+    response_locale: Optional[str] = None,
 ) -> SkipLlmEvaluation:
     """Harness veto path: deterministic answers before LLM compose."""
     out = SkipLlmEvaluation()
+
+    from pha.health_intent_catalog import is_weak_close_followup
+    from pha.response_language import normalize_response_locale, resolve_response_locale
+
+    loc = normalize_response_locale(response_locale) or resolve_response_locale(
+        raw_user_msg,
+        request_locale=response_locale,
+    )
+    # Any profile: pure close tokens should not re-enter LLM (EN/ZH ack only).
+    if is_weak_close_followup(raw_user_msg) and not paths_in:
+        out.skip_llm = True
+        out.answer_text = (
+            "You're welcome. Ask anytime if you want another look at your records."
+            if loc == "en"
+            else "不客气。若还想查看其他记录，随时告诉我。"
+        )
+        out.status_events.append(_status("弱收尾：已返回致谢"))
+        return out
 
     if plan.profile == "wearable_only" and not wearable_screenshot_review:
         from pha.grounded_answer_composer import try_warehouse_metric_focus_skip
@@ -46,6 +65,7 @@ def evaluate_skip_llm_path(
             profile=plan.profile,
             user_message=msg,
             manifest=numerics_manifest,
+            response_locale=response_locale,
         )
         if manifest_focus:
             out.skip_llm = True
@@ -91,14 +111,22 @@ def evaluate_skip_llm_path(
         focus_table = compare_table_from_parsed(parsed_payload)
     if focus_table is not None:
         if user_requests_snapshot_correction(raw_user_msg):
-            corr = build_compare_table_correction_summary(focus_table, raw_user_msg)
+            corr = build_compare_table_correction_summary(
+                focus_table,
+                raw_user_msg,
+                locale=response_locale,
+            )
             if corr:
                 out.skip_llm = True
                 out.answer_text = corr
                 out.status_events.append(_status("已根据您的更正返回小结"))
                 return out
         if paths_in:
-            first = build_compare_first_upload_answer(focus_table, raw_user_msg)
+            first = build_compare_first_upload_answer(
+                focus_table,
+                raw_user_msg,
+                locale=response_locale,
+            )
             if first:
                 out.skip_llm = True
                 out.answer_text = first
@@ -112,6 +140,7 @@ def evaluate_skip_llm_path(
             focus_table,
             raw_user_msg,
             prior_user_message=prior_user_msg,
+            locale=response_locale,
         )
         if delta_ans:
             out.skip_llm = True
@@ -123,7 +152,11 @@ def evaluate_skip_llm_path(
         from pha.health_intent_catalog import is_weak_episodic_followup
 
         if is_weak_episodic_followup(raw_user_msg):
-            weak_ans = build_weak_episodic_followup_answer(focus_table, raw_user_msg)
+            weak_ans = build_weak_episodic_followup_answer(
+                focus_table,
+                raw_user_msg,
+                locale=response_locale,
+            )
             if weak_ans:
                 out.skip_llm = True
                 out.answer_text = weak_ans
@@ -135,6 +168,7 @@ def evaluate_skip_llm_path(
             focus_table,
             raw_user_msg,
             prior_user_message=prior_user_msg,
+            locale=response_locale,
         )
         if focus_ans:
             out.skip_llm = True
@@ -143,13 +177,21 @@ def evaluate_skip_llm_path(
                 _status("已返回该指标的小结"),
             )
             return out
-        cat_focus = build_catalog_followup_focus_answer(focus_table, raw_user_msg)
+        cat_focus = build_catalog_followup_focus_answer(
+            focus_table,
+            raw_user_msg,
+            locale=response_locale,
+        )
         if cat_focus:
             out.skip_llm = True
             out.answer_text = cat_focus
             out.status_events.append(_status("已返回该指标的小结"))
             return out
-        ex_adv = build_exercise_suitability_followup_answer(focus_table, raw_user_msg)
+        ex_adv = build_exercise_suitability_followup_answer(
+            focus_table,
+            raw_user_msg,
+            locale=response_locale,
+        )
         if ex_adv:
             out.skip_llm = True
             out.answer_text = ex_adv
@@ -157,7 +199,11 @@ def evaluate_skip_llm_path(
                 _status("已返回运动建议"),
             )
             return out
-        health_sum = build_health_summary_followup_answer(focus_table, raw_user_msg)
+        health_sum = build_health_summary_followup_answer(
+            focus_table,
+            raw_user_msg,
+            locale=response_locale,
+        )
         if health_sum:
             out.skip_llm = True
             out.answer_text = health_sum
@@ -174,6 +220,7 @@ def evaluate_skip_llm_path(
                 profile=plan.profile,
                 user_message=msg,
                 manifest=numerics_manifest,
+                response_locale=response_locale,
             )
             if manifest_focus:
                 out.skip_llm = True

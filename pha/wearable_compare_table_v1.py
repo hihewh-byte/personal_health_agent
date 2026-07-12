@@ -18,6 +18,7 @@ from pha.sqlite_storage import query_wearable_daily_range
 from pha.store import store
 from pha.wearable_metric_registry import (
     comparable_wearable_daily_specs,
+    metric_labels_en,
     metric_labels_zh,
     metric_mention_hints,
     metrics_footer_when_snapshot_only,
@@ -492,22 +493,30 @@ def build_wearable_compare_table_tier0_block(
     return table.to_markdown()
 
 
-def _fallback_footer_for_table(table: CompareTableV1) -> str:
+def _fallback_footer_for_table(table: CompareTableV1, *, locale: Optional[str] = None) -> str:
     """Only disclaim metrics that are actually snapshot_only in this CompareTable."""
     labels: List[str] = []
+    loc = _ui_locale(locale)
     for row in table.rows:
         if row.row_kind != "snapshot_only" or not row.snapshot_value:
             continue
         if row.metric_id in metrics_footer_when_snapshot_only():
-            labels.append(_METRIC_LABEL_ZH.get(row.metric_id, row.metric_id))
+            labels.append(_metric_label(row.metric_id, loc))
     if not labels:
         return ""
+    if loc == "en":
+        joined = ", ".join(labels)
+        return (
+            f"Note: {joined} come from this screenshot only; "
+            "no 90-day history is stored for comparison."
+        )
     joined = "、".join(labels)
     return (
         f"说明：{joined} 仅来自截图，系统没有保存该项的 90 天历史，无法与过去 90 天对比。"
     )
 
 _METRIC_LABEL_ZH: Dict[str, str] = metric_labels_zh()
+_METRIC_LABEL_EN: Dict[str, str] = metric_labels_en()
 _METRIC_MENTION_HINTS: Dict[str, Tuple[str, ...]] = metric_mention_hints()
 
 _VERDICT_LABEL_ZH: Dict[str, str] = {
@@ -517,6 +526,40 @@ _VERDICT_LABEL_ZH: Dict[str, str] = {
     "snapshot_only": "仅本次截图",
     "insufficient_data": "暂无可靠读数",
 }
+
+_VERDICT_LABEL_EN: Dict[str, str] = {
+    "within_range": "within the recent 90-day normal range",
+    "above_mean": "above the recent 90-day range upper bound",
+    "below_mean": "below the recent 90-day range lower bound",
+    "snapshot_only": "screenshot only",
+    "insufficient_data": "no reliable reading",
+}
+
+
+def _ui_locale(locale: Optional[str]) -> str:
+    """Resolve UI locale for deterministic templates.
+
+    Explicit ``locale`` wins. When omitted, keep Chinese templates for backward
+    compatibility with selfchecks and Chinese LLM fallback callers; English must
+    be requested via ``response_locale=en`` from the orchestrator.
+    """
+    from pha.response_language import normalize_response_locale
+
+    return normalize_response_locale(locale) or "zh"
+
+
+def _metric_label(metric_id: str, locale: Optional[str] = None) -> str:
+    loc = _ui_locale(locale)
+    if loc == "en":
+        return _METRIC_LABEL_EN.get(metric_id) or _METRIC_LABEL_ZH.get(metric_id, metric_id)
+    return _METRIC_LABEL_ZH.get(metric_id, metric_id)
+
+
+def _verdict_label(verdict: str, locale: Optional[str] = None, *, fallback: str = "") -> str:
+    loc = _ui_locale(locale)
+    if loc == "en":
+        return _VERDICT_LABEL_EN.get(verdict, fallback or verdict)
+    return _VERDICT_LABEL_ZH.get(verdict, fallback or verdict)
 
 _DECIMAL_TOKEN_RE = re.compile(r"(?<!\d)(\d+\.\d{1,2})(?!\d)")
 
@@ -595,20 +638,30 @@ _ABOVE_CUES: Tuple[str, ...] = ("明显偏高", "显著偏高", "远高于", "�
 _BELOW_CUES: Tuple[str, ...] = ("明显偏低", "显著偏低", "远低于", "远低于")
 
 
-def _format_duration_human(value: str) -> str:
+def _format_duration_human(value: str, *, locale: Optional[str] = None) -> str:
     raw = (value or "").strip().replace(" ", "")
+    loc = _ui_locale(locale)
     m = re.match(r"^(\d+)hr(\d+)min$", raw, re.I)
     if m:
+        if loc == "en":
+            return f"{int(m.group(1))} hr {int(m.group(2))} min"
         return f"{int(m.group(1))} 小时 {int(m.group(2))} 分钟"
     m2 = re.match(r"^(\d+)hr$", raw, re.I)
     if m2:
+        if loc == "en":
+            return f"{int(m2.group(1))} hr"
         return f"{int(m2.group(1))} 小时"
     return value or "—"
 
 
-def _format_snapshot_display(metric_id: str, value: str) -> str:
+def _format_snapshot_display(
+    metric_id: str,
+    value: str,
+    *,
+    locale: Optional[str] = None,
+) -> str:
     if metric_id in ("sleep_time_asleep", "sleep_deep", "sleep_rem"):
-        return _format_duration_human(value)
+        return _format_duration_human(value, locale=locale)
     if metric_id == "hrv_rmssd_ms":
         return f"{value} ms"
     if metric_id == "resting_heart_rate_bpm":
@@ -620,6 +673,9 @@ def _format_snapshot_display(metric_id: str, value: str) -> str:
     if metric_id == "workout_heart_rate_range_bpm":
         return f"{value} bpm"
     if metric_id == "workout_count_recent":
+        loc = _ui_locale(locale)
+        if loc == "en":
+            return f"{value} days (last 4 weeks)"
         return f"{value} 天（近4周）"
     return value
 
@@ -923,29 +979,40 @@ def _audit_fabricated_stage_90d(
 
 _CORRECTION_USER_RE = re.compile(
     r"重新|再次|核实|不对|错误|明显错|解析.*不对|重新分析|再次解析|从哪来|哪里来的|"
-    r"睡眠.*(?:不对|错误|核实)|锻炼.*(?:不对|错误|哪里来|从哪来|次数)",
+    r"睡眠.*(?:不对|错误|核实)|锻炼.*(?:不对|错误|哪里来|从哪来|次数)|"
+    r"\b(?:re-?check|re-?parse|re-?analyze|verify|wrong|incorrect|looks?\s+wrong)\b|"
+    r"(?:sleep|workout).*(?:wrong|incorrect|verify|re-?check)|"
+    r"where\s+does\s+(?:the\s+)?(?:workout|exercise)\s+count",
     re.I,
 )
 
 _EPISODIC_SHORT_METRIC_RE = re.compile(
     r"^(?:我(?:最近|今天)的?\s*)?"
-    r"(?:睡眠|步数|锻炼|心率|血氧|呼吸率?|HRV|静息心率)(?:呢|吗|\?|？)?$",
+    r"(?:睡眠|步数|锻炼|心率|血氧|呼吸率?|HRV|静息心率|"
+    r"sleep|steps|workout|heart\s*rate|spo2|hrv|resting\s*hr|"
+    r"respiratory\s*rate)(?:呢|吗|\?|？)?$",
     re.I,
 )
 
 _EXERCISE_SUITABILITY_RE = re.compile(
-    r"适合|能否|可以.*运动|明天|后天|跑步|训练|workout",
+    r"适合|能否|可以.*运动|明天|后天|跑步|训练|workout|"
+    r"suitable|can\s+i\s+(?:train|exercise|run)|tomorrow|day\s+after|"
+    r"ok\s+to\s+(?:train|exercise|run)",
     re.I,
 )
 
 _EXERCISE_ADVICE_ONLY_RE = re.compile(
     r"^(?:那)?(?:明天|后天|今天)?.*(?:适合|能否|可以|能).*(?:运动|锻炼|跑步|训练)"
-    r"|^(?:跑多久|跑步).*(?:合适|多久|吗)",
+    r"|^(?:跑多久|跑步).*(?:合适|多久|吗)|"
+    r"(?:ok|okay|suitable|can\s+i).*(?:train|exercise|run|workout)|"
+    r"(?:how\s+long|duration).*(?:run|jog)|"
+    r"(?:run|jog).*(?:how\s+long|duration|minutes)",
     re.I,
 )
 
 _HEALTH_SUMMARY_RE = re.compile(
-    r"总结|概览|整体.*(?:健康|情况)|健康数据",
+    r"总结|概览|整体.*(?:健康|情况)|健康数据|"
+    r"summar(?:y|ize)|overview|overall\s+(?:health|status)|health\s+data",
     re.I,
 )
 
@@ -1026,27 +1093,39 @@ def infer_single_metric_focus_ids(user_message: str) -> List[str]:
 def _format_metric_focus_rows(
     table: CompareTableV1,
     focus_ids: Set[str],
+    *,
+    locale: Optional[str] = None,
 ) -> List[str]:
     lines: List[str] = []
+    loc = _ui_locale(locale)
     for row in table.rows:
         if row.metric_id not in focus_ids or not row.snapshot_value:
             continue
-        label = _METRIC_LABEL_ZH.get(row.metric_id, row.metric_id)
-        snap = _format_snapshot_display(row.metric_id, row.snapshot_value)
+        label = _metric_label(row.metric_id, loc)
+        snap = _format_snapshot_display(row.metric_id, row.snapshot_value, locale=loc)
         if row.row_kind == "comparable_90d" and (row.baseline_90d_value or "").strip() not in (
             "",
             "NO_BASELINE",
         ):
             base = row.baseline_90d_value or "—"
             rng = _format_range_human(row.baseline_90d_range)
-            verdict = _VERDICT_LABEL_ZH.get(row.verdict, row.verdict_note or "")
+            verdict = _verdict_label(row.verdict, loc, fallback=row.verdict_note or "")
             unit = (row.baseline_90d_unit or "").strip()
             base_s = f"{base} {unit}".strip()
-            lines.append(
-                f"- **{label}**：本次截图 **{snap}**；近 90 天平均 **{base_s}**（区间 {rng}），{verdict}。"
-            )
+            if loc == "en":
+                lines.append(
+                    f"- **{label}**: this screenshot **{snap}**; "
+                    f"90-day mean **{base_s}** (range {rng}), {verdict}."
+                )
+            else:
+                lines.append(
+                    f"- **{label}**：本次截图 **{snap}**；近 90 天平均 **{base_s}**（区间 {rng}），{verdict}。"
+                )
         else:
-            lines.append(f"- **{label}**：本次截图 **{snap}**（仅来自本次截图）。")
+            if loc == "en":
+                lines.append(f"- **{label}**: this screenshot **{snap}** (screenshot only).")
+            else:
+                lines.append(f"- **{label}**：本次截图 **{snap}**（仅来自本次截图）。")
     return lines
 
 
@@ -1054,23 +1133,43 @@ def build_compare_table_metric_focus_summary(
     table: CompareTableV1,
     metric_ids: Sequence[str],
     *,
-    intro: str = "关于您关心的指标：",
+    intro: Optional[str] = None,
+    locale: Optional[str] = None,
 ) -> str:
+    loc = _ui_locale(locale)
     focus_ids = {m for m in metric_ids if m}
-    rows = _format_metric_focus_rows(table, focus_ids)
+    rows = _format_metric_focus_rows(table, focus_ids, locale=loc)
     if not rows:
         return ""
+    if intro is None:
+        intro = (
+            "About the metrics you asked about:"
+            if loc == "en"
+            else "关于您关心的指标："
+        )
     lines = [intro, ""] + rows
     if "sleep_time_asleep" in focus_ids:
         lines.append("")
-        lines.append(
-            "说明：睡眠总时长取自截图顶部 **TIME ASLEEP**，不是 Stages 里的 **Awake（清醒时长）**。"
-        )
+        if loc == "en":
+            lines.append(
+                "Note: sleep duration comes from screenshot top **TIME ASLEEP**, "
+                "not Stages **Awake**."
+            )
+        else:
+            lines.append(
+                "说明：睡眠总时长取自截图顶部 **TIME ASLEEP**，不是 Stages 里的 **Awake（清醒时长）**。"
+            )
     if "workout_count_recent" in focus_ids:
         lines.append("")
-        lines.append(
-            "说明：近期锻炼次数取自 Workouts 页「过去 4 周锻炼天数」，不是日历上的日期数字。"
-        )
+        if loc == "en":
+            lines.append(
+                "Note: recent workout days come from the Workouts page "
+                "\"last 4 weeks\" count, not calendar date digits."
+            )
+        else:
+            lines.append(
+                "说明：近期锻炼次数取自 Workouts 页「过去 4 周锻炼天数」，不是日历上的日期数字。"
+            )
     return "\n".join(lines).strip()
 
 
@@ -1093,14 +1192,22 @@ def build_episodic_delta_focus_answer(
     user_message: str,
     *,
     prior_user_message: str = "",
+    locale: Optional[str] = None,
 ) -> str:
     focus_ids = infer_episodic_delta_focus_ids(user_message, prior_user_message)
     if not focus_ids:
         return ""
+    loc = _ui_locale(locale)
+    intro = (
+        "About the metrics you asked about (vs ~90-day baseline; no week-by-week slices):"
+        if loc == "en"
+        else "关于您关心的指标（与近 90 天基线对比；系统无逐周切片）："
+    )
     body = build_compare_table_metric_focus_summary(
         table,
         focus_ids,
-        intro="关于您关心的指标（与近 90 天基线对比；系统无逐周切片）：",
+        intro=intro,
+        locale=loc,
     )
     return body
 
@@ -1108,32 +1215,51 @@ def build_episodic_delta_focus_answer(
 def build_exercise_suitability_followup_answer(
     table: CompareTableV1,
     user_message: str,
+    *,
+    locale: Optional[str] = None,
 ) -> str:
     """Screenshot-session exercise advice without re-pasting full CompareTable."""
     if not _EXERCISE_ADVICE_ONLY_RE.search((user_message or "").strip()):
         return ""
     if not any(r.snapshot_value for r in table.rows):
         return ""
-    adv = _deterministic_exercise_advisory(table)
+    loc = _ui_locale(locale)
+    adv = _deterministic_exercise_advisory(table, locale=loc)
     msg = (user_message or "").strip()
-    if re.search(r"跑步|跑多久", msg, re.I):
-        adv = (
-            f"{adv}\n"
-            "- 若选择跑步：睡眠偏短时建议 **20–30 分钟** 轻松慢跑或快走，勿强行长距离。"
-        )
+    if re.search(r"跑步|跑多久|run\b|running", msg, re.I):
+        if loc == "en":
+            adv = (
+                f"{adv}\n"
+                "- If running: when sleep is short, prefer **20–30 minutes** easy jog or brisk walk; "
+                "avoid forcing long distance."
+            )
+        else:
+            adv = (
+                f"{adv}\n"
+                "- 若选择跑步：睡眠偏短时建议 **20–30 分钟** 轻松慢跑或快走，勿强行长距离。"
+            )
     return adv
 
 
 def build_health_summary_followup_answer(
     table: CompareTableV1,
     user_message: str,
+    *,
+    locale: Optional[str] = None,
 ) -> str:
     """Screenshot-session health overview without LLM re-dump."""
     if not _HEALTH_SUMMARY_RE.search((user_message or "").strip()):
         return ""
     if not any(r.snapshot_value for r in table.rows):
         return ""
-    summary = compare_table_to_user_summary(table)
+    loc = _ui_locale(locale)
+    summary = compare_table_to_user_summary(table, locale=loc)
+    if loc == "en":
+        return (
+            "### Health data overview\n\n"
+            f"{summary}\n\n"
+            "This is a screenshot reading summary, not a medical diagnosis."
+        )
     return (
         "### 健康数据概览\n\n"
         f"{summary}\n\n"
@@ -1141,37 +1267,61 @@ def build_health_summary_followup_answer(
     )
 
 
-def _build_episodic_caution_brief(table: CompareTableV1) -> str:
+def _build_episodic_caution_brief(
+    table: CompareTableV1,
+    *,
+    locale: Optional[str] = None,
+) -> str:
     """Top caution bullets from CompareTable verdicts — no full-table preamble."""
-    lines = ["关于您还需留意的事项：", ""]
+    loc = _ui_locale(locale)
+    lines = [
+        "Items still worth watching:" if loc == "en" else "关于您还需留意的事项：",
+        "",
+    ]
     cautions: List[str] = []
     for row in table.rows:
         if not row.snapshot_value:
             continue
         if row.verdict not in ("above_mean", "below_mean"):
             continue
-        label = _METRIC_LABEL_ZH.get(row.metric_id, row.metric_id)
+        label = _metric_label(row.metric_id, loc)
         note = (row.verdict_note or "").strip() or _verdict_note(
             row.verdict,
             row_kind=row.row_kind,
             metric_id=row.metric_id,
         )
-        cautions.append(f"- **{label}**：本次 **{row.snapshot_value}**；{note}")
+        if loc == "en":
+            # Prefer English verdict label over Chinese verdict_note when possible.
+            note_en = _verdict_label(row.verdict, "en", fallback=note)
+            cautions.append(f"- **{label}**: this reading **{row.snapshot_value}**; {note_en}")
+        else:
+            cautions.append(f"- **{label}**：本次 **{row.snapshot_value}**；{note}")
         if len(cautions) >= 3:
             break
     if not cautions:
-        cautions.append(
-            "- 本次读数未见明显越界项；请结合身体感受决定是否调整运动强度。",
-        )
+        if loc == "en":
+            cautions.append(
+                "- No clear out-of-range items in this reading; adjust intensity based on how you feel.",
+            )
+        else:
+            cautions.append(
+                "- 本次读数未见明显越界项；请结合身体感受决定是否调整运动强度。",
+            )
     lines.extend(cautions)
     lines.append("")
-    lines.append("以上为延伸参考，非医疗诊断。")
+    lines.append(
+        "For educational reference only — not a medical diagnosis."
+        if loc == "en"
+        else "以上为延伸参考，非医疗诊断。"
+    )
     return "\n".join(lines)
 
 
 def build_weak_episodic_followup_answer(
     table: CompareTableV1,
     user_message: str,
+    *,
+    locale: Optional[str] = None,
 ) -> str:
     """
     Screenshot-session weak follow-up: close ack or advisory caution brief.
@@ -1187,7 +1337,13 @@ def build_weak_episodic_followup_answer(
     msg = (user_message or "").strip()
     if not msg or not any(r.snapshot_value for r in table.rows):
         return ""
+    loc = _ui_locale(locale)
     if is_weak_close_followup(msg):
+        if loc == "en":
+            return (
+                "You're welcome. Please keep an eye on any out-of-range items noted earlier; "
+                "seek care promptly for chest pain, ongoing discomfort, or persistent symptoms."
+            )
         return (
             "不客气。请留意先前读数小结中的异常项；"
             "如有胸痛、持续不适或症状持续，请及时就医。"
@@ -1195,7 +1351,7 @@ def build_weak_episodic_followup_answer(
     if is_advisory_episodic_followup(msg) or (
         is_weak_episodic_followup(msg) and not is_weak_close_followup(msg)
     ):
-        return _build_episodic_caution_brief(table)
+        return _build_episodic_caution_brief(table, locale=loc)
     return ""
 
 
@@ -1241,12 +1397,15 @@ def build_single_metric_focus_answer(
     user_message: str,
     *,
     prior_user_message: str = "",
+    locale: Optional[str] = None,
 ) -> str:
     """Deterministic single-metric reply from CompareTable (screenshot session follow-up)."""
+    loc = _ui_locale(locale)
     delta = build_episodic_delta_focus_answer(
         table,
         user_message,
         prior_user_message=prior_user_message,
+        locale=loc,
     )
     if delta:
         return delta
@@ -1257,6 +1416,12 @@ def build_single_metric_focus_answer(
         r.metric_id in focus_ids and r.snapshot_value for r in table.rows
     )
     if not has_snap and set(focus_ids) <= _SLEEP_FOCUS_METRIC_IDS:
+        if loc == "en":
+            return (
+                "About the metrics you asked about:\n\n"
+                "- **Deep sleep / REM**: no reliable sleep-stage values were read from this screenshot "
+                "(total sleep duration was read). Please check the Health sleep Stages page."
+            )
         return (
             "关于您关心的指标：\n\n"
             "- **深睡/REM**：本次截图未识别到可靠的睡眠分期数值（总睡眠时长已读取）。"
@@ -1264,12 +1429,14 @@ def build_single_metric_focus_answer(
         )
     if not has_snap:
         return ""
-    return build_compare_table_metric_focus_summary(table, focus_ids)
+    return build_compare_table_metric_focus_summary(table, focus_ids, locale=loc)
 
 
 def build_catalog_followup_focus_answer(
     table: CompareTableV1,
     user_message: str,
+    *,
+    locale: Optional[str] = None,
 ) -> str:
     """Screenshot session: 「睡眠呢」→ CompareTable 主指标，而非数仓均值。"""
     from pha.intent_gates import infer_wearable_metrics
@@ -1283,15 +1450,39 @@ def build_catalog_followup_focus_answer(
     has_snap = any(r.metric_id == primary and r.snapshot_value for r in table.rows)
     if not has_snap:
         return ""
-    return build_compare_table_metric_focus_summary(table, [primary])
+    return build_compare_table_metric_focus_summary(table, [primary], locale=locale)
 
 
-def _deterministic_exercise_advisory(table: CompareTableV1) -> str:
+def _deterministic_exercise_advisory(
+    table: CompareTableV1,
+    *,
+    locale: Optional[str] = None,
+) -> str:
     """Brief exercise guidance from CompareTable verdicts (no LLM)."""
+    loc = _ui_locale(locale)
     sleep_row = next((r for r in table.rows if r.metric_id == "sleep_time_asleep"), None)
     hrv_row = next((r for r in table.rows if r.metric_id == "hrv_rmssd_ms"), None)
+    if loc == "en":
+        lines = ["### Exercise guidance", ""]
+        notes: List[str] = []
+        if sleep_row and sleep_row.snapshot_value:
+            notes.append(f"today's sleep {sleep_row.snapshot_value}")
+        if hrv_row and hrv_row.snapshot_value:
+            notes.append(f"HRV {hrv_row.snapshot_value}")
+        if notes:
+            lines.append(f"Based on {' and '.join(notes)} vs the recent 90 days:")
+        lines.append(
+            "- Tomorrow, **low-to-moderate** activity is reasonable "
+            "(walking, light resistance, elliptical); if fatigued or sleep is short, "
+            "prefer recovery work and avoid high-intensity intervals."
+        )
+        lines.append(
+            "- Educational reference only — not a medical diagnosis; "
+            "seek care for chest pain or persistent discomfort."
+        )
+        return "\n".join(lines)
     lines = ["### 运动建议", ""]
-    notes: List[str] = []
+    notes = []
     if sleep_row and sleep_row.snapshot_value:
         notes.append(f"今日睡眠 {sleep_row.snapshot_value}")
     if hrv_row and hrv_row.snapshot_value:
@@ -1309,6 +1500,8 @@ def _deterministic_exercise_advisory(table: CompareTableV1) -> str:
 def build_compare_first_upload_answer(
     table: CompareTableV1,
     user_message: str,
+    *,
+    locale: Optional[str] = None,
 ) -> str:
     """
     First screenshot upload: CompareTable SSO before LLM (~180s → ~0s).
@@ -1321,9 +1514,10 @@ def build_compare_first_upload_answer(
         return ""
     if not any(r.snapshot_value for r in table.rows):
         return ""
-    summary = compare_table_to_user_summary(table)
+    loc = _ui_locale(locale)
+    summary = compare_table_to_user_summary(table, locale=loc)
     if _EXERCISE_SUITABILITY_RE.search(user_message or ""):
-        return f"{summary}\n\n{_deterministic_exercise_advisory(table)}"
+        return f"{summary}\n\n{_deterministic_exercise_advisory(table, locale=loc)}"
     return summary
 
 
@@ -1375,34 +1569,60 @@ def _correction_metric_ids(user_message: str, table: CompareTableV1) -> List[str
 def build_compare_table_correction_summary(
     table: CompareTableV1,
     user_message: str,
+    *,
+    locale: Optional[str] = None,
 ) -> str:
     """Focused re-statement for user correction turns (avoid full-table paste loop)."""
     focus_ids = _correction_metric_ids(user_message, table)
     if not focus_ids:
         return ""
+    loc = _ui_locale(locale)
+    intro = (
+        "Key metrics after re-checking the screenshots:"
+        if loc == "en"
+        else "根据截图重新核对后的关键指标："
+    )
     return build_compare_table_metric_focus_summary(
         table,
         focus_ids,
-        intro="根据截图重新核对后的关键指标：",
+        intro=intro,
+        locale=loc,
     )
 
 
-def compare_table_to_user_summary(table: CompareTableV1) -> str:
+def compare_table_to_user_summary(
+    table: CompareTableV1,
+    *,
+    locale: Optional[str] = None,
+) -> str:
     """User-visible fallback summary (no Tier0 / metric_id jargon)."""
-    lines = ["根据您上传的 Apple Watch 截图，与过去约 90 天记录对比：", ""]
+    loc = _ui_locale(locale)
+    if loc == "en":
+        lines = [
+            "Based on your uploaded Apple Watch screenshots, compared with ~90 days of records:",
+            "",
+        ]
+    else:
+        lines = ["根据您上传的 Apple Watch 截图，与过去约 90 天记录对比：", ""]
     comparable = [r for r in table.rows if r.row_kind == "comparable_90d"]
 
     for row in comparable:
-        label = _METRIC_LABEL_ZH.get(row.metric_id, row.metric_id)
-        snap = _format_snapshot_display(row.metric_id, row.snapshot_value or "")
+        label = _metric_label(row.metric_id, loc)
+        snap = _format_snapshot_display(row.metric_id, row.snapshot_value or "", locale=loc)
         base = row.baseline_90d_value or "—"
         rng = _format_range_human(row.baseline_90d_range)
-        verdict = _VERDICT_LABEL_ZH.get(row.verdict, row.verdict_note or "")
+        verdict = _verdict_label(row.verdict, loc, fallback=row.verdict_note or "")
         unit = row.baseline_90d_unit or ""
         base_s = f"{base} {unit}".strip()
-        lines.append(
-            f"- **{label}**：本次 **{snap}**；过去约 90 天平均 **{base_s}**（常见区间 {rng}），{verdict}。"
-        )
+        if loc == "en":
+            lines.append(
+                f"- **{label}**: this reading **{snap}**; ~90-day mean **{base_s}** "
+                f"(typical range {rng}), {verdict}."
+            )
+        else:
+            lines.append(
+                f"- **{label}**：本次 **{snap}**；过去约 90 天平均 **{base_s}**（常见区间 {rng}），{verdict}。"
+            )
 
     stage_snap_only = [
         r
@@ -1414,13 +1634,21 @@ def compare_table_to_user_summary(table: CompareTableV1) -> str:
     if stage_snap_only:
         parts = []
         for row in stage_snap_only:
-            label = _METRIC_LABEL_ZH.get(row.metric_id, row.metric_id)
-            parts.append(f"{label} {_format_snapshot_display(row.metric_id, row.snapshot_value)}")
+            label = _metric_label(row.metric_id, loc)
+            parts.append(
+                f"{label} {_format_snapshot_display(row.metric_id, row.snapshot_value, locale=loc)}"
+            )
         lines.append("")
-        lines.append(
-            f"- **睡眠分期**：本次为 {'、'.join(parts)}。"
-            "系统没有保存深睡/REM 的 90 天历史，**无法**与过去 90 天对比。"
-        )
+        if loc == "en":
+            lines.append(
+                f"- **Sleep stages**: this screenshot shows {' / '.join(parts)}. "
+                "No 90-day deep/REM history is stored, so **no** 90-day comparison is possible."
+            )
+        else:
+            lines.append(
+                f"- **睡眠分期**：本次为 {'、'.join(parts)}。"
+                "系统没有保存深睡/REM 的 90 天历史，**无法**与过去 90 天对比。"
+            )
 
     workout_snap_only = [
         r
@@ -1429,16 +1657,22 @@ def compare_table_to_user_summary(table: CompareTableV1) -> str:
     ]
     if workout_snap_only:
         lines.append("")
-        lines.append("- **锻炼**：")
+        lines.append("- **Workouts**:" if loc == "en" else "- **锻炼**：")
         for row in workout_snap_only:
-            label = _METRIC_LABEL_ZH.get(row.metric_id, row.metric_id)
+            label = _metric_label(row.metric_id, loc)
             if row.snapshot_value:
-                disp = _format_snapshot_display(row.metric_id, row.snapshot_value)
-                lines.append(f"  - {label}：**{disp}**（仅来自本次截图）")
+                disp = _format_snapshot_display(row.metric_id, row.snapshot_value, locale=loc)
+                if loc == "en":
+                    lines.append(f"  - {label}: **{disp}** (screenshot only)")
+                else:
+                    lines.append(f"  - {label}：**{disp}**（仅来自本次截图）")
             elif row.verdict == "insufficient_data":
-                lines.append(f"  - {label}：本次截图未识别到该数据")
+                if loc == "en":
+                    lines.append(f"  - {label}: not identified in this screenshot")
+                else:
+                    lines.append(f"  - {label}：本次截图未识别到该数据")
 
-    footer = _fallback_footer_for_table(table)
+    footer = _fallback_footer_for_table(table, locale=loc)
     if footer:
         lines.append("")
         lines.append(footer)

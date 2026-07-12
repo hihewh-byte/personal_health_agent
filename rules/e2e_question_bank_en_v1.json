@@ -1,0 +1,3272 @@
+{
+  "bank_version": "en-1.0",
+  "language": "en",
+  "colloquial_ratio_target": 0.7,
+  "description": "50 English E2E stress sets; each ≥8 turns; uses wearable screenshots, warehouse lipids/wearables, prior lab images, and prior PHA samples. Seed via PHA_E2E_BANK_SEED.",
+  "variant_pools": {
+    "upload_exercise": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Attached are today's Apple Watch metrics; morning workout was resistance training — can I train tomorrow, and what type?",
+        "Uploading my wearable screenshots — did strength work this morning; should I rest or train tomorrow?",
+        "Here are today's body metrics; AM resistance workout done — good to exercise tomorrow? Any type tips?",
+        "Apple Watch panels attached; morning was strength — advise tomorrow's training suitability and type."
+      ],
+      "formal": [
+        "Attached are today's wearable body metrics. Note: this morning's workout was resistance training. Please assess whether tomorrow is suitable for exercise and, if so, recommend exercise types.",
+        "I uploaded today's Apple Watch screenshots. After morning resistance training, please evaluate tomorrow's exercise suitability and suggest types."
+      ]
+    },
+    "upload_lab_image": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Attached is a lab/report image from my PHA library — please parse lipids and key values.",
+        "Here's a medical report screenshot I previously saved — extract cholesterol and LDL if present."
+      ],
+      "formal": [
+        "Please analyze the attached lab/report image and extract lipid panel values when available.",
+        "Attached medical report image — parse key lipid metrics and cite any dates found."
+      ]
+    },
+    "lipid": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "How are my lipids?",
+        "Check my cholesterol",
+        "Is LDL high?",
+        "Lipid panel looking ok?"
+      ],
+      "formal": [
+        "Please analyze my lipid markers.",
+        "How is my LDL cholesterol?",
+        "Summarize my lipid panel."
+      ]
+    },
+    "hrv": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "How's HRV?",
+        "Check RMSSD",
+        "HRV looking decent?",
+        "Heart rate variability?"
+      ],
+      "formal": [
+        "Please analyze HRV.",
+        "Is my HRV within a normal range?",
+        "Report heart rate variability."
+      ]
+    },
+    "sleep_duration": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "How long did I sleep?",
+        "Sleep duration?",
+        "Hours asleep last night?",
+        "Total sleep time?"
+      ],
+      "formal": [
+        "Please report sleep duration.",
+        "What was total time asleep?"
+      ]
+    },
+    "sleep_verify": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Sleep numbers look wrong — re-check them.",
+        "Re-verify today's sleep from the screenshots.",
+        "Sleep ledger seems off, please re-parse."
+      ],
+      "formal": [
+        "Please verify today's sleep data; if wrong, re-analyze the screenshots.",
+        "Re-check the sleep values from the uploaded panels."
+      ]
+    },
+    "deep_sleep": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Deep sleep how long?",
+        "Deep sleep enough?",
+        "Deep sleep time?"
+      ],
+      "formal": [
+        "What was deep sleep duration?",
+        "Please report deep sleep time."
+      ]
+    },
+    "workout_origin": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Where does the workout count of 8 come from?",
+        "How is workout count calculated?",
+        "Workout count source?"
+      ],
+      "formal": [
+        "Where does the recent workout count come from?",
+        "Please explain the workout count data source."
+      ]
+    },
+    "workout_recent": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "How many workout days in the last 4 weeks?",
+        "Training days last month?",
+        "Recent workout frequency?"
+      ],
+      "formal": [
+        "How many days did I exercise in the last 4 weeks?",
+        "Report recent workout day count."
+      ]
+    },
+    "steps": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Steps?",
+        "How many steps?",
+        "Step count today?",
+        "Walking volume?"
+      ],
+      "formal": [
+        "Recent step count?",
+        "Please report steps.",
+        "What is average daily steps?"
+      ]
+    },
+    "steps_warehouse": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Recent steps from the warehouse?",
+        "How's my step trend?",
+        "Daily step average?"
+      ],
+      "formal": [
+        "Query recent 90-day steps.",
+        "Report mean daily steps from warehouse."
+      ]
+    },
+    "thanks": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Thanks",
+        "Thanks a lot",
+        "Appreciate it",
+        "Cool, thanks"
+      ],
+      "formal": [
+        "Thank you.",
+        "Thanks for the analysis."
+      ]
+    },
+    "advisory": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Anything else I should watch?",
+        "Other cautions?",
+        "Any more tips?"
+      ],
+      "formal": [
+        "What else should I pay attention to?",
+        "Please list additional advisories."
+      ]
+    },
+    "ok_close": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "OK",
+        "Got it",
+        "Understood",
+        "Noted"
+      ],
+      "formal": [
+        "OK.",
+        "Understood.",
+        "Noted."
+      ]
+    },
+    "hrv_normal": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Is HRV normal?",
+        "HRV in range?",
+        "RMSSD ok?"
+      ],
+      "formal": [
+        "Is HRV within a normal range?",
+        "Please assess whether HRV is normal."
+      ]
+    },
+    "delta_week": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Vs last week?",
+        "Compared to last week?",
+        "Week-over-week change?"
+      ],
+      "formal": [
+        "How does this compare to last week?",
+        "Please compare with the prior week."
+      ]
+    },
+    "exercise_tomorrow": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "OK to train tomorrow?",
+        "Tomorrow workout ok?",
+        "Can I exercise tomorrow?"
+      ],
+      "formal": [
+        "Is tomorrow suitable for exercise?",
+        "Please assess tomorrow's exercise suitability."
+      ]
+    },
+    "exercise_day_after": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "What about the day after?",
+        "Day after tomorrow?",
+        "And the next day?"
+      ],
+      "formal": [
+        "Is the day after tomorrow suitable for exercise?",
+        "Assess exercise suitability for the following day."
+      ]
+    },
+    "low_intensity": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Low-intensity cardio ok?",
+        "Easy aerobic recommended?",
+        "Easy jog fine?"
+      ],
+      "formal": [
+        "Is low-intensity aerobic exercise appropriate?",
+        "Recommend low-intensity cardio?"
+      ]
+    },
+    "running": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Can I run tomorrow?",
+        "OK to run?",
+        "Running ok?"
+      ],
+      "formal": [
+        "Is running appropriate tomorrow?",
+        "Please assess running suitability."
+      ]
+    },
+    "running_duration": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "How long should I run?",
+        "Run duration tip?",
+        "Minutes of running?"
+      ],
+      "formal": [
+        "What running duration do you recommend?",
+        "Suggested run length?"
+      ]
+    },
+    "year_2023": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "2023",
+        "Look at 2023",
+        "Year 2023"
+      ],
+      "formal": [
+        "Please use 2023 data.",
+        "Focus on 2023."
+      ]
+    },
+    "year_2025": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "2025",
+        "Look at 2025",
+        "Year 2025"
+      ],
+      "formal": [
+        "Please use 2025 data.",
+        "Focus on 2025."
+      ]
+    },
+    "lipid_year": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Which year?",
+        "What year?",
+        "Pick a year"
+      ],
+      "formal": [
+        "Which year should we use?",
+        "Please specify the year."
+      ]
+    },
+    "remerge_sleep": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Do I need to re-upload sleep screenshots to re-parse?",
+        "Can you re-parse sleep without re-upload?"
+      ],
+      "formal": [
+        "Can you re-parse the sleep screenshot data? Do I need to upload again?"
+      ]
+    },
+    "remerge_workout": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Re-analyze workout from screenshots.",
+        "Re-check workout panels."
+      ],
+      "formal": [
+        "Please re-analyze workout data from the uploaded screenshots."
+      ]
+    },
+    "respiratory": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Respiratory rate?",
+        "Breathing rate ok?",
+        "Resp rate?"
+      ],
+      "formal": [
+        "How is respiratory rate?",
+        "Please report respiratory rate."
+      ]
+    },
+    "respiratory_normal": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Is respiratory rate normal?",
+        "Breathing rate in range?"
+      ],
+      "formal": [
+        "Is respiratory rate within normal range?",
+        "Assess respiratory rate normality."
+      ]
+    },
+    "resting_hr": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Resting HR?",
+        "Resting heart rate?",
+        "RHR value?"
+      ],
+      "formal": [
+        "What is resting heart rate?",
+        "Please report resting heart rate."
+      ]
+    },
+    "hr_range": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Workout HR range?",
+        "Heart rate range?",
+        "HR zone during workout?"
+      ],
+      "formal": [
+        "Please report workout heart rate range.",
+        "What was the exercise HR range?"
+      ]
+    },
+    "spo2": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "SpO2?",
+        "Blood oxygen?",
+        "Oxygen saturation?"
+      ],
+      "formal": [
+        "How is SpO2 / blood oxygen?",
+        "Please report oxygen saturation."
+      ]
+    },
+    "hr_generic": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "How's heart rate?",
+        "HR looking ok?",
+        "Heart rate status?"
+      ],
+      "formal": [
+        "Please analyze heart rate metrics.",
+        "How is my heart rate overall?"
+      ]
+    },
+    "warehouse_hrv": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "How has my recent HRV been?",
+        "Warehouse HRV trend?",
+        "Recent HRV from stored data?"
+      ],
+      "formal": [
+        "Please query recent HRV from the warehouse.",
+        "Report recent 90-day HRV mean if available."
+      ]
+    },
+    "warehouse_sleep": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Sleep from warehouse?",
+        "Recent sleep quality?",
+        "Sleep averages?"
+      ],
+      "formal": [
+        "Please report warehouse sleep averages.",
+        "Summarize recent sleep from stored data."
+      ]
+    },
+    "warehouse_steps": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Steps from warehouse?",
+        "Walking enough lately?",
+        "Step averages?"
+      ],
+      "formal": [
+        "Please report warehouse step averages.",
+        "Summarize recent steps from stored data."
+      ]
+    },
+    "warehouse_lipid": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Lipids from warehouse?",
+        "Stored cholesterol records?",
+        "Historical lipids?"
+      ],
+      "formal": [
+        "Please query stored lipid records.",
+        "Summarize lipid history from the warehouse."
+      ]
+    },
+    "combine_hrv": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Combine screenshot + warehouse for HRV.",
+        "Overall HRV using both sources?"
+      ],
+      "formal": [
+        "Please combine screenshot and warehouse evidence for HRV.",
+        "Synthesize HRV across uploaded and stored data."
+      ]
+    },
+    "summary": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Summarize my health data.",
+        "Give me a health overview.",
+        "Overall status?"
+      ],
+      "formal": [
+        "Please summarize my health data.",
+        "Provide a structured health overview."
+      ]
+    },
+    "summary_follow": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Any outliers?",
+        "Which metrics need attention?",
+        "Red flags?"
+      ],
+      "formal": [
+        "Which metrics are abnormal or need attention?",
+        "List priority concerns."
+      ]
+    },
+    "rapid_hrv": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "HRV",
+        "hrv",
+        "HRV please"
+      ],
+      "formal": [
+        "HRV",
+        "Please report HRV."
+      ]
+    },
+    "rapid_sleep": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Sleep",
+        "sleep"
+      ],
+      "formal": [
+        "Sleep",
+        "Please report sleep."
+      ]
+    },
+    "rapid_steps": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Steps",
+        "steps"
+      ],
+      "formal": [
+        "Steps",
+        "Please report steps."
+      ]
+    },
+    "rapid_workout": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Workout",
+        "Exercise"
+      ],
+      "formal": [
+        "Workout",
+        "Please report workouts."
+      ]
+    },
+    "rapid_lipid": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Lipids",
+        "Cholesterol"
+      ],
+      "formal": [
+        "Lipids",
+        "Please report lipids."
+      ]
+    },
+    "rapid_spo2": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "SpO2",
+        "spo2"
+      ],
+      "formal": [
+        "SpO2",
+        "Please report SpO2."
+      ]
+    },
+    "rapid_resp": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Resp rate",
+        "Breathing"
+      ],
+      "formal": [
+        "Respiratory rate",
+        "Please report respiratory rate."
+      ]
+    },
+    "rapid_resting": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "RHR",
+        "Resting HR"
+      ],
+      "formal": [
+        "Resting heart rate",
+        "Please report resting HR."
+      ]
+    },
+    "lipid_trend": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Trend over years?",
+        "Big change vs prior years?",
+        "Lipid trajectory?"
+      ],
+      "formal": [
+        "How do lipids trend across years?",
+        "Please analyze multi-year lipid trend."
+      ]
+    },
+    "lipid_ldl": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "LDL?",
+        "Bad cholesterol?",
+        "LDL specifically?"
+      ],
+      "formal": [
+        "How is LDL?",
+        "Please report LDL."
+      ]
+    },
+    "more_tips": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Anything more?",
+        "More advice?",
+        "Keep going."
+      ],
+      "formal": [
+        "Any additional recommendations?",
+        "Please add more tips."
+      ]
+    },
+    "got_it": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Yep",
+        "Makes sense",
+        "Clear"
+      ],
+      "formal": [
+        "Understood.",
+        "I understand."
+      ]
+    },
+    "supplement": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Any supplement notes from my PHA data?",
+        "Supplements I should consider given lipids/HRV?"
+      ],
+      "formal": [
+        "Please review supplement-related facts if present in my warehouse.",
+        "Any evidence-based supplement cautions from my records?"
+      ]
+    },
+    "body_age": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Any body age / recovery age signal?",
+        "Biological age vibes from wearables?"
+      ],
+      "formal": [
+        "If available, comment on body-age or recovery-age related signals.",
+        "Summarize recovery-age related wearable signals."
+      ]
+    },
+    "disclaimer": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "This is not medical advice, right?",
+        "Keep it educational please."
+      ],
+      "formal": [
+        "Please keep the reply educational and non-diagnostic.",
+        "Confirm this is not a medical diagnosis."
+      ]
+    },
+    "english_only": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "Please reply in English only.",
+        "English answers only from here."
+      ],
+      "formal": [
+        "Respond in English for all subsequent turns.",
+        "Use English exclusively."
+      ]
+    },
+    "wearable_import": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "I already imported wearable data before — use warehouse.",
+        "Rely on previously ingested wearable samples."
+      ],
+      "formal": [
+        "Please use previously ingested wearable data in the warehouse.",
+        "Query historical wearable samples already stored in PHA."
+      ]
+    },
+    "pdf_lab": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "If I previously uploaded a lab PDF, use those lipids.",
+        "Pull lipid values from prior PDF/report ingest if available."
+      ],
+      "formal": [
+        "Please use previously ingested lab PDF / report lipid values when available.",
+        "Query prior PDF/report ingest for lipid panel values."
+      ]
+    }
+  },
+  "sets": [
+    {
+      "set_id": "EN01",
+      "legacy_name": "upload_holistic_chain",
+      "lane": "upload_holistic_chain",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "sleep_verify",
+          "attach": false
+        },
+        {
+          "slot": "workout_origin",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "correction_sleep"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "EN02",
+      "legacy_name": "upload_exercise_chain",
+      "lane": "upload_exercise_chain",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "exercise_tomorrow",
+          "attach": false
+        },
+        {
+          "slot": "exercise_day_after",
+          "attach": false
+        },
+        {
+          "slot": "low_intensity",
+          "attach": false
+        },
+        {
+          "slot": "running",
+          "attach": false
+        },
+        {
+          "slot": "running_duration",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "EN03",
+      "legacy_name": "upload_lipid_clarify",
+      "lane": "upload_lipid_clarify",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "lipid_year",
+          "attach": false
+        },
+        {
+          "slot": "year_2023",
+          "attach": false
+        },
+        {
+          "slot": "year_2025",
+          "attach": false
+        },
+        {
+          "slot": "lipid_trend",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "EN04",
+      "legacy_name": "upload_hrv_delta",
+      "lane": "upload_hrv_delta",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "hrv_normal",
+          "attach": false
+        },
+        {
+          "slot": "delta_week",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "spo2",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "EN05",
+      "legacy_name": "upload_sleep_correct",
+      "lane": "upload_sleep_correct",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "sleep_verify",
+          "attach": false
+        },
+        {
+          "slot": "deep_sleep",
+          "attach": false
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "correction_sleep"
+        }
+      ]
+    },
+    {
+      "set_id": "EN06",
+      "legacy_name": "upload_workout_probe",
+      "lane": "upload_workout_probe",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "workout_origin",
+          "attach": false
+        },
+        {
+          "slot": "workout_recent",
+          "attach": false
+        },
+        {
+          "slot": "hr_range",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "legacy_name": "warehouse_hrv",
+      "lane": "warehouse_hrv",
+      "turns": [
+        {
+          "slot": "warehouse_hrv",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_sleep",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_steps",
+          "attach": false
+        },
+        {
+          "slot": "resting_hr",
+          "attach": false
+        },
+        {
+          "slot": "spo2",
+          "attach": false
+        },
+        {
+          "slot": "respiratory",
+          "attach": false
+        },
+        {
+          "slot": "hrv_normal",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "warehouse_hrv"
+        }
+      ],
+      "set_id": "EN07"
+    },
+    {
+      "legacy_name": "warehouse_steps",
+      "lane": "warehouse_steps",
+      "turns": [
+        {
+          "slot": "steps_warehouse",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "delta_week",
+          "attach": false
+        },
+        {
+          "slot": "lipid_trend",
+          "attach": false
+        },
+        {
+          "slot": "more_tips",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "EN08"
+    },
+    {
+      "set_id": "EN09",
+      "legacy_name": "upload_respiratory",
+      "lane": "upload_respiratory",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "respiratory",
+          "attach": false
+        },
+        {
+          "slot": "respiratory_normal",
+          "attach": false
+        },
+        {
+          "slot": "spo2",
+          "attach": false
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "EN10",
+      "legacy_name": "upload_resting_hr",
+      "lane": "upload_resting_hr",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "resting_hr",
+          "attach": false
+        },
+        {
+          "slot": "hr_range",
+          "attach": false
+        },
+        {
+          "slot": "hr_generic",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "EN11",
+      "legacy_name": "upload_spo2_chain",
+      "lane": "upload_spo2_chain",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "spo2",
+          "attach": false
+        },
+        {
+          "slot": "respiratory_normal",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "exercise_tomorrow",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "EN12",
+      "legacy_name": "upload_remerge",
+      "lane": "upload_remerge",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "remerge_sleep",
+          "attach": false
+        },
+        {
+          "slot": "remerge_workout",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "workout_origin",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "correction_sleep"
+        }
+      ]
+    },
+    {
+      "set_id": "EN13",
+      "legacy_name": "upload_casual_weak",
+      "lane": "upload_casual_weak",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        },
+        {
+          "slot": "got_it",
+          "attach": false
+        },
+        {
+          "slot": "more_tips",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "disclaimer",
+          "attach": false
+        },
+        {
+          "slot": "english_only",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "weak_followup_skip"
+        }
+      ]
+    },
+    {
+      "set_id": "EN14",
+      "legacy_name": "upload_long_10",
+      "lane": "upload_long",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "spo2",
+          "attach": false
+        },
+        {
+          "slot": "resting_hr",
+          "attach": false
+        },
+        {
+          "slot": "exercise_tomorrow",
+          "attach": false
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "legacy_name": "warehouse_lipid",
+      "lane": "warehouse_lipid",
+      "turns": [
+        {
+          "slot": "warehouse_lipid",
+          "attach": false
+        },
+        {
+          "slot": "lipid_ldl",
+          "attach": false
+        },
+        {
+          "slot": "lipid_trend",
+          "attach": false
+        },
+        {
+          "slot": "year_2023",
+          "attach": false
+        },
+        {
+          "slot": "year_2025",
+          "attach": false
+        },
+        {
+          "slot": "lipid_year",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "EN15"
+    },
+    {
+      "legacy_name": "warehouse_then_upload",
+      "lane": "warehouse_then_upload",
+      "turns": [
+        {
+          "slot": "steps_warehouse",
+          "attach": false
+        },
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "combine_hrv",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "exercise_tomorrow",
+          "attach": false
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "EN16"
+    },
+    {
+      "set_id": "EN17",
+      "legacy_name": "upload_hr_generic",
+      "lane": "upload_hr_generic",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "hr_generic",
+          "attach": false
+        },
+        {
+          "slot": "resting_hr",
+          "attach": false
+        },
+        {
+          "slot": "hr_range",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "EN18",
+      "legacy_name": "upload_running",
+      "lane": "upload_running",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "running",
+          "attach": false
+        },
+        {
+          "slot": "running_duration",
+          "attach": false
+        },
+        {
+          "slot": "hr_generic",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "more_tips",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "EN19",
+      "legacy_name": "upload_summary",
+      "lane": "upload_summary",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "summary_follow",
+          "attach": false
+        },
+        {
+          "slot": "exercise_tomorrow",
+          "attach": false
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "EN20",
+      "legacy_name": "upload_rapid_10",
+      "lane": "upload_rapid",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "rapid_hrv",
+          "attach": false
+        },
+        {
+          "slot": "rapid_sleep",
+          "attach": false
+        },
+        {
+          "slot": "rapid_steps",
+          "attach": false
+        },
+        {
+          "slot": "rapid_workout",
+          "attach": false
+        },
+        {
+          "slot": "rapid_lipid",
+          "attach": false
+        },
+        {
+          "slot": "rapid_spo2",
+          "attach": false
+        },
+        {
+          "slot": "rapid_resp",
+          "attach": false
+        },
+        {
+          "slot": "rapid_resting",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "legacy_name": "warehouse_then_upload_fixed",
+      "lane": "warehouse_then_upload",
+      "turns": [
+        {
+          "slot": "steps_warehouse",
+          "attach": false
+        },
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "combine_hrv",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "exercise_tomorrow",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "EN21"
+    },
+    {
+      "legacy_name": "warehouse_tour_8",
+      "lane": "warehouse_tour",
+      "turns": [
+        {
+          "slot": "wearable_import",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_hrv",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_sleep",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_steps",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_lipid",
+          "attach": false
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "summary_follow",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "EN22"
+    },
+    {
+      "legacy_name": "pdf_lab_warehouse",
+      "lane": "pdf_lab_warehouse",
+      "turns": [
+        {
+          "slot": "pdf_lab",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_lipid",
+          "attach": false
+        },
+        {
+          "slot": "lipid_ldl",
+          "attach": false
+        },
+        {
+          "slot": "lipid_trend",
+          "attach": false
+        },
+        {
+          "slot": "year_2023",
+          "attach": false
+        },
+        {
+          "slot": "supplement",
+          "attach": false
+        },
+        {
+          "slot": "disclaimer",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "EN23"
+    },
+    {
+      "legacy_name": "lab_image_chain",
+      "lane": "lab_image_chain",
+      "turns": [
+        {
+          "slot": "upload_lab_image",
+          "attach": true
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "lipid_ldl",
+          "attach": false
+        },
+        {
+          "slot": "lipid_trend",
+          "attach": false
+        },
+        {
+          "slot": "year_2025",
+          "attach": false
+        },
+        {
+          "slot": "summary_follow",
+          "attach": false
+        },
+        {
+          "slot": "disclaimer",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "lab_attach"
+        }
+      ],
+      "set_id": "EN24"
+    },
+    {
+      "set_id": "EN25",
+      "legacy_name": "upload_spo2_deep",
+      "lane": "upload_spo2_deep",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "spo2",
+          "attach": false
+        },
+        {
+          "slot": "respiratory",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "deep_sleep",
+          "attach": false
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "EN26",
+      "legacy_name": "upload_delta_focus",
+      "lane": "upload_delta_focus",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "delta_week",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "delta_week",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "legacy_name": "warehouse_lipid_deep",
+      "lane": "warehouse_lipid_deep",
+      "turns": [
+        {
+          "slot": "warehouse_lipid",
+          "attach": false
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "lipid_ldl",
+          "attach": false
+        },
+        {
+          "slot": "lipid_year",
+          "attach": false
+        },
+        {
+          "slot": "year_2023",
+          "attach": false
+        },
+        {
+          "slot": "lipid_trend",
+          "attach": false
+        },
+        {
+          "slot": "supplement",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "EN27"
+    },
+    {
+      "legacy_name": "warehouse_sleep_deep",
+      "lane": "warehouse_sleep_deep",
+      "turns": [
+        {
+          "slot": "warehouse_sleep",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "deep_sleep",
+          "attach": false
+        },
+        {
+          "slot": "delta_week",
+          "attach": false
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "exercise_tomorrow",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "EN28"
+    },
+    {
+      "set_id": "EN29",
+      "legacy_name": "upload_body_age",
+      "lane": "upload_body_age",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "body_age",
+          "attach": false
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "exercise_tomorrow",
+          "attach": false
+        },
+        {
+          "slot": "disclaimer",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "EN30",
+      "legacy_name": "upload_supplement_bridge",
+      "lane": "upload_supplement_bridge",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "supplement",
+          "attach": false
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "disclaimer",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "legacy_name": "rapid_warehouse_9",
+      "lane": "rapid_warehouse",
+      "turns": [
+        {
+          "slot": "english_only",
+          "attach": false
+        },
+        {
+          "slot": "rapid_hrv",
+          "attach": false
+        },
+        {
+          "slot": "rapid_sleep",
+          "attach": false
+        },
+        {
+          "slot": "rapid_steps",
+          "attach": false
+        },
+        {
+          "slot": "rapid_lipid",
+          "attach": false
+        },
+        {
+          "slot": "rapid_spo2",
+          "attach": false
+        },
+        {
+          "slot": "rapid_resting",
+          "attach": false
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "EN31"
+    },
+    {
+      "set_id": "EN32",
+      "legacy_name": "upload_clarify_years",
+      "lane": "upload_clarify_years",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "lipid_year",
+          "attach": false
+        },
+        {
+          "slot": "year_2023",
+          "attach": false
+        },
+        {
+          "slot": "lipid_ldl",
+          "attach": false
+        },
+        {
+          "slot": "year_2025",
+          "attach": false
+        },
+        {
+          "slot": "lipid_trend",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "EN33",
+      "legacy_name": "upload_reparse_loop",
+      "lane": "upload_reparse_loop",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "sleep_verify",
+          "attach": false
+        },
+        {
+          "slot": "remerge_sleep",
+          "attach": false
+        },
+        {
+          "slot": "deep_sleep",
+          "attach": false
+        },
+        {
+          "slot": "remerge_workout",
+          "attach": false
+        },
+        {
+          "slot": "workout_origin",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "correction_sleep"
+        }
+      ]
+    },
+    {
+      "legacy_name": "combined_review_en",
+      "lane": "combined_review",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "combine_hrv",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_lipid",
+          "attach": false
+        },
+        {
+          "slot": "summary_follow",
+          "attach": false
+        },
+        {
+          "slot": "exercise_tomorrow",
+          "attach": false
+        },
+        {
+          "slot": "disclaimer",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "EN34"
+    },
+    {
+      "legacy_name": "warehouse_only_long",
+      "lane": "warehouse_only_long",
+      "turns": [
+        {
+          "slot": "wearable_import",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_hrv",
+          "attach": false
+        },
+        {
+          "slot": "hrv_normal",
+          "attach": false
+        },
+        {
+          "slot": "delta_week",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_sleep",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_steps",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_lipid",
+          "attach": false
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "EN35"
+    },
+    {
+      "set_id": "EN36",
+      "legacy_name": "upload_hr_spo2_combo",
+      "lane": "upload_hr_spo2_combo",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "hr_generic",
+          "attach": false
+        },
+        {
+          "slot": "resting_hr",
+          "attach": false
+        },
+        {
+          "slot": "spo2",
+          "attach": false
+        },
+        {
+          "slot": "respiratory",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "EN37",
+      "legacy_name": "upload_exercise_caution",
+      "lane": "upload_exercise_caution",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "exercise_tomorrow",
+          "attach": false
+        },
+        {
+          "slot": "low_intensity",
+          "attach": false
+        },
+        {
+          "slot": "running",
+          "attach": false
+        },
+        {
+          "slot": "running_duration",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "disclaimer",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "legacy_name": "prior_sample_replay",
+      "lane": "prior_sample_replay",
+      "turns": [
+        {
+          "slot": "wearable_import",
+          "attach": false
+        },
+        {
+          "slot": "pdf_lab",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_lipid",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_hrv",
+          "attach": false
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "summary_follow",
+          "attach": false
+        },
+        {
+          "slot": "disclaimer",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "EN38"
+    },
+    {
+      "set_id": "EN39",
+      "legacy_name": "upload_metric_tour",
+      "lane": "upload_metric_tour",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "spo2",
+          "attach": false
+        },
+        {
+          "slot": "resting_hr",
+          "attach": false
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "legacy_name": "english_locale_lock",
+      "lane": "english_locale_lock",
+      "turns": [
+        {
+          "slot": "english_only",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_hrv",
+          "attach": false
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "EN40"
+    },
+    {
+      "set_id": "EN41",
+      "legacy_name": "upload_weak_then_metric",
+      "lane": "upload_weak_then_metric",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "got_it",
+          "attach": false
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "weak_followup_skip"
+        }
+      ]
+    },
+    {
+      "legacy_name": "lab_then_wearable",
+      "lane": "lab_then_wearable",
+      "turns": [
+        {
+          "slot": "upload_lab_image",
+          "attach": true
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "combine_hrv",
+          "attach": false
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "exercise_tomorrow",
+          "attach": false
+        },
+        {
+          "slot": "disclaimer",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "lab_attach"
+        }
+      ],
+      "set_id": "EN42"
+    },
+    {
+      "legacy_name": "warehouse_compare_weeks",
+      "lane": "warehouse_compare_weeks",
+      "turns": [
+        {
+          "slot": "warehouse_hrv",
+          "attach": false
+        },
+        {
+          "slot": "delta_week",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_steps",
+          "attach": false
+        },
+        {
+          "slot": "delta_week",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_sleep",
+          "attach": false
+        },
+        {
+          "slot": "delta_week",
+          "attach": false
+        },
+        {
+          "slot": "summary_follow",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "EN43"
+    },
+    {
+      "set_id": "EN44",
+      "legacy_name": "upload_spo2_sleep",
+      "lane": "upload_spo2_sleep",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "spo2",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "deep_sleep",
+          "attach": false
+        },
+        {
+          "slot": "sleep_verify",
+          "attach": false
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "correction_sleep"
+        }
+      ]
+    },
+    {
+      "legacy_name": "formal_heavy_warehouse",
+      "lane": "formal_heavy_warehouse",
+      "turns": [
+        {
+          "slot": "warehouse_lipid",
+          "attach": false
+        },
+        {
+          "slot": "lipid_trend",
+          "attach": false
+        },
+        {
+          "slot": "lipid_ldl",
+          "attach": false
+        },
+        {
+          "slot": "supplement",
+          "attach": false
+        },
+        {
+          "slot": "body_age",
+          "attach": false
+        },
+        {
+          "slot": "disclaimer",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "EN45"
+    },
+    {
+      "set_id": "EN46",
+      "legacy_name": "upload_closing_polite",
+      "lane": "upload_closing_polite",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "summary_follow",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "more_tips",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "got_it",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "legacy_name": "warehouse_spo2_resp",
+      "lane": "warehouse_spo2_resp",
+      "turns": [
+        {
+          "slot": "spo2",
+          "attach": false
+        },
+        {
+          "slot": "respiratory",
+          "attach": false
+        },
+        {
+          "slot": "respiratory_normal",
+          "attach": false
+        },
+        {
+          "slot": "resting_hr",
+          "attach": false
+        },
+        {
+          "slot": "hr_generic",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "EN47"
+    },
+    {
+      "legacy_name": "upload_then_pdf_bridge",
+      "lane": "upload_then_pdf_bridge",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "pdf_lab",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_lipid",
+          "attach": false
+        },
+        {
+          "slot": "lipid_ldl",
+          "attach": false
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "disclaimer",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "EN48"
+    },
+    {
+      "legacy_name": "mixed_prior_assets",
+      "lane": "mixed_prior_assets",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "pdf_lab",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_lipid",
+          "attach": false
+        },
+        {
+          "slot": "combine_hrv",
+          "attach": false
+        },
+        {
+          "slot": "body_age",
+          "attach": false
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "disclaimer",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "EN49"
+    },
+    {
+      "legacy_name": "stress_finale_10",
+      "lane": "stress_finale",
+      "turns": [
+        {
+          "slot": "english_only",
+          "attach": false
+        },
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "spo2",
+          "attach": false
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "summary_follow",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "english_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ],
+      "set_id": "EN50"
+    }
+  ]
+}

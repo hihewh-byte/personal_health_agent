@@ -1,5 +1,5 @@
 {
-  "version": "1.5",
+  "version": "1.6",
   "anaphora": {
     "tokens": [
       "那",
@@ -30,31 +30,136 @@
     ]
   },
   "metric_aliases": {
-    "hrv": ["hrv", "心率变异性", "心率变异", "rmssd", "心率变异正常"],
-    "ldl": ["ldl", "低密度", "坏胆固醇", "低密度脂蛋白", "胆固醇高", "ldl高", "血脂高"],
-    "sleep": ["睡眠", "waso", "深睡", "睡多久"],
-    "steps": ["步数", "走路", "步行", "走了多少步"],
-    "rhr": ["静息心率", "静息", "resting", "rhr"],
-    "respiratory_rate": ["呼吸率", "呼吸频率", "呼吸"],
-    "spo2": ["血氧", "spo2", "氧饱和"]
+    "hrv": [
+      "hrv",
+      "心率变异性",
+      "心率变异",
+      "rmssd",
+      "心率变异正常",
+      "heart rate variability",
+      "heart-rate variability"
+    ],
+    "ldl": [
+      "ldl",
+      "低密度",
+      "坏胆固醇",
+      "低密度脂蛋白",
+      "胆固醇高",
+      "ldl高",
+      "血脂高",
+      "cholesterol",
+      "lipids",
+      "lipid panel",
+      "lipid"
+    ],
+    "sleep": ["睡眠", "waso", "深睡", "睡多久", "sleep", "slept", "deep sleep"],
+    "steps": ["步数", "走路", "步行", "走了多少步", "steps", "step count", "walking"],
+    "rhr": [
+      "静息心率",
+      "静息",
+      "resting",
+      "rhr",
+      "resting heart rate",
+      "resting hr"
+    ],
+    "respiratory_rate": [
+      "呼吸率",
+      "呼吸频率",
+      "呼吸",
+      "respiratory rate",
+      "resp rate",
+      "breathing rate"
+    ],
+    "spo2": ["血氧", "spo2", "氧饱和", "blood oxygen", "oxygen saturation"]
   },
   "episodic_delta_followup": {
-    "tokens": ["和上周比", "和昨天比", "相比怎么样", "比呢", "和上周比呢", "和昨天比呢"]
+    "tokens": [
+      "和上周比",
+      "和昨天比",
+      "相比怎么样",
+      "比呢",
+      "和上周比呢",
+      "和昨天比呢",
+      "vs last week",
+      "compared to last week",
+      "week-over-week",
+      "versus last week"
+    ]
   },
-  "lab_markers": ["血脂", "胆固醇", "ldl", "hdl", "甘油三酯", "化验", "体检"],
+  "lab_markers": [
+    "血脂",
+    "胆固醇",
+    "ldl",
+    "hdl",
+    "甘油三酯",
+    "化验",
+    "体检",
+    "cholesterol",
+    "lipids",
+    "lipid",
+    "lab panel",
+    "blood test"
+  ],
   "weak_followup": {
     "max_chars": 24,
-    "close_tokens": ["谢谢", "感谢", "好的", "知道了", "收到", "嗯"]
+    "close_tokens": [
+      "谢谢",
+      "感谢",
+      "好的",
+      "知道了",
+      "收到",
+      "嗯",
+      "thanks",
+      "thank you",
+      "thx",
+      "got it",
+      "understood",
+      "noted",
+      "yep",
+      "cool, thanks",
+      "appreciate it"
+    ]
   },
   "advisory_followup": {
-    "tokens": ["要注意", "注意什么", "还有什么", "还需留意", "提醒"]
+    "tokens": [
+      "要注意",
+      "注意什么",
+      "还有什么",
+      "还需留意",
+      "提醒",
+      "cautions",
+      "caution",
+      "anything else",
+      "other tips",
+      "watch out",
+      "should watch"
+    ]
   },
   "supplement_families": ["supplement", "supplement_label"],
   "topic_markers": {
-    "wearable_only": ["睡眠", "步数", "hrv", "心率", "穿戴", "活动"],
-    "lab_cross_year": ["历年", "对比", "跨年", "各年"],
-    "attachment_asset_qa": ["是什么", "有什么帮助", "有什么用", "成分", "标签"],
-    "attachment_episodic_bridge": ["指标", "身体", "hrv", "血脂", "改善"]
+    "wearable_only": [
+      "睡眠",
+      "步数",
+      "hrv",
+      "心率",
+      "穿戴",
+      "活动",
+      "sleep",
+      "steps",
+      "heart rate",
+      "wearable"
+    ],
+    "lab_cross_year": ["历年", "对比", "跨年", "各年", "year over year", "multi-year", "trend"],
+    "attachment_asset_qa": [
+      "是什么",
+      "有什么帮助",
+      "有什么用",
+      "成分",
+      "标签",
+      "what is this",
+      "ingredients"
+    ],
+    "attachment_episodic_bridge": ["指标", "身体", "hrv", "血脂", "改善", "metrics", "lipids"]
   },
   "scope_disambiguation": {
     "session_tokens": ["截图", "上传", "刚才", "附件", "会话"],

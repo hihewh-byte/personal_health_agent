@@ -14,7 +14,16 @@
       },
       "snapshot": { "unit": "hr", "parser": "sleep_duration" },
       "ui": { "label_zh": "睡眠总时长" },
-      "intent_hints": ["睡眠", "sleep_time", "asleep", "睡眠总时长", "睡眠时长"]
+      "intent_hints": [
+        "睡眠",
+        "sleep_time",
+        "asleep",
+        "睡眠总时长",
+        "睡眠时长",
+        "sleep duration",
+        "hours asleep",
+        "how long did i sleep"
+      ]
     },
     {
       "metric_id": "hrv_rmssd_ms",
@@ -26,7 +35,15 @@
       },
       "snapshot": { "unit": "ms", "parser": "numeric" },
       "ui": { "label_zh": "HRV" },
-      "intent_hints": ["hrv", "心率变异性", "HRV", "rmssd", "心率变异"]
+      "intent_hints": [
+        "hrv",
+        "心率变异性",
+        "HRV",
+        "rmssd",
+        "心率变异",
+        "heart rate variability",
+        "heart-rate variability"
+      ]
     },
     {
       "metric_id": "resting_heart_rate_bpm",
@@ -38,7 +55,17 @@
       },
       "snapshot": { "unit": "bpm", "parser": "numeric" },
       "ui": { "label_zh": "静息心率" },
-      "intent_hints": ["静息", "resting", "RHR", "心率怎么样", "心率指标", "心率正常", "心跳"]
+      "intent_hints": [
+        "静息",
+        "resting",
+        "RHR",
+        "心率怎么样",
+        "心率指标",
+        "心率正常",
+        "心跳",
+        "resting heart rate",
+        "resting hr"
+      ]
     },
     {
       "metric_id": "spo2_percent",
@@ -51,7 +78,7 @@
       },
       "snapshot": { "unit": "%", "parser": "numeric" },
       "ui": { "label_zh": "血氧" },
-      "intent_hints": ["血氧", "spo2", "SpO2"]
+      "intent_hints": ["血氧", "spo2", "SpO2", "blood oxygen", "oxygen saturation"]
     },
     {
       "metric_id": "respiratory_rate",
@@ -63,7 +90,15 @@
       },
       "snapshot": { "unit": "breaths/min", "parser": "numeric" },
       "ui": { "label_zh": "呼吸率" },
-      "intent_hints": ["呼吸率", "respiratory", "breaths", "呼吸"]
+      "intent_hints": [
+        "呼吸率",
+        "respiratory",
+        "breaths",
+        "呼吸",
+        "respiratory rate",
+        "breathing rate",
+        "resp rate"
+      ]
     },
     {
       "metric_id": "sleep_deep",
@@ -76,7 +111,7 @@
       },
       "snapshot": { "unit": "hr", "parser": "sleep_duration" },
       "ui": { "label_zh": "深睡", "footer_when_snapshot_only": true },
-      "intent_hints": ["深睡", "深度睡眠", "睡眠分期"]
+      "intent_hints": ["深睡", "深度睡眠", "睡眠分期", "deep sleep"]
     },
     {
       "metric_id": "sleep_rem",

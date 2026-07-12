@@ -96,6 +96,29 @@ def metric_labels_zh() -> Dict[str, str]:
     return labels
 
 
+_METRIC_LABEL_EN_FALLBACK: Dict[str, str] = {
+    "sleep_time_asleep": "Sleep duration",
+    "hrv_rmssd_ms": "HRV",
+    "resting_heart_rate_bpm": "Resting HR",
+    "spo2_percent": "SpO2",
+    "respiratory_rate": "Respiratory rate",
+    "sleep_deep": "Deep sleep",
+    "sleep_rem": "REM",
+    "workout_heart_rate_range_bpm": "Workout HR range",
+    "workout_count_recent": "Recent workout days",
+}
+
+
+def metric_labels_en() -> Dict[str, str]:
+    labels: Dict[str, str] = dict(_METRIC_LABEL_EN_FALLBACK)
+    for m in list_metric_entries():
+        mid = str(m.get("metric_id") or "").strip()
+        en = str((m.get("ui") or {}).get("label_en") or "").strip()
+        if mid and en:
+            labels[mid] = en
+    return labels
+
+
 def metric_mention_hints() -> Dict[str, Tuple[str, ...]]:
     hints: Dict[str, Tuple[str, ...]] = {}
     for m in list_metric_entries():
@@ -151,6 +174,7 @@ __all__ = [
     "list_metric_entries",
     "load_wearable_metric_registry",
     "metric_entry",
+    "metric_labels_en",
     "metric_labels_zh",
     "metric_mention_hints",
     "metrics_footer_when_snapshot_only",

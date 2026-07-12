@@ -15,7 +15,8 @@ from pha.temporal_router import extract_years_regex
 _CATALOG_PATH = Path(__file__).resolve().parent.parent / "rules" / "health_intent_catalog.json"
 
 _WEAK_CLOSE_RE = re.compile(
-    r"^(谢谢|感谢|好的|知道了|收到|嗯|ok)[\s!.？?]*$",
+    r"^(谢谢|感谢|好的|知道了|收到|嗯|ok|okay|thanks|thank\s*you|thx|got\s*it|"
+    r"understood|noted|yep|cool[,\s]*thanks|appreciate\s*it)[\s!.？?]*$",
     re.I,
 )
 
@@ -172,14 +173,18 @@ def catalog_advisory_followup_tokens() -> list[str]:
 
 
 def is_weak_close_followup(message: str) -> bool:
-    """Catalog close tokens only (谢谢/好的等) — not advisory weak follow-ups."""
+    """Catalog close tokens only (谢谢/好的/thanks 等) — not advisory weak follow-ups."""
     msg = (message or "").strip()
     if not msg:
         return False
     if _WEAK_CLOSE_RE.match(msg):
         return True
+    low = msg.lower()
     for tok in catalog_weak_close_tokens():
-        if msg == tok or msg.startswith(tok):
+        t = (tok or "").strip()
+        if not t:
+            continue
+        if msg == t or msg.startswith(t) or low == t.lower() or low.startswith(t.lower()):
             return True
     return False
 
