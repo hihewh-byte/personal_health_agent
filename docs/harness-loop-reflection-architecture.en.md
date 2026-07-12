@@ -81,10 +81,10 @@ Split “gets smarter with use” into two **auditable, reversible, bounded** ev
 
 | Step | Component | Notes |
 |------|-----------|-------|
-| L0 Ingest | 3H attachment → T0 proposal (P2 pending) | Async; preserves attachment isolation |
+| L0 Ingest | 3H attachment → T0 proposal | `pha/t0_ingest_proposal.py` + `scripts/pha_t0_ingest_proposal.py` (**proposal-only**, no DB writes) |
 | L1 Compile | `pha/chb_compiler.py` + `scripts/pha_chb_daily_recompile.py` | Recompile CHB when T0 hash is stale |
 | L2 Inject | `USER_CONTEXT_BRIEF` Tier1 slot | Read-only on lifestyle/combined |
-| L2 Eval | persona battery (TBD) | Generic answers → §Open Questions |
+| L2 Eval | `scripts/pha_persona_personalization_battery.py` | Offline CHB fixture battery (not live E2E) |
 
 **Online flag**: `PHA_USER_CONTEXT_BRIEF=1` (default on) reads compiled artifacts; **no** blocking compile inside a turn (cron offline refresh).
 
@@ -189,9 +189,12 @@ Measure   next Weekly EN50 pass rate / persona battery delta
 | CHB compile + stale detection | ✅ |
 | CHB daily cron script | ✅ P3 |
 | USER_CONTEXT_BRIEF injection | ✅ P1 (`PHA_USER_CONTEXT_BRIEF=1`) |
-| promote + EN10 Nightly | 📋 R2/R3 pending |
-| 3H → T0 ingest proposals | 📋 P2 pending |
-| persona battery | 📋 pending |
+| R2 promote dry-run/veto | ✅ `scripts/pha_loop_promote_candidate.py` (no auto-merge) |
+| R3 EN10 Nightly opt-in | ✅ `PHA_NIGHTLY_EN10=1` in `nightly_harness_regression.sh` |
+| 3H → T0 ingest proposals | ✅ P2 proposal-only (`pha_t0_ingest_proposal.py`) |
+| persona battery (offline) | ✅ `pha_persona_personalization_battery.py` |
+| English warehouse CJK guard | ✅ orchestrator `apply_english_locale_leak_guard` |
+| T0 gated adopter / live persona E2E | 📋 pending |
 
 ---
 
@@ -208,6 +211,14 @@ python3 scripts/pha_chb_daily_recompile.py
 # Selfchecks
 python3 scripts/pha_loop_failure_taxonomy_selfcheck.py
 python3 scripts/pha_chb_compiler_selfcheck.py
+python3 scripts/pha_t0_ingest_proposal_selfcheck.py
+python3 scripts/pha_persona_personalization_battery.py
+
+# R2 promote dry-run (does not apply patches)
+python3 scripts/pha_loop_promote_candidate.py --proposal reports/loop/proposals/alias_proposal_*.json
+
+# Nightly + EN10 subset
+PHA_NIGHTLY_EN10=1 bash scripts/nightly_harness_regression.sh
 ```
 
 ---
@@ -218,3 +229,4 @@ python3 scripts/pha_chb_compiler_selfcheck.py
 |------|-------|
 | 2026-07-12 | v1.0: R0/P4 Harvest+E2E, R1 Reflection v0, P1/P3 CHB daily loop, this doc |
 | 2026-07-12 | v1.0.1: split into `.zh.md` / `.en.md`; removed LinkedIn appendix from architecture docs |
+| 2026-07-12 | v1.0.2: R2/R3/P2/persona/CJK guard shipped; status table + operator commands updated |

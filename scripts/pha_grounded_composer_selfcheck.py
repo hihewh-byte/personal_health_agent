@@ -14,9 +14,12 @@ if str(ROOT) not in sys.path:
 os.environ["PHA_GROUNDED_COMPOSER"] = "1"
 
 from pha.grounded_answer_composer import (
+    apply_english_locale_leak_guard,
+    answer_has_cjk_locale_leak,
     build_composer_meta_event,
     build_fact_card_event,
     build_follow_ups_event,
+    build_manifest_locale_fallback_summary,
     fact_card_values_subset_of_manifest,
     grounded_composer_enabled,
 )
@@ -97,12 +100,45 @@ def test_he4_follow_ups_catalog() -> None:
     print("PASS H-ε4 follow_ups (3 catalog choices)")
 
 
+def test_he6_locale_leak_guard() -> None:
+    zh_blob = "### Trend review\n从 health records 账本中，我们可以看到您的 LDL胆固醇水平在过去一年内有显著改善。" * 3
+    _assert(answer_has_cjk_locale_leak(zh_blob, locale="en"), "cjk leak detect")
+    manifest = NumericsManifest(
+        profile="combined_review",
+        user_id="default",
+        entries=[
+            ManifestEntry(
+                domain="lipid",
+                metric="LDL",
+                value=2.45,
+                unit="mmol/L",
+                anchor="2025-06-01",
+                source="medical_reports",
+            ),
+        ],
+    )
+    fb = build_manifest_locale_fallback_summary(manifest, locale="en")
+    _assert("LDL" in fb and "2.45" in fb, fb)
+    guarded, audit = apply_english_locale_leak_guard(
+        zh_blob,
+        locale="en",
+        numerics_manifest=None,
+        user_id="default",
+        profile="lifestyle",
+        user_message="How do lipids trend across years?",
+    )
+    _assert(audit.get("locale_fallback_applied"), audit)
+    _assert(not answer_has_cjk_locale_leak(guarded, locale="en"), guarded[:120])
+    print("PASS H-ε6 english locale leak guard")
+
+
 def main() -> None:
     test_he1_flag()
     test_he2_meta_event()
     test_he3_fact_card_subset()
     test_he5_wearable_fact_card_manifest()
     test_he4_follow_ups_catalog()
+    test_he6_locale_leak_guard()
     print("ALL PASS pha_grounded_composer_selfcheck")
 
 

@@ -1,0 +1,19 @@
+{
+  "schema": "pha.loop_proposal/v2",
+  "generated_at": "2026-07-12T00:00:00+00:00",
+  "stage": "fixture",
+  "source": "selfcheck",
+  "accepted_catalog": [],
+  "accepted_schema": [],
+  "slot_candidates": [],
+  "rejected": [],
+  "patch_ops": [],
+  "counts": {
+    "accepted_catalog": 0,
+    "accepted_schema": 0,
+    "slot_candidates": 0,
+    "rejected": 0
+  },
+  "suggested_regression": [],
+  "notes": "fixture proposal with no patch ops"
+}

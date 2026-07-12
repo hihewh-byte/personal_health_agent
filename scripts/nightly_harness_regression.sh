@@ -30,6 +30,7 @@ fi
 
 STRESS_LOG="$REPORT_ROOT/stress_3h_${SEED}.log"
 BANK_LOG="$REPORT_ROOT/bank_3g_${SEED}.log"
+EN_LOG="$REPORT_ROOT/en10_${SEED}.log"
 FAIL=0
 
 echo "-- Stage 3H mixed battery (148 target) --"
@@ -49,6 +50,18 @@ mkdir -p "$PHA_E2E_REPORT_DIR"
 if ! "$PY" scripts/pha_e2e_browser_battery_20x.py 2>&1 | tee "$BANK_LOG"; then
   echo "FAIL: Stage 3G Bank battery" >&2
   FAIL=1
+fi
+
+if [[ "${PHA_NIGHTLY_EN10:-0}" == "1" || "${PHA_E2E_EN_STRESS:-0}" == "1" ]]; then
+  echo "-- English RLP EN10 subset (opt-in) --"
+  export PHA_E2E_BANK_SEED="${PHA_E2E_BANK_SEED:-20260711}"
+  export PHA_E2E_SESSIONS="${PHA_E2E_SESSIONS:-EN01,EN06,EN07,EN08,EN15,EN20,EN39,EN44,EN48,EN50}"
+  export PHA_E2E_REPORT_DIR="$REPORT_ROOT/en10"
+  mkdir -p "$PHA_E2E_REPORT_DIR"
+  if ! "$PY" scripts/pha_e2e_en_stress_50x.py 2>&1 | tee "$EN_LOG"; then
+    echo "FAIL: English RLP EN10 subset" >&2
+    FAIL=1
+  fi
 fi
 
 CONSTRAINTS="$ROOT/docs/rfcs/anti-regression-constraints.md"

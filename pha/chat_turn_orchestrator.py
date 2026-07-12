@@ -875,6 +875,18 @@ def orchestrate_chat_turn_events(
             profile=plan.profile,
             locale=_slot_ctx.response_locale,
         )
+        from pha.grounded_answer_composer import apply_english_locale_leak_guard
+
+        answer_text, _locale_guard_audit = apply_english_locale_leak_guard(
+            answer_text or raw,
+            locale=_slot_ctx.response_locale,
+            numerics_manifest=numerics_manifest,
+            user_id=uid,
+            profile=plan.profile,
+            user_message=raw_user_msg,
+        )
+        if _locale_guard_audit.get("locale_fallback_applied"):
+            numerics_audit = {**numerics_audit, **_locale_guard_audit}
         _compose_ctx.answer_text = answer_text
 
         l3_focus_violation = False

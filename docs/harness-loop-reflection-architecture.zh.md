@@ -81,10 +81,10 @@
 
 | 步骤 | 组件 | 说明 |
 |------|------|------|
-| L0 Ingest | 3H 附件解析 → T0 提案（待 P2 管线） | 异步，不破坏附件隔离 |
+| L0 Ingest | 3H 附件解析 → T0 提案 | `pha/t0_ingest_proposal.py` + `scripts/pha_t0_ingest_proposal.py`（**proposal-only**，不写 DB） |
 | L1 Compile | `pha/chb_compiler.py` + `scripts/pha_chb_daily_recompile.py` | T0 hash 过期 → 重编译 CHB |
 | L2 注入 | `USER_CONTEXT_BRIEF` Tier1 槽 | lifestyle/combined 只读注入 |
-| L2 Eval | persona battery（待建） | 泛化答 → §Open Questions |
+| L2 Eval | `scripts/pha_persona_personalization_battery.py` | 离线 CHB fixture battery（非 live E2E） |
 
 **在线开关**：`PHA_USER_CONTEXT_BRIEF=1`（默认开）读取已编译 artifact；**不在 turn 内阻塞编译**（cron 离线刷新）。
 
@@ -189,9 +189,12 @@ Measure   下一 Weekly EN50 pass 率 / persona battery delta
 | CHB 编译 + stale 检测 | ✅ |
 | CHB 每日 cron 脚本 | ✅ P3 |
 | USER_CONTEXT_BRIEF 注入 | ✅ P1（`PHA_USER_CONTEXT_BRIEF=1`） |
-| promote + EN10 Nightly | 📋 R2/R3 待做 |
-| 3H → T0 ingest 提案 | 📋 P2 待做 |
-| persona battery | 📋 待做 |
+| R2 promote dry-run/veto | ✅ `scripts/pha_loop_promote_candidate.py`（不 auto-merge） |
+| R3 EN10 Nightly opt-in | ✅ `PHA_NIGHTLY_EN10=1` in `nightly_harness_regression.sh` |
+| 3H → T0 ingest 提案 | ✅ P2 proposal-only（`pha_t0_ingest_proposal.py`） |
+| persona battery（离线） | ✅ `pha_persona_personalization_battery.py` |
+| 英文 warehouse CJK 兜底 | ✅ orchestrator `apply_english_locale_leak_guard` |
+| T0 gated adopter / live persona E2E | 📋 待做 |
 
 ---
 
@@ -208,6 +211,14 @@ python3 scripts/pha_chb_daily_recompile.py
 # 自检
 python3 scripts/pha_loop_failure_taxonomy_selfcheck.py
 python3 scripts/pha_chb_compiler_selfcheck.py
+python3 scripts/pha_t0_ingest_proposal_selfcheck.py
+python3 scripts/pha_persona_personalization_battery.py
+
+# R2 promote dry-run（不 apply patch）
+python3 scripts/pha_loop_promote_candidate.py --proposal reports/loop/proposals/alias_proposal_*.json
+
+# Nightly + EN10 子集
+PHA_NIGHTLY_EN10=1 bash scripts/nightly_harness_regression.sh
 ```
 
 ---
@@ -218,3 +229,4 @@ python3 scripts/pha_chb_compiler_selfcheck.py
 |------|------|
 | 2026-07-12 | v1.0：R0/P4 Harvest+E2E、R1 Reflection v0、P1/P3 CHB 日常闭环、本文档 |
 | 2026-07-12 | v1.0.1：拆分为 `.zh.md` / `.en.md` 双语版本；移除 Appendix LinkedIn 文案 |
+| 2026-07-12 | v1.0.2：R2/R3/P2/persona/CJK guard 落地；状态表与运维命令更新 |

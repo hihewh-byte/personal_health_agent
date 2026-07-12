@@ -160,6 +160,125 @@ def build_manifest_metric_focus_summary(
     return "\n".join(lines).strip()
 
 
+def build_generic_english_locale_fallback(*, user_message: str = "") -> str:
+    """Last-resort English reply when manifest-backed fallback is unavailable."""
+    _ = user_message
+    return (
+        "From the available health records in your account, I can review verified lab and "
+        "wearable values when you name a specific metric or time window.\n\n"
+        "Educational context only, not a medical diagnosis. "
+        "Ask a clinician for persistent symptoms or treatment decisions."
+    )
+
+
+def resolve_locale_fallback_manifest(
+    manifest: NumericsManifest | None,
+    *,
+    user_id: str,
+    profile: str,
+    user_message: str = "",
+) -> NumericsManifest | None:
+    """Build or reuse a manifest suitable for English locale fallback."""
+    if manifest is not None and manifest.entries:
+        return manifest
+    from pha.numerics_manifest import build_numerics_manifest
+
+    uid = (user_id or "default").strip() or "default"
+    prof = (profile or "").strip()
+    candidates: list[str] = []
+    for p in (prof, "combined_review", "lab_cross_year", "lifestyle", "wearable_only"):
+        if p and p not in candidates:
+            candidates.append(p)
+    for cand in candidates:
+        built = build_numerics_manifest(
+            uid,
+            profile=cand,
+            user_message=user_message,
+            include_lipid=True,
+            include_wearable=True,
+        )
+        if built.entries:
+            return built
+    return manifest if manifest is not None and manifest.entries else None
+
+
+def build_manifest_locale_fallback_summary(
+    manifest: NumericsManifest | None,
+    *,
+    user_message: str = "",
+    locale: str | None = None,
+) -> str:
+    """Deterministic fallback when an English LLM answer leaks substantial CJK."""
+    if manifest is None or not manifest.entries:
+        return ""
+    from pha.response_language import default_response_locale, normalize_response_locale
+
+    loc = normalize_response_locale(locale) or default_response_locale()
+    if loc != "en":
+        return ""
+    lines = ["From the available health records:", ""]
+    for entry in manifest.entries[:8]:
+        val_s = f"{entry.value:g}{(' ' + entry.unit) if entry.unit else ''}"
+        metric = _WAREHOUSE_FOCUS_LABEL_EN.get(entry.metric, entry.metric)
+        anchor = f" ({entry.anchor})" if entry.anchor else ""
+        lines.append(f"- **{metric}**: {val_s}{anchor}")
+    lines.append("")
+    lines.append(
+        "Educational context only, not a medical diagnosis. "
+        "Ask a clinician for persistent symptoms or treatment decisions.",
+    )
+    return "\n".join(lines).strip()
+
+
+def apply_english_locale_leak_guard(
+    answer_text: str,
+    *,
+    locale: str | None,
+    numerics_manifest: NumericsManifest | None,
+    user_id: str,
+    profile: str,
+    user_message: str = "",
+) -> tuple[str, dict[str, object]]:
+    """Replace English answers that leak substantial CJK with manifest or generic fallback."""
+    if not answer_has_cjk_locale_leak(answer_text, locale=locale):
+        return answer_text, {}
+    manifest = resolve_locale_fallback_manifest(
+        numerics_manifest,
+        user_id=user_id,
+        profile=profile,
+        user_message=user_message,
+    )
+    fallback = build_manifest_locale_fallback_summary(
+        manifest,
+        user_message=user_message,
+        locale=locale,
+    )
+    mode = "manifest"
+    if not fallback:
+        fallback = build_generic_english_locale_fallback(user_message=user_message)
+        mode = "generic"
+    return fallback, {
+        "locale_fallback_applied": True,
+        "locale_fallback_reason": "english_cjk_leak",
+        "locale_fallback_mode": mode,
+    }
+
+
+def answer_has_cjk_locale_leak(text: str, *, locale: str | None = None) -> bool:
+    """Detect substantial CJK leakage in an English user-visible answer."""
+    from pha.response_language import normalize_response_locale
+
+    if normalize_response_locale(locale) != "en":
+        return False
+    blob = text or ""
+    if len(blob) < 80:
+        return False
+    import re
+
+    cjk = len(re.findall(r"[\u4e00-\u9fff]", blob))
+    return (cjk / max(len(blob), 1)) > 0.12
+
+
 _WAREHOUSE_FOCUS_LABEL_BY_CAT: dict[str, str] = {
     "hrv": "HRV均值",
     "steps": "步数均值",
@@ -261,6 +380,11 @@ __all__ = [
     "build_fact_card_event",
     "build_follow_ups_event",
     "build_manifest_metric_focus_summary",
+    "build_manifest_locale_fallback_summary",
+    "build_generic_english_locale_fallback",
+    "resolve_locale_fallback_manifest",
+    "apply_english_locale_leak_guard",
+    "answer_has_cjk_locale_leak",
     "is_warehouse_metric_focus_turn",
     "try_warehouse_metric_focus_skip",
     "fact_card_values_subset_of_manifest",

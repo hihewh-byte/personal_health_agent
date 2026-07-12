@@ -1,0 +1,20 @@
+{
+  "document_family": "lab",
+  "report_date": "2025-12-07",
+  "source_filename": "sample_lab.png",
+  "parse_confidence": "high",
+  "metrics": [
+    {
+      "item": "LDL cholesterol",
+      "value_text": "2.45",
+      "unit": "mmol/L",
+      "reference_range": "<3.4"
+    },
+    {
+      "item": "ALT",
+      "value_text": "23.7",
+      "unit": "U/L",
+      "reference_range": "0-40"
+    }
+  ]
+}

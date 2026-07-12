@@ -79,6 +79,7 @@ jobs:
           PHA_NIGHTLY_REPORT_DIR: /tmp/pha-nightly-harness
           PHA_UNIVERSAL_ATTACHMENT_LANE: "1"
           PHA_HEALTH_INTENT_CATALOG: "1"
+          PHA_NIGHTLY_EN10: "1"
         run: bash scripts/nightly_harness_regression.sh
       - name: Upload regression artifacts (always)
         if: always()

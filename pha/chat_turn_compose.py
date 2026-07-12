@@ -223,6 +223,19 @@ def iter_post_compose_audit_phase(ctx: TurnComposeContext) -> Iterator[str]:
             ctx.numerics_manifest,
             require_citation=numerics_require_citation(),
         )
+        from pha.grounded_answer_composer import apply_english_locale_leak_guard
+
+        guarded, guard_audit = apply_english_locale_leak_guard(
+            ctx.answer_text or ctx.raw,
+            locale=ctx.response_locale,
+            numerics_manifest=ctx.numerics_manifest,
+            user_id=ctx.uid,
+            profile=ctx.plan.profile,
+            user_message=ctx.raw_user_msg,
+        )
+        if guard_audit.get("locale_fallback_applied"):
+            ctx.answer_text = guarded
+            ctx.numerics_audit = {**ctx.numerics_audit, **guard_audit}
         if numerics_audit_mode() == "block" and not ctx.numerics_audit.get("passed"):
             ctx.answer_text = apply_numerics_audit_to_answer(
                 ctx.answer_text or ctx.raw,
