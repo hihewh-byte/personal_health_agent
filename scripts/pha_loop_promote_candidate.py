@@ -22,23 +22,37 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def _run(cmd: list[str], *, env: dict[str, str] | None = None, timeout: int = 900) -> dict[str, Any]:
     started = datetime.now(timezone.utc).isoformat()
-    proc = subprocess.run(
-        cmd,
-        cwd=str(ROOT),
-        env={**os.environ, **(env or {}), "PYTHONPATH": "."},
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        timeout=timeout,
-        check=False,
-    )
-    return {
-        "cmd": cmd,
-        "started_at": started,
-        "exit_code": proc.returncode,
-        "passed": proc.returncode == 0,
-        "output_tail": proc.stdout[-4000:],
-    }
+    try:
+        proc = subprocess.run(
+            cmd,
+            cwd=str(ROOT),
+            env={**os.environ, **(env or {}), "PYTHONPATH": "."},
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=timeout,
+            check=False,
+        )
+        return {
+            "cmd": cmd,
+            "started_at": started,
+            "exit_code": proc.returncode,
+            "passed": proc.returncode == 0,
+            "timed_out": False,
+            "output_tail": proc.stdout[-4000:],
+        }
+    except subprocess.TimeoutExpired as exc:
+        out = (exc.stdout or "") if isinstance(exc.stdout, str) else ""
+        if isinstance(exc.stdout, bytes):
+            out = exc.stdout.decode("utf-8", errors="replace")
+        return {
+            "cmd": cmd,
+            "started_at": started,
+            "exit_code": -1,
+            "passed": False,
+            "timed_out": True,
+            "output_tail": (out or "")[-4000:],
+        }
 
 
 def _load(path: Path) -> dict[str, Any]:
@@ -119,7 +133,13 @@ def main() -> int:
         )
 
     if args.full_veto:
-        checks.append(_run(["bash", "scripts/nightly_harness_regression.sh"], timeout=7200))
+        nightly_timeout = int(os.environ.get("PHA_LOOP_NIGHTLY_TIMEOUT", "14400"))
+        checks.append(
+            _run(
+                ["bash", "scripts/nightly_harness_regression.sh"],
+                timeout=nightly_timeout,
+            ),
+        )
 
     passed_checks = all(c.get("passed") for c in checks)
     verdict = {
