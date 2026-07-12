@@ -192,9 +192,12 @@ Measure   next Weekly EN50 pass rate / persona battery delta
 | R2 promote dry-run/veto | ✅ `scripts/pha_loop_promote_candidate.py` (no auto-merge) |
 | R3 EN10 Nightly opt-in | ✅ `PHA_NIGHTLY_EN10=1` in `nightly_harness_regression.sh` |
 | 3H → T0 ingest proposals | ✅ P2 proposal-only (`pha_t0_ingest_proposal.py`) |
-| persona battery (offline) | ✅ `pha_persona_personalization_battery.py` |
+| T0 gated adopter | ✅ `scripts/pha_t0_gated_adopter.py` (`--apply --confirm`) |
+| Loop B L2 CHB gap harvest | ✅ `pha_chb_gap_harvest.py` + compile merge |
+| Persona battery (offline + live opt-in) | ✅ offline + `pha_persona_live_e2e_battery.py` |
 | English warehouse CJK guard | ✅ orchestrator `apply_english_locale_leak_guard` |
-| T0 gated adopter / live persona E2E | 📋 pending |
+| harness_trace UI / session MVCC | 📋 official ecosystem Phase 1 (see §10) |
+| HIO-A third-domain closure | 📋 Phase 3 |
 
 ---
 
@@ -217,9 +220,36 @@ python3 scripts/pha_persona_personalization_battery.py
 # R2 promote dry-run (does not apply patches)
 python3 scripts/pha_loop_promote_candidate.py --proposal reports/loop/proposals/alias_proposal_*.json
 
-# Nightly + EN10 subset
-PHA_NIGHTLY_EN10=1 bash scripts/nightly_harness_regression.sh
+# T0 gated adopt (writes DB; requires --confirm)
+python3 scripts/pha_t0_gated_adopter.py --proposal reports/loop/t0_ingest_proposals/*.json --apply --confirm YES --recompile-chb
+
+# CHB gap harvest (Loop B L2)
+python3 scripts/pha_chb_gap_harvest.py --candidates reports/loop/slow_round_candidates.jsonl
+
+# Persona live (requires running PHA)
+python3 scripts/pha_persona_live_e2e_battery.py
 ```
+
+---
+
+## 10. Competitor learnings & official ecosystem (Core spine + ecosystem muscle)
+
+**Principle**: `packages/harness_core` stays thin — contracts, phase FSM, integrity/trace **schemas** only. Runbook prose, work orders, and UI stay out of the kernel but ship as **official ecosystem** (`tools/` + plugin slots) in-repo.
+
+| Source | Learn | Where | Phase |
+|--------|-------|-------|-------|
+| LangSmith / Langfuse | Assertion diff UX | `harness_turn_trace/v1` + static Trust Trace Viewer | Phase 1 |
+| OpenAI Evals | Dataset spec + synthetic fuzz | `harness_eval_set/v1` + Loop A alias fuzzer | Phase 1–2 |
+| RAG / GraphRAG | Soft entity linking (not routing) | CHB §SoftContext (T2 advisory) | Phase 2 |
+| Datomic / MVCC | Evidence snapshots + revision chain | `turn_evidence_snapshot/v1` + T0 revision ledger | Phase 2–3 |
+
+**PM vs “minimal safety shell” compromise**:
+
+1. **Runbook ≠ catalog aliases**: Core adds **Flow-based Evidence Slot** contracts; plugins compile runbook steps into Tier1 flow evidence; POST_AUDIT diffs planned vs claimed steps.  
+2. **Loop B ≠ static CMDB**: evolve `chb_compiler` into a **dynamic artifact compiler** — quantitative device/lifecycle profile from dirty history, not raw ticket dumps.  
+3. **Trace UI + session MVCC as official kit**: kernel emits `trace.json`; `tools/harness_trace_viewer` + **session turn snapshots** (evidence rollback, not LLM replay) ship by default.
+
+**Spine unchanged**: Plan-before-Compose · numerics ⊆ manifest/CompareTable · no Loop auto-merge · no routing/registry evolution.
 
 ---
 
@@ -229,4 +259,4 @@ PHA_NIGHTLY_EN10=1 bash scripts/nightly_harness_regression.sh
 |------|-------|
 | 2026-07-12 | v1.0: R0/P4 Harvest+E2E, R1 Reflection v0, P1/P3 CHB daily loop, this doc |
 | 2026-07-12 | v1.0.1: split into `.zh.md` / `.en.md`; removed LinkedIn appendix from architecture docs |
-| 2026-07-12 | v1.0.2: R2/R3/P2/persona/CJK guard shipped; status table + operator commands updated |
+| 2026-07-12 | v1.0.3: T0 gated adopter, CHB L2 gap, persona live; §10 ecosystem roadmap |

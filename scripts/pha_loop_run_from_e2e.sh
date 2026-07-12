@@ -41,6 +41,14 @@ fi
 "$PY" scripts/pha_reflection_critic.py "${REFLECT_ARGS[@]}"
 
 echo ""
+echo "== Loop B L2: CHB gap harvest =="
+GAP_ARGS=(--candidates "$OUT")
+if [[ -n "$E2E_JSONL" ]]; then
+  GAP_ARGS+=(--e2e-jsonl "$E2E_JSONL")
+fi
+"$PY" scripts/pha_chb_gap_harvest.py "${GAP_ARGS[@]}"
+
+echo ""
 echo "== Loop A: Alias Distiller =="
 if [[ "$DRY_DISTILL" == "1" ]]; then
   "$PY" scripts/pha_loop_alias_distiller.py --candidates "$OUT" --out-dir "$PROPOSAL_DIR" --dry-run
@@ -54,3 +62,4 @@ echo " candidates : $OUT"
 echo " proposals  : $PROPOSAL_DIR"
 echo " reflection : ${ROOT}/reports/loop/reflection_*.md"
 echo " Next: review proposals, run EN subset + nightly 148/164 veto, then human PR."
+echo " T0 adopt: python3 scripts/pha_t0_gated_adopter.py --proposal reports/loop/t0_ingest_proposals/*.json --apply --confirm YES"

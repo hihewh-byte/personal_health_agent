@@ -27,6 +27,7 @@ TaxonomySignal = Literal[
     "warehouse_llm_zh",
     "holistic_lifestyle_misroute",
     "l3_focus_violation",
+    "chb_personalization_gap",
     "unrecognized_health_phrase",
     "bank_slot_alias_miss",
     "bank_pool_alias_miss",
@@ -115,6 +116,12 @@ _TAXONOMY: dict[TaxonomySignal, TaxonomyRule] = {
         False,
         "Attachment focus violation; not catalog-eligible.",
     ),
+    "chb_personalization_gap": TaxonomyRule(
+        "chb_personalization_gap",
+        frozenset({"chb_open_question"}),
+        True,
+        "Generic lifestyle answer; compile CHB §Open Questions from gap harvest.",
+    ),
     "unknown": TaxonomyRule(
         "unknown",
         frozenset({"code_review_required"}),
@@ -135,6 +142,8 @@ def classify_e2e_check(check: str) -> TaxonomySignal:
         return "full_table_repeat"
     if c.startswith("weak_followup"):
         return "weak_followup_heavy"
+    if c.startswith("generic_lifestyle"):
+        return "chb_personalization_gap"
     if c.startswith("metric_"):
         return "metric_fidelity_miss"
     if c.startswith("api_error"):

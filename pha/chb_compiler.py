@@ -558,6 +558,10 @@ def compile_chronic_health_brief(
         open_q.append("尚未有化验面板 T0 行；上传 PDF/截图可补 §Facts。")
     if not wear_facts:
         open_q.append("尚未有穿戴日聚合；导入 Apple Health export.zip 可补 §Facts。")
+    from pha.chb_gap_harvest import load_gap_open_questions, merge_gap_questions
+
+    gap_q = load_gap_open_questions(uid, report_root=DEFAULT_REPORT_ROOT)
+    open_q = merge_gap_questions(open_q, [{"question": q} for q in gap_q])
 
     brief = ChronicHealthBrief(
         user_id=uid,
