@@ -63,6 +63,7 @@ class TurnComposeContext:
     numerics_audit: Dict[str, Any] = field(default_factory=dict)
     compare_table_audit: Dict[str, Any] = field(default_factory=dict)
     manifest_block: str = ""
+    response_locale: str = "en"
 
 
 def iter_compose_response_phase(ctx: TurnComposeContext) -> Iterator[str]:
@@ -172,7 +173,10 @@ def iter_compose_response_phase(ctx: TurnComposeContext) -> Iterator[str]:
     ):
         from pha.presentation_filter import polish_user_visible_reply
 
-        polished = polish_user_visible_reply(ctx.answer_text or ctx.raw)
+        polished = polish_user_visible_reply(
+            ctx.answer_text or ctx.raw,
+            locale=ctx.response_locale,
+        )
         if polished:
             ctx.answer_text = polished
 
@@ -192,7 +196,10 @@ def iter_post_compose_audit_phase(ctx: TurnComposeContext) -> Iterator[str]:
             ctx.wearable_compare_table_obj,
             user_message=ctx.raw_user_msg,
         )
-        ctx.answer_text = polish_wearable_user_visible_reply(ctx.answer_text or ctx.raw)
+        ctx.answer_text = polish_wearable_user_visible_reply(
+            ctx.answer_text or ctx.raw,
+            locale=ctx.response_locale,
+        )
         if ctx.compare_table_audit.get("fallback_applied"):
             logger.info(
                 "[Wearable Compare Audit] fallback violations=%s tier0_chars=%s advisory_chars=%s",

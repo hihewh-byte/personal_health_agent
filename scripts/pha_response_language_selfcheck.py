@@ -77,6 +77,24 @@ def main() -> int:
         print("FAIL directive should be appended at end")
         ok = False
 
+    from pha.presentation_filter import polish_user_visible_reply
+
+    zh_leak = polish_user_visible_reply(
+        "Patient State shows 低密度脂蛋白 (LDL) elevated.",
+        locale="en",
+    )
+    if "低密度脂蛋白" in zh_leak or "健康记录" in zh_leak:
+        print("FAIL en polish should not leave Chinese lipid labels or 健康记录")
+        ok = False
+    if "health records" not in zh_leak:
+        print("FAIL en polish should map Patient State to health records")
+        ok = False
+
+    zh_ok = polish_user_visible_reply("Patient State LDL high", locale="zh")
+    if "健康记录" not in zh_ok:
+        print("FAIL zh polish should map Patient State to 健康记录")
+        ok = False
+
     print("pha_response_language_selfcheck:", "PASS" if ok else "FAIL")
     return 0 if ok else 1
 

@@ -159,7 +159,16 @@ def orchestrate_chat_turn_events(
         yield json.dumps({"event": "error", "message": "消息不能为空"}, ensure_ascii=False)
         return
     if not msg and _paths_in:
-        msg = "请根据附件与 Current Patient State 事实账本，逐项解读化验指标（指标 | 数值 | 参考），勿输出空泛健康模板。"
+        from pha.response_language import resolve_response_locale
+
+        _attach_loc = resolve_response_locale("", request_locale=response_locale)
+        if _attach_loc == "en":
+            msg = (
+                "Using the attachment and Current Patient State ledger, interpret each lab "
+                "metric (name | value | reference range). Do not reply with generic wellness templates."
+            )
+        else:
+            msg = "请根据附件与 Current Patient State 事实账本，逐项解读化验指标（指标 | 数值 | 参考），勿输出空泛健康模板。"
 
     # Step 0: hard temporal intercept — SSE status before any heavy work
     temporal_probe = probe_temporal_route(msg)
@@ -838,6 +847,7 @@ def orchestrate_chat_turn_events(
             wearable_compare_table_obj=wearable_compare_table_obj,
             numerics_manifest=numerics_manifest,
             pre_results=pre_results,
+            response_locale=_slot_ctx.response_locale,
         )
         yield from iter_compose_response_phase(_compose_ctx)
         raw = _compose_ctx.raw
@@ -863,6 +873,7 @@ def orchestrate_chat_turn_events(
         answer_text = polish_final_user_answer(
             answer_text or raw,
             profile=plan.profile,
+            locale=_slot_ctx.response_locale,
         )
         _compose_ctx.answer_text = answer_text
 
