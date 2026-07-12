@@ -236,6 +236,13 @@
     "attachment_episodic_bridge": "刚才的附件与指标",
     "combined_review": "当前综合评估话题"
   },
+  "session_anchor_labels_en": {
+    "wearable_screenshot_review": "the uploaded screenshots and current session",
+    "wearable_only": "the current wearable-data topic",
+    "attachment_asset_qa": "the recent attachment tags",
+    "attachment_episodic_bridge": "the recent attachment and metrics",
+    "combined_review": "the current combined review topic"
+  },
   "profiles": {
     "wearable_screenshot_review": {
       "episodic_continue": true,

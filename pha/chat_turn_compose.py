@@ -195,6 +195,7 @@ def iter_post_compose_audit_phase(ctx: TurnComposeContext) -> Iterator[str]:
             ctx.answer_text or ctx.raw,
             ctx.wearable_compare_table_obj,
             user_message=ctx.raw_user_msg,
+            locale=ctx.response_locale,
         )
         ctx.answer_text = polish_wearable_user_visible_reply(
             ctx.answer_text or ctx.raw,

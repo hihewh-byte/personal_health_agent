@@ -1253,7 +1253,7 @@ def build_health_summary_followup_answer(
     if not any(r.snapshot_value for r in table.rows):
         return ""
     loc = _ui_locale(locale)
-    summary = compare_table_to_user_summary(table, locale=loc)
+    summary = compare_table_to_user_summary(table, locale=loc, full_intro=False)
     if loc == "en":
         return (
             "### Health data overview\n\n"
@@ -1594,16 +1594,27 @@ def compare_table_to_user_summary(
     table: CompareTableV1,
     *,
     locale: Optional[str] = None,
+    full_intro: bool = True,
 ) -> str:
     """User-visible fallback summary (no Tier0 / metric_id jargon)."""
     loc = _ui_locale(locale)
     if loc == "en":
+        intro = (
+            "Based on the uploaded Apple Watch screenshots, compared with ~90 days of records:"
+            if full_intro
+            else "Follow-up summary from the screenshots vs ~90 days of records:"
+        )
         lines = [
-            "Based on your uploaded Apple Watch screenshots, compared with ~90 days of records:",
+            intro,
             "",
         ]
     else:
-        lines = ["根据您上传的 Apple Watch 截图，与过去约 90 天记录对比：", ""]
+        intro = (
+            "根据您上传的 Apple Watch 截图，与过去约 90 天记录对比："
+            if full_intro
+            else "基于本次截图与过去约 90 天记录的追问小结："
+        )
+        lines = [intro, ""]
     comparable = [r for r in table.rows if r.row_kind == "comparable_90d"]
 
     for row in comparable:
@@ -1747,9 +1758,14 @@ def audit_wearable_compare_table(
     }
 
 
-def build_compare_table_fallback_answer(table: CompareTableV1) -> str:
+def build_compare_table_fallback_answer(
+    table: CompareTableV1,
+    *,
+    locale: Optional[str] = None,
+    full_intro: bool = True,
+) -> str:
     """Deterministic fallback — user-facing summary; Tier0 markdown stays in logs/telemetry."""
-    return compare_table_to_user_summary(table)
+    return compare_table_to_user_summary(table, locale=locale, full_intro=full_intro)
 
 
 def _sanitize_advisory_paragraph(paragraph: str, allowed: Set[str]) -> str:
@@ -1805,9 +1821,13 @@ def extract_llm_health_advisory(
 def build_compare_table_hybrid_answer(
     table: CompareTableV1,
     llm_text: str,
+    *,
+    locale: Optional[str] = None,
+    full_intro: bool = False,
 ) -> str:
     """SSO compare block + retained LLM advisory (Wave 3d-γ-ux · hybrid fallback)."""
-    summary = compare_table_to_user_summary(table)
+    loc = _ui_locale(locale)
+    summary = compare_table_to_user_summary(table, locale=loc, full_intro=full_intro)
     advisory = extract_llm_health_advisory(llm_text, table)
     if not advisory:
         return summary
@@ -1819,14 +1839,16 @@ def apply_compare_table_fallback_if_needed(
     table: CompareTableV1,
     *,
     user_message: str = "",
+    locale: Optional[str] = None,
 ) -> Tuple[str, Dict[str, Any]]:
     audit = audit_wearable_compare_table(answer_text, table, user_message=user_message)
     if audit.get("passed"):
         return answer_text, audit
+    loc = _ui_locale(locale)
     audit["fallback_applied"] = True
     audit["tier0_markdown"] = table.to_markdown()
     if user_requests_snapshot_correction(user_message):
-        correction = build_compare_table_correction_summary(table, user_message)
+        correction = build_compare_table_correction_summary(table, user_message, locale=loc)
         if correction:
             audit["fallback_mode"] = "correction_focus"
             advisory = extract_llm_health_advisory(answer_text, table)
@@ -1836,14 +1858,17 @@ def apply_compare_table_fallback_if_needed(
             return correction, audit
     focus_ids = infer_single_metric_focus_ids(user_message)
     if focus_ids:
-        focus = build_compare_table_metric_focus_summary(table, focus_ids)
+        focus = build_compare_table_metric_focus_summary(table, focus_ids, locale=loc)
         if focus:
             audit["fallback_mode"] = "metric_focus"
             audit["advisory_chars"] = 0
             return focus, audit
     audit["fallback_mode"] = "hybrid"
-    hybrid = build_compare_table_hybrid_answer(table, answer_text)
-    audit["advisory_chars"] = max(0, len(hybrid) - len(compare_table_to_user_summary(table)))
+    hybrid = build_compare_table_hybrid_answer(table, answer_text, locale=loc, full_intro=False)
+    audit["advisory_chars"] = max(
+        0,
+        len(hybrid) - len(compare_table_to_user_summary(table, locale=loc, full_intro=False)),
+    )
     return hybrid, audit
 
 

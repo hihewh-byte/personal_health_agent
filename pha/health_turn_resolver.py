@@ -237,7 +237,7 @@ def _build_intent_scope_clarify(
     )
     fp = episodic.focus_profile or ""
     ys = ", ".join(str(y) for y in uploaded_years)
-    session_label = catalog_session_anchor_label(fp)
+    session_label = catalog_session_anchor_label(fp, locale=loc)
     if loc == "en":
         choices: list[dict[str, Any]] = [
             {

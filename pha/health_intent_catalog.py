@@ -249,10 +249,16 @@ def catalog_lab_record_request_tokens() -> list[str]:
     return [str(t) for t in (block.get("tokens") or [])]
 
 
-def catalog_session_anchor_label(profile: str) -> str:
-    labels = load_health_intent_catalog().get("session_anchor_labels") or {}
+def catalog_session_anchor_label(profile: str, *, locale: str | None = None) -> str:
+    catalog = load_health_intent_catalog()
+    if (locale or "").strip().lower() == "en":
+        labels = catalog.get("session_anchor_labels_en") or {}
+        fallback = "the current session topic"
+    else:
+        labels = catalog.get("session_anchor_labels") or {}
+        fallback = "当前会话话题"
     fp = (profile or "").strip()
-    return str(labels.get(fp) or "当前会话话题")
+    return str(labels.get(fp) or fallback)
 
 
 def session_anchor_profiles() -> frozenset[str]:

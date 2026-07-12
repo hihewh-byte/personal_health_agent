@@ -52,6 +52,14 @@ _WEARABLE_STRIP_ZH: List[Tuple[re.Pattern[str], str]] = [
 ]
 
 _WEARABLE_STRIP_EN: List[Tuple[re.Pattern[str], str]] = [
+    (
+        re.compile(
+            r"Based on your uploaded Apple Watch screenshots,\s*"
+            r"compared with (?:the recent |~)?90 days? of records:",
+            re.I,
+        ),
+        "Based on the uploaded Apple Watch screenshots, compared with ~90 days of records:",
+    ),
     (re.compile(r"Wearable Compare Table[^\n]*\n?", re.I), ""),
     (re.compile(r"Tier0[^\n]*\n?", re.I), ""),
     (re.compile(r"metric_id", re.I), ""),
