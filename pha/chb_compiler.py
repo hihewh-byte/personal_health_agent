@@ -92,6 +92,15 @@ def chb_compiler_enabled() -> bool:
     return (os.environ.get("PHA_CHB_COMPILER") or "0").strip().lower() in ("1", "true", "yes")
 
 
+def user_context_brief_enabled() -> bool:
+    """Opt-in injection of compiled CHB artifact into lifestyle/combined turns."""
+    return (os.environ.get("PHA_USER_CONTEXT_BRIEF") or "1").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+
 def load_slot_candidates(path: Path | None = None) -> list[dict[str, Any]]:
     p = path or SLOT_CANDIDATES_PATH
     if not p.is_file():
@@ -587,6 +596,7 @@ __all__ = [
     "assemble_facts_section",
     "build_user_context_brief_block",
     "chb_compiler_enabled",
+    "user_context_brief_enabled",
     "compile_chronic_health_brief",
     "compile_interpretation_llm",
     "compile_interpretation_stub",

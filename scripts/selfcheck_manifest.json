@@ -43,6 +43,7 @@
     {"id": "universal_attachment_lane", "script": "scripts/pha_universal_attachment_lane_selfcheck.py", "tags": ["stage3h", "harness"]},
     {"id": "universal_attachment_lane_l1", "script": "scripts/pha_universal_attachment_lane_l1_selfcheck.py", "tags": ["stage3h", "harness", "p0", "nightly"]},
     {"id": "loop_keyword_conflict", "script": "scripts/pha_loop_keyword_conflict_selfcheck.py", "tags": ["stage4", "loop", "p0"]},
+    {"id": "loop_failure_taxonomy", "script": "scripts/pha_loop_failure_taxonomy_selfcheck.py", "tags": ["stage4", "loop", "p0"]},
     {"id": "chb_compiler", "script": "scripts/pha_chb_compiler_selfcheck.py", "tags": ["stage4b", "loop", "p0"]},
     {"id": "stage3a2", "script": "scripts/pha_stage3a2_selfcheck.py"},
     {"id": "stage3a22", "script": "scripts/pha_stage3a22_selfcheck.py"},

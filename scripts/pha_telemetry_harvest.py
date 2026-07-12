@@ -21,6 +21,10 @@ if str(ROOT) not in sys.path:
 
 from pha.e2e_question_bank import load_bank  # noqa: E402
 from pha.health_intent_catalog import infer_metrics_from_message  # noqa: E402
+from pha.loop_failure_taxonomy import (  # noqa: E402
+    classify_e2e_check,
+    warehouse_llm_zh_heuristic,
+)
 from pha.loop_keyword_conflicts import (  # noqa: E402
     infer_slot_metric_hint,
     message_matches_any_alias,
@@ -202,6 +206,70 @@ def harvest_bank_pools(out: list[dict[str, Any]]) -> int:
     return count
 
 
+def harvest_e2e_jsonl(path: Path, out: list[dict[str, Any]]) -> int:
+    """Harvest failed turns from ``en_stress_50x`` / browser battery JSONL."""
+    count = 0
+    for row in _iter_jsonl(path):
+        if row.get("passed", True):
+            continue
+        msg = str(row.get("message") or "").strip()
+        if not msg:
+            continue
+        session = str(row.get("session_name") or path.stem)
+        turn = int(row.get("turn") or 0)
+        lane = str(row.get("lane") or "")
+        profile = str(row.get("harness_profile") or "")
+        answer = str(row.get("answer") or "")
+        checks = [str(c) for c in (row.get("checks") or [])]
+        emitted: set[str] = set()
+        for check in checks:
+            signal = classify_e2e_check(check)
+            key = (msg, signal, f"e2e:{session}:T{turn}")
+            if key in emitted:
+                continue
+            emitted.add(key)
+            _emit(
+                out,
+                message=msg,
+                signal=signal,
+                source=f"e2e:{path.name}:{session}:T{turn}",
+                intent_family=lane or profile or "e2e",
+                meta={
+                    "session_name": session,
+                    "turn": turn,
+                    "check": check,
+                    "lane": lane,
+                    "harness_profile": profile,
+                },
+            )
+            count += 1
+        if warehouse_llm_zh_heuristic(answer):
+            _emit(
+                out,
+                message=msg,
+                signal="warehouse_llm_zh",
+                source=f"e2e:{path.name}:{session}:T{turn}",
+                intent_family=lane or "warehouse",
+                meta={
+                    "session_name": session,
+                    "turn": turn,
+                    "answer_head": answer[:240],
+                },
+            )
+            count += 1
+        inferred = infer_metrics_from_message(msg)
+        if not inferred and not message_matches_any_alias(msg) and _looks_health_related(msg):
+            _emit(
+                out,
+                message=msg,
+                signal="unrecognized_health_phrase",
+                source=f"e2e:{path.name}:{session}:T{turn}",
+                meta={"session_name": session, "turn": turn, "lane": lane},
+            )
+            count += 1
+    return count
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Harvest Loop alias candidates (Stage 4-α)")
     ap.add_argument(
@@ -219,6 +287,16 @@ def main() -> int:
         default=str(DEFAULT_OUT),
         help="Output slow_round_candidates.jsonl",
     )
+    ap.add_argument(
+        "--e2e-jsonl",
+        default=os.environ.get("PHA_E2E_JSONL", ""),
+        help="Optional E2E stress JSONL (en_stress_50x_*.jsonl)",
+    )
+    ap.add_argument(
+        "--e2e-jsonl-dir",
+        default=os.environ.get("PHA_E2E_JSONL_DIR", ""),
+        help="Directory; harvest newest en_stress_50x_*.jsonl when --e2e-jsonl unset",
+    )
     ap.add_argument("--include-bank-pools", action="store_true", default=True)
     ap.add_argument("--no-bank-pools", action="store_false", dest="include_bank_pools")
     args = ap.parse_args()
@@ -235,6 +313,19 @@ def main() -> int:
 
     b_n = harvest_bank_pools(candidates) if args.include_bank_pools else 0
 
+    e2e_n = 0
+    e2e_path: Path | None = None
+    if args.e2e_jsonl:
+        e2e_path = Path(args.e2e_jsonl)
+        e2e_n = harvest_e2e_jsonl(e2e_path, candidates)
+    elif args.e2e_jsonl_dir:
+        e2e_dir = Path(args.e2e_jsonl_dir)
+        if e2e_dir.is_dir():
+            matches = sorted(e2e_dir.glob("en_stress_50x_*.jsonl"))
+            if matches:
+                e2e_path = matches[-1]
+                e2e_n = harvest_e2e_jsonl(e2e_path, candidates)
+
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w", encoding="utf-8") as fh:
@@ -245,6 +336,7 @@ def main() -> int:
     print(f" harness rows scanned : {h_n} signals from {harness_path}")
     print(f" manifest signals     : {m_n} from {manifest_dir}")
     print(f" bank pool signals    : {b_n}")
+    print(f" e2e jsonl signals    : {e2e_n} from {e2e_path or '(none)'}")
     print(f" total candidates     : {len(candidates)}")
     print(f" output               : {out_path}")
     return 0

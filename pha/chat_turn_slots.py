@@ -350,12 +350,13 @@ def iter_turn_harness_assembly_phase(
 
     user_context_brief_block = ""
     if "USER_CONTEXT_BRIEF" in plan.slots_tier1:
-        from pha.chb_compiler import build_user_context_brief_block
+        from pha.chb_compiler import build_user_context_brief_block, user_context_brief_enabled
 
-        user_context_brief_block = build_user_context_brief_block(
-            uid,
-            profile=plan.profile,
-        )
+        if user_context_brief_enabled():
+            user_context_brief_block = build_user_context_brief_block(
+                uid,
+                profile=plan.profile,
+            )
 
     ctx.slot_contents = {
         "TASK": plan.task_text,
