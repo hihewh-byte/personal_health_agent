@@ -1,64 +1,70 @@
-# harness_loop (Official Loop Suite — skeleton)
+# harness-loop (Official Loop Suite α)
 
-> **Status:** placeholder package (2026-07-13).  
-> **Role:** offline evolution companion to [`harness_core`](../harness_core/).  
-> **Not yet:** installable CLI / extracted Python modules.
+> **Status:** **α installable** (2026-07-13) — CLI + portable eval_set + PHA reference plugin delegate.  
+> **Role:** offline evolution companion to [`harness-core`](../harness_core/).  
+> **Not yet:** Trace UI, live HTTP runner, fully extracted harvest modules (still delegates to PHA scripts).
 
-## Why this directory exists
-
-`harness-core` stays a **thin online** control plane. Auditable evolution
-(Reflection Critic, Loop A global recognition, Loop B per-user facts) is an
-**official product-family suite**, not private PHA magic.
-
-This folder is the **migration claim**: portable harvest / critic / distill /
-promote / gated-adopter skeletons will land here; PHA becomes the first
-**reference plugin**.
-
-## Use today (reference implementation)
-
-Until code is extracted, run the PHA-hosted pipeline (same contracts):
-
-| Step | Command / artifact |
-|------|-------------------|
-| Harvest + Critic + Distill | `bash scripts/pha_loop_run_from_e2e.sh` |
-| Promote / full-veto | `python scripts/pha_loop_promote_candidate.py --proposal … [--full-veto]` |
-| T0 gated apply | `python scripts/pha_t0_gated_adopter.py --apply --confirm YES --recompile-chb` |
-| Schemas | `pha.loop_proposal/v2`, `pha.loop_promote_verdict/v1` (see Core protocol §11) |
-| SOP | [`docs/loop-evolution-human-in-the-loop-sop.en.md`](../../docs/loop-evolution-human-in-the-loop-sop.en.md) |
-| Attach guide | [`examples/loop_reference_pha.md`](../../examples/loop_reference_pha.md) |
-| Eval set v1 | [`docs/harness-eval-set-v1.md`](../../docs/harness-eval-set-v1.md) · [`evals/goldens/pha_smoke_v0.json`](../../evals/goldens/pha_smoke_v0.json) · [`pha_alias_fuzz_v0.json`](../../evals/goldens/pha_alias_fuzz_v0.json) |
-
-## Eval set (thin slice)
-
-```bash
-PYTHONPATH=. python scripts/pha_eval_set_export_smoke.py --write
-PYTHONPATH=. python scripts/pha_eval_set_export_alias_fuzz.py --write
-PYTHONPATH=. python scripts/pha_eval_set_selfcheck.py
-PYTHONPATH=. python scripts/pha_eval_set_alias_fuzz_selfcheck.py
-```
-
-Offline expects: shape · `catalog_alias` · `alias_must_reject` (1E gates). Live HTTP runner is later.
-
-## Planned layout (Stage B)
+## Product family
 
 ```text
-packages/harness_loop/
-  README.md          ← you are here
-  pyproject.toml     ← TODO
-  src/harness_loop/  ← TODO: domain-agnostic orchestration
-tools/harness_loop_cli/  ← TODO: `harness-loop harvest|promote|adopt`
+harness-core     Online thin fence (Plan → Compose → Post-Audit)
+harness-loop     Offline evolution (this package) — harvest / promote / adopt / eval
+Your plugin      Domain catalog + banks (PHA is the first reference plugin)
 ```
 
-Target UX (not implemented):
+**Iron rules:** Loop **never auto-merges**. Promote is dry-run/veto. Adopt requires `--confirm YES`.
+
+## Install
+
+From the monorepo root:
 
 ```bash
-pip install 'harness-core[loop]'   # future extras
-harness-loop harvest --e2e-jsonl …
-harness-loop promote --proposal … --full-veto
+pip install -e packages/harness_core
+pip install -e packages/harness_loop
+harness-loop version
 ```
 
-## Non-goals
+Optional extras story (same checkout):
 
-- Do not move health catalog / CHB / CompareTable into this package.
+```bash
+pip install -e 'packages/harness_core' -e 'packages/harness_loop'
+```
+
+## CLI
+
+| Command | Meaning |
+|---------|---------|
+| `harness-loop version` | Suite version + boundaries |
+| `harness-loop eval-check --plugin pha` | Validate PHA smoke + alias_fuzz goldens |
+| `harness-loop eval-check --golden … --catalog …` | Portable domain golden |
+| `harness-loop harvest --plugin pha` | Delegate to PHA harvest/critic/distill pipeline |
+| `harness-loop promote --plugin pha --proposal …` | Dry-run/veto (optional `--full-veto`) |
+| `harness-loop adopt --plugin pha --proposal … --confirm YES` | Gated T0 write |
+
+Env: `HARNESS_LOOP_REPO_ROOT` (or `PHA_REPO_ROOT`) → monorepo root for script delegation.
+
+## Toy (non-PHA) attach
+
+See [`examples/loop_reference_toy/`](../../examples/loop_reference_toy/).
+
+```bash
+harness-loop eval-check \
+  --golden examples/loop_reference_toy/evals/toy_smoke_v0.json \
+  --catalog examples/loop_reference_toy/catalog.json
+```
+
+## Selfcheck
+
+```bash
+PYTHONPATH=. python scripts/pha_harness_loop_suite_selfcheck.py
+```
+
+## Plan
+
+[`docs/official-loop-suite-alpha-plan.md`](../../docs/official-loop-suite-alpha-plan.md)
+
+## Non-goals (α)
+
+- Do not move health catalog / CHB into this package.
 - Do not auto-merge proposals into main.
-- Do not let the suite patch `harness_core` assertion internals.
+- Do not patch `harness_core` assertion internals from Loop.

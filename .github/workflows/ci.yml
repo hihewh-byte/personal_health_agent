@@ -31,6 +31,7 @@ jobs:
           pip install -r requirements.txt
           pip install -e .
           pip install -e packages/harness_core
+          pip install -e packages/harness_loop
 
       - name: Clone bootstrap (golden run)
         run: PHA_PYTHON=python bash scripts/bootstrap.sh --skip-venv --verify-only

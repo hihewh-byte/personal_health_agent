@@ -84,13 +84,14 @@ Bilingual ops playbook:
 
 | Stage | Deliverable |
 |-------|-------------|
-| A (done) | Protocol + READMEs + attach example + this stub |
-| B | Extract domain-agnostic orchestration into `harness_loop` + CLI |
-| C | Second toy plugin proving non-PHA attach |
+| A (done) | Protocol + READMEs + attach example |
+| B (α done) | Installable `harness_loop` + `harness-loop` CLI (PHA still reference impl) |
+| C (α partial) | Toy non-PHA attach [`examples/loop_reference_toy/`](loop_reference_toy/) |
+| Next | Extract harvest modules out of PHA scripts; Trace UI |
 
-## Eval set (thin slice)
+## Eval set
 
 - Spec: [`docs/harness-eval-set-v1.md`](../docs/harness-eval-set-v1.md)
-- Golden: [`evals/goldens/pha_smoke_v0.json`](../evals/goldens/pha_smoke_v0.json)
-- Offline validate: `python scripts/pha_eval_set_selfcheck.py`
-- Re-export from banks: `python scripts/pha_eval_set_export_smoke.py --write`
+- Goldens: [`evals/goldens/`](../evals/goldens/) · toy [`loop_reference_toy/evals/`](loop_reference_toy/evals/)
+- Suite CLI: `harness-loop eval-check --plugin pha`
+- Offline scripts: `python scripts/pha_eval_set_selfcheck.py`
