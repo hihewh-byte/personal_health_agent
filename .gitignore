@@ -19,6 +19,7 @@ storage/attachments/
 # Runtime reports (may contain personal health data or local paths)
 reports/loop/
 reports/chb/**/brief_*.json
+reports/chb/**/gap_candidates.json
 reports/p1_golden/*
 !reports/p1_golden/README.md
 !reports/chb/README.md
