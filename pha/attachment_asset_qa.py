@@ -259,8 +259,14 @@ def resolve_attachment_qa_mode(
         if raw and len(raw) <= 320:
             return "episodic_bridge"
 
-    # 长尾兜底：unknown/other 可执行附件 → 通用车道（绝不回落 lifestyle 数仓）。
-    if grounded_ok and fam in ("unknown", "other"):
+    # 长尾兜底：unknown/other/corrupt 可执行附件 → 通用车道（绝不回落 lifestyle 数仓）。
+    if (
+        universal_attachment_lane_enabled()
+        and fam in ("unknown", "other", "corrupt", "")
+        and (grounded_ok or has_attachment_paths)
+    ):
+        if _HARD_LAB_PIVOT_RE.search(raw_user_message or ""):
+            return "none"
         return "grounded"
 
     # Stage 3H 结构信号强接管：附件在途 + 可落地事实 → 通用兜底（corrupt/异形 family）。

@@ -1,0 +1,36 @@
+{
+  "schema": "pha.loop_proposal/v2",
+  "generated_at": "2026-07-13T00:00:00+00:00",
+  "stage": "4-alpha-1-curated",
+  "source": "human_review_from_harvest_20260712",
+  "accepted_catalog": [
+    {
+      "layer": "catalog",
+      "target": "steps",
+      "alias": "多少步",
+      "metric_id": "steps",
+      "signal": "bank_pool_alias_miss",
+      "source_message": "日均多少步"
+    }
+  ],
+  "accepted_schema": [],
+  "slot_candidates": [],
+  "rejected": [],
+  "patch_ops": [
+    {
+      "op": "add",
+      "path": "/metric_aliases/steps",
+      "value": "多少步",
+      "signal": "bank_pool_alias_miss",
+      "source_message": "日均多少步"
+    }
+  ],
+  "counts": {
+    "accepted_catalog": 1,
+    "accepted_schema": 0,
+    "slot_candidates": 0,
+    "rejected": 0
+  },
+  "suggested_regression": ["EN07", "EN08", "EN50"],
+  "notes": "Human-curated subset from alias_proposal_20260712T134314Z. Dropped hrv←Query as toxic token."
+}

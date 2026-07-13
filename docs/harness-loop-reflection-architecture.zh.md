@@ -192,8 +192,6 @@ Measure   下一 Weekly EN50 pass 率 / persona battery delta
 | R2 promote dry-run/veto | ✅ `scripts/pha_loop_promote_candidate.py`（不 auto-merge） |
 | R3 EN10 Nightly opt-in | ✅ `PHA_NIGHTLY_EN10=1` in `nightly_harness_regression.sh` |
 | 3H → T0 ingest 提案 | ✅ P2 proposal-only（`pha_t0_ingest_proposal.py`） |
-| persona battery（离线） | ✅ `pha_persona_personalization_battery.py` |
-| 英文 warehouse CJK 兜底 | ✅ orchestrator `apply_english_locale_leak_guard` |
 | T0 gated adopter | ✅ `scripts/pha_t0_gated_adopter.py`（`--apply --confirm`） |
 | Loop B L2 CHB gap harvest | ✅ `pha_chb_gap_harvest.py` + compile merge |
 | persona battery（离线 + live opt-in） | ✅ offline + `pha_persona_live_e2e_battery.py` |

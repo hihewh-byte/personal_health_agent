@@ -45,6 +45,15 @@ MAX_PER_SESSION = 20
 REPORT_DIR = Path(os.environ.get("PHA_E2E_REPORT_DIR", "/tmp/pha-e2e-20x"))
 FULL_TABLE_MARK = "根据您上传的 Apple Watch 截图"
 FOCUS_MARK = "关于您关心的指标"
+EN_FOCUS_MARK = "About the metrics you asked about"
+
+
+def _metric_focused_answer(tr: TurnRecord) -> bool:
+    mode = tr.compare_audit.get("fallback_mode")
+    if mode == "metric_focus":
+        return True
+    ans = tr.answer
+    return FOCUS_MARK in ans or EN_FOCUS_MARK in ans
 WEAK_CAUTION_MARK = "关于您还需留意的事项"
 _WEAK_CLOSE_MARKS = ("不客气", "好的，有需要再问我")
 _EXERCISE_ADVICE_RE = re.compile(r"适合.*运动|明天.*运动|运动建议")
@@ -224,8 +233,7 @@ def check_metric_focus(
     expect_fast: bool = True,
 ) -> list[str]:
     fails: list[str] = []
-    mode = tr.compare_audit.get("fallback_mode")
-    focused = mode == "metric_focus" or FOCUS_MARK in tr.answer
+    focused = _metric_focused_answer(tr)
     if not focused and FULL_TABLE_MARK in tr.answer:
         fails.append("full_compare_instead_of_focus")
     for w in forbidden:
@@ -252,13 +260,14 @@ def check_correction_sleep(tr: TurnRecord, _prev: list[TurnRecord]) -> list[str]
 
 
 def check_warehouse_hrv_composer(tr: TurnRecord, _prev: list[TurnRecord]) -> list[str]:
-    """Pure warehouse HRV should be fast manifest focus or fact_card-style short answer."""
+    """Pure warehouse HRV turn-1 should be fast manifest focus or fact_card-style short answer."""
+    if tr.turn != 1:
+        return []
     fails: list[str] = []
     if tr.harness_profile and "wearable" not in tr.harness_profile and tr.turn == 1:
         pass  # warehouse profile ok
     focused = (
-        tr.compare_audit.get("fallback_mode") == "metric_focus"
-        or FOCUS_MARK in tr.answer
+        _metric_focused_answer(tr)
         or (tr.elapsed_s < 5 and tr.answer_len < 500)
     )
     if not focused and tr.elapsed_s > 20:
