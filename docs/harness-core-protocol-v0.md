@@ -31,14 +31,14 @@ v0 does **not** require deleting `pha/harness_*.py` or `tax_agent/harness_*.py`.
 
 ```text
 ┌─────────────────────────────────────────────────────────┐
-│  Product family                                          │
+│  Component family                                        │
 │  harness-core (thin online)                              │
 │  TurnPlan · CoreTurnPhase · PhaseRecorder               │
 │  IntegrityResult · plan_vs_actual · (optional) Numerics │
 │                                                          │
-│  Official Loop Suite (offline — not vendored in Core)    │
+│  Harness Loop (Alpha) (offline — not vendored in Core)   │
 │  proposal / verdict / failure_event contracts (§11)      │
-│  → packages/harness_loop (skeleton) + domain plugins     │
+│  → packages/harness_loop + domain plugins                │
 └───────────────────────────┬─────────────────────────────┘
                             │ Adapter
            ┌────────────────┼────────────────┐
@@ -51,7 +51,7 @@ v0 does **not** require deleting `pha/harness_*.py` or `tax_agent/harness_*.py`.
 | Layer | Owns | Must not own |
 |-------|------|--------------|
 | **Core** | Plan shape, phase order invariant, integrity codes, plan↔runtime diff, **evolution protocol registration** | Slot names, domain audits, catalogs, SQL, FX, Harvest/Distill **implementation** |
-| **Official Loop Suite** | Offline orchestration skeleton, veto gates, promote CLI (Stage B) | Domain catalogs, T0 schemas |
+| **Harness Loop (Alpha)** | Offline orchestration skeleton, veto gates, promote CLI (Stage B) | Domain catalogs, T0 schemas |
 | **Adapter** | Map domain plan ↔ `TurnPlan`; map domain phases ↔ core ranks | Business rules |
 | **Plugin** | Everything domain-specific (PHA = reference Loop plugin) | Re-implementing plan-before-compose |
 
@@ -293,15 +293,15 @@ personal_health_agent/packages/harness_core/
 | 2026-07-10 | Core FSM = spine + adapter alias table (not union of all domain phases) |
 | 2026-07-10 | Tier0 **assembler** stays plugin; Core owns integrity **result** + plan_vs_actual |
 | 2026-07-10 | Local package path: `myAgents/harness_core/` (sibling), not inside tax_agent |
-| 2026-07-13 | Offline evolution = **Official Loop Suite** (product family), not Core source tree; register proposal/verdict schemas in this protocol; PHA = reference plugin |
+| 2026-07-13 | Offline evolution = **Harness Loop** companion (not Core source tree); register proposal/verdict schemas in this protocol; PHA = reference plugin |
+| 2026-07-13 | Naming: drop “Official Loop Suite”; public name = **Harness Loop (Alpha)** |
 
 ---
 
-## 11. Offline Evolution contracts (Official Loop Suite)
+## 11. Offline Evolution contracts (Harness Loop)
 
-> **Status:** schemas registered as **official control-plane I/O**.  
-> **Implementation today:** PHA scripts (`pha_loop_*`, `pha_t0_*`, `pha_reflection_*`).  
-> **Target home:** [`packages/harness_loop/`](../packages/harness_loop/) (skeleton README only as of 2026-07-13).  
+> **Status:** schemas registered as **control-plane I/O**.  
+> **Implementation today:** PHA scripts (`pha_loop_*`, `pha_t0_*`, `pha_reflection_*`) + installable [`packages/harness_loop/`](../packages/harness_loop/) α CLI.  
 > **Attach guide:** [`examples/loop_reference_pha.md`](../examples/loop_reference_pha.md).
 
 Online Core stays fail-closed and does **not** self-heal mid-turn. Evolution is offline:

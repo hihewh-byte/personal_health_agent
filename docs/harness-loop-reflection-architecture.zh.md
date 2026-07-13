@@ -198,11 +198,11 @@ Measure   下一 Weekly EN50 pass 率 / persona battery delta
 | persona battery（离线 + live opt-in） | ✅ offline + `pha_persona_live_e2e_battery.py` |
 | 英文 warehouse CJK 兜底 | ✅ orchestrator `apply_english_locale_leak_guard` |
 | Nightly 基线 148+164 | ✅ seed=20260626 本地全绿（`c8add1f`） |
-| Official Loop Suite 产品族叙事 | ✅ Core README + protocol §11 + `packages/harness_loop` stub（PR #4） |
+| Harness Loop 组件族叙事 | ✅ Core README + protocol §11 + `packages/harness_loop` stub（PR #4） |
 | harness.eval_set/v1 薄切片 | ✅ schema + `evals/goldens/pha_smoke_v0.json` + 离线 selfcheck |
 | Loop A alias fuzz + 1E-d | ✅ `pha_alias_fuzz_v0` · `gate_1e_d_ocr_ui_junk`（拒 `Query` 类 OCR junk） |
-| Official Loop Suite α | ✅ `harness-loop` 可安装 CLI · toy attach · suite selfcheck |
-| harness_trace UI / session MVCC | 📋 官方套件 Phase 1（见 §10） |
+| Harness Loop (Alpha) | ✅ `harness-loop` 可安装 CLI · toy attach · suite selfcheck |
+| harness_trace UI / session MVCC | 📋 配套组件 Phase 1（见 §10） |
 | HIO-A 第三域闭环 | 📋 Phase 3 |
 
 ---
@@ -238,9 +238,9 @@ python3 scripts/pha_persona_live_e2e_battery.py
 
 ---
 
-## 10. 竞品借鉴与官方套件路线（Core 铁骨 + Ecosystem 肌肉）
+## 10. 竞品借鉴与配套组件路线（Core 铁骨 + Ecosystem 肌肉）
 
-**原则**：`packages/harness_core` 内核只做契约、阶段 FSM、integrity/trace **协议**；Runbook 正文、设备工单、UI 不进内核，但以 **官方套件（`tools/` + plugin 槽位）** 默认随仓库交付。
+**原则**：`packages/harness_core` 内核只做契约、阶段 FSM、integrity/trace **协议**；Runbook 正文、设备工单、UI 不进内核，但以 **配套组件（`tools/` + plugin 槽位 + `harness-loop`）** 默认随仓库交付。
 
 | 借鉴来源 | 学什么 | 落点 | 阶段 |
 |----------|--------|------|------|
@@ -253,7 +253,7 @@ python3 scripts/pha_persona_live_e2e_battery.py
 
 1. **Runbook 不是 catalog 别名替代品**：Core 增加 **Flow-based Evidence Slot**（如 `RUNBOOK_STEP_3`）契约；Runbook 正文与步骤状态在 **HIO/PHA plugin** 编译为 Tier1 流程证据，POST_AUDIT 对「计划步骤 vs 声称步骤」做合规 diff。  
 2. **Loop B 不是静态 CMDB**：`chb_compiler` 演进为 **dynamic artifact compiler**——从工单/维修历史提炼定量画像（90d 大修次数、高频告警源），写入 §Facts/§SoftContext，不灌 raw 工单 JSON。  
-3. **Trace UI + 会话 MVCC 是官方套件标配**：内核吐 `trace.json`；`tools/harness_trace_viewer` 与 **session turn snapshot**（证据回滚，非 LLM replay）随 repo 开箱即用。
+3. **Trace UI + 会话 MVCC 是配套标配**：内核吐 `trace.json`；`tools/harness_trace_viewer` 与 **session turn snapshot**（证据回滚，非 LLM replay）随 repo 开箱即用。
 
 **铁骨不换**：Plan-before-Compose · 数字 ⊆ manifest/CompareTable · Loop 不 auto-merge · 路由/registry 不进化。
 
@@ -265,8 +265,9 @@ python3 scripts/pha_persona_live_e2e_battery.py
 |------|------|
 | 2026-07-12 | v1.0：R0/P4 Harvest+E2E、R1 Reflection v0、P1/P3 CHB 日常闭环、本文档 |
 | 2026-07-12 | v1.0.1：拆分为 `.zh.md` / `.en.md` 双语版本；移除 Appendix LinkedIn 文案 |
-| 2026-07-12 | v1.0.3：T0 gated adopter、CHB L2 gap、persona live；§10 竞品/官方套件路线 |
+| 2026-07-12 | v1.0.3：T0 gated adopter、CHB L2 gap、persona live；§10 竞品/配套组件路线 |
 | 2026-07-13 | v1.0.4：Nightly 148+164 基线修复；首条人审 alias `steps←多少步` full-veto 通过并合入 catalog |
-| 2026-07-13 | v1.0.5：Official Loop Suite 产品族叙事（PR #4）；`harness.eval_set/v1` 薄切片 + `pha.smoke.v0` golden |
+| 2026-07-13 | v1.0.5：Harness Loop 组件族叙事（PR #4）；`harness.eval_set/v1` 薄切片 + `pha.smoke.v0` golden |
 | 2026-07-13 | v1.0.6：Loop A `1E-d` OCR/UI junk 门禁 + `pha.alias_fuzz.v0` eval_set |
-| 2026-07-13 | v1.0.7：Official Loop Suite α（`harness-loop` 可安装 + CLI + toy attach） |
+| 2026-07-13 | v1.0.7：Harness Loop (Alpha)（`harness-loop` 可安装 + CLI + toy attach） |
+| 2026-07-13 | v1.0.8：口径 — **Harness Loop (Alpha)**；弃用 “Official Loop Suite / 官方套件产品族” |

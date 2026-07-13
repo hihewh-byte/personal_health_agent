@@ -1,6 +1,6 @@
 # Loop + Reflection 人机协同 SOP
 
-> **定位**：harness-core **Official Loop Suite** 的 **参考实现插件**（可运行脚本暂由 PHA 托管，直至抽离至 `packages/harness_loop`）。  
+> **定位**：harness-core **Harness Loop** 的 **参考实现插件**（可运行脚本暂由 PHA 托管，直至抽离至 `packages/harness_loop`）。  
 > **运维手册**：在**禁止 auto-merge** 前提下，安全演进 catalog 别名（Loop A / R2）与 T0 事实（Loop B）。
 > 配套 [`harness-loop-reflection-architecture.zh.md`](harness-loop-reflection-architecture.zh.md) ·
 > 挂载指南 [`examples/loop_reference_pha.md`](../examples/loop_reference_pha.md)。

@@ -1,4 +1,4 @@
-"""harness.eval_set/v1 — load + offline validate (Official Loop Suite thin slice)."""
+"""harness.eval_set/v1 — load + offline validate (Harness Loop thin slice)."""
 
 from __future__ import annotations
 

@@ -54,6 +54,22 @@ Builder notes: [docs/harness-builder-overview.md](docs/harness-builder-overview.
 
 ---
 
+## Harness Core + Loop (Alpha) · quick check
+
+Same clone: **online** thin core + **offline** evolution companion (vendored in-repo; not PyPI; not a company “official suite”).
+
+```bash
+source .venv/bin/activate   # after bootstrap.sh
+pip install -e packages/harness_core packages/harness_loop
+harness-loop version
+harness-loop eval-check --plugin pha
+```
+
+You should see `PASS` on PHA smoke + alias-fuzz goldens. Adopt stays gated (`--confirm YES` only).  
+Details: [`packages/harness_core/`](packages/harness_core/) · [`packages/harness_loop/`](packages/harness_loop/) · [toy attach](examples/loop_reference_toy/)
+
+---
+
 ## 30-second No-LLM Golden Run (manual)
 
 If you already installed deps (`bash scripts/bootstrap.sh`), or prefer manual steps:

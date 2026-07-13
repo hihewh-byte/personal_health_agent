@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Selfcheck: Official Loop Suite α — import, CLI, PHA goldens, toy attach."""
+"""Selfcheck: Harness Loop (Alpha) — import, CLI, PHA goldens, toy attach."""
 
 from __future__ import annotations
 

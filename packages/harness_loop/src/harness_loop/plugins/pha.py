@@ -1,4 +1,4 @@
-"""PHA reference-plugin helpers for Official Loop Suite CLI."""
+"""PHA reference-plugin helpers for Harness Loop (Alpha) CLI."""
 
 from __future__ import annotations
 

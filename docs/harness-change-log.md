@@ -4,9 +4,17 @@
 
 ---
 
-## 2026-07-13 (Official Loop Suite α — installable harness-loop)
+## 2026-07-13 (naming — Harness Loop Alpha)
 
-- **类别**：P1（产品族 α：可安装套件 + CLI + toy attach；不抽 PHA 业务实现）。
+- **类别**：P0（口径）：公开名 **Harness Loop (Alpha)** = offline evolution companion to harness-core；弃用 “Official Loop Suite / 官方套件产品族”。
+- **叙事**：component family（core + companion + domain adapter），非商业 “official suite”。
+- **触达**：顶层 README 增加 Core + Loop α 快速上手；协议 §11 / Core·Loop README / attach 示例同步。
+
+---
+
+## 2026-07-13 (Harness Loop (Alpha) — installable harness-loop)
+
+- **类别**：P1（组件族 α：可安装 companion + CLI + toy attach；不抽 PHA 业务实现）。
 - **包装**：`packages/harness_loop` `0.1.0a1` · entrypoint `harness-loop`（version / eval-check / harvest / promote / adopt）。
 - **可移植**：`harness_loop.eval_set`（catalog_path 可注入）；PHA 仍作 `--plugin pha` 参考实现委托。
 - **Toy**：`examples/loop_reference_toy/` 非健康域 catalog + golden。
@@ -25,7 +33,7 @@
 
 ---
 
-## 2026-07-13 (Official Loop Suite · harness.eval_set/v1 thin slice)
+## 2026-07-13 (Harness Loop · harness.eval_set/v1 thin slice)
 
 - **类别**：P1（Loop Suite 可移植回归契约 · 离线 thin slice；不改在线 Core 控制流）。
 - **契约**：`harness.eval_set/v1` — schema 文档 [`docs/harness-eval-set-v1.md`](harness-eval-set-v1.md)；协议登记 [`docs/harness-core-protocol-v0.md`](harness-core-protocol-v0.md) §11.4。

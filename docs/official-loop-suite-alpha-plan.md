@@ -1,4 +1,4 @@
-# Official Loop Suite α — Productization Plan
+# Harness Loop (Alpha) — Productization Plan
 
 > **Goal:** ship an announceable **α** (installable + CLI + selfcheck + toy attach).  
 > **Branch:** `feat/official-loop-suite-alpha`  

@@ -1,10 +1,10 @@
-# harness-loop (Official Loop Suite α)
+# harness-loop — Harness Loop (Alpha)
 
 > **Status:** **α installable** (2026-07-13) — CLI + portable eval_set + PHA reference plugin delegate.  
 > **Role:** offline evolution companion to [`harness-core`](../harness_core/).  
 > **Not yet:** Trace UI, live HTTP runner, fully extracted harvest modules (still delegates to PHA scripts).
 
-## Product family
+## Component family
 
 ```text
 harness-core     Online thin fence (Plan → Compose → Post-Audit)
@@ -34,7 +34,7 @@ pip install -e 'packages/harness_core' -e 'packages/harness_loop'
 
 | Command | Meaning |
 |---------|---------|
-| `harness-loop version` | Suite version + boundaries |
+| `harness-loop version` | Package version + boundaries |
 | `harness-loop eval-check --plugin pha` | Validate PHA smoke + alias_fuzz goldens |
 | `harness-loop eval-check --golden … --catalog …` | Portable domain golden |
 | `harness-loop harvest --plugin pha` | Delegate to PHA harvest/critic/distill pipeline |
