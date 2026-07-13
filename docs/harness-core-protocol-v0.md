@@ -31,24 +31,29 @@ v0 does **not** require deleting `pha/harness_*.py` or `tax_agent/harness_*.py`.
 
 ```text
 ┌─────────────────────────────────────────────────────────┐
-│  agent-harness-core (thin)                              │
+│  Product family                                          │
+│  harness-core (thin online)                              │
 │  TurnPlan · CoreTurnPhase · PhaseRecorder               │
 │  IntegrityResult · plan_vs_actual · (optional) Numerics │
+│                                                          │
+│  Official Loop Suite (offline — not vendored in Core)    │
+│  proposal / verdict / failure_event contracts (§11)      │
+│  → packages/harness_loop (skeleton) + domain plugins     │
 └───────────────────────────┬─────────────────────────────┘
-                            │ Adapter (Week 3)
+                            │ Adapter
            ┌────────────────┼────────────────┐
            ▼                                 ▼
-   PHA plugin                         tax plugin
-   CompareTable, LDL,                 filing_table, FX,
-   health catalog,                    journey_phase,
-   patient_state …                    policy KB …
+   PHA plugin (reference)             tax / HIO / …
+   CompareTable, catalog,             domain tables,
+   T0 + CHB, loop scripts …           domain Loop Adapter …
 ```
 
 | Layer | Owns | Must not own |
 |-------|------|--------------|
-| **Core** | Plan shape, phase order invariant, integrity codes, plan↔runtime diff | Slot names, domain audits, catalogs, SQL, FX |
+| **Core** | Plan shape, phase order invariant, integrity codes, plan↔runtime diff, **evolution protocol registration** | Slot names, domain audits, catalogs, SQL, FX, Harvest/Distill **implementation** |
+| **Official Loop Suite** | Offline orchestration skeleton, veto gates, promote CLI (Stage B) | Domain catalogs, T0 schemas |
 | **Adapter** | Map domain plan ↔ `TurnPlan`; map domain phases ↔ core ranks | Business rules |
-| **Plugin** | Everything domain-specific | Re-implementing plan-before-compose |
+| **Plugin** | Everything domain-specific (PHA = reference Loop plugin) | Re-implementing plan-before-compose |
 
 ---
 
@@ -288,3 +293,97 @@ personal_health_agent/packages/harness_core/
 | 2026-07-10 | Core FSM = spine + adapter alias table (not union of all domain phases) |
 | 2026-07-10 | Tier0 **assembler** stays plugin; Core owns integrity **result** + plan_vs_actual |
 | 2026-07-10 | Local package path: `myAgents/harness_core/` (sibling), not inside tax_agent |
+| 2026-07-13 | Offline evolution = **Official Loop Suite** (product family), not Core source tree; register proposal/verdict schemas in this protocol; PHA = reference plugin |
+
+---
+
+## 11. Offline Evolution contracts (Official Loop Suite)
+
+> **Status:** schemas registered as **official control-plane I/O**.  
+> **Implementation today:** PHA scripts (`pha_loop_*`, `pha_t0_*`, `pha_reflection_*`).  
+> **Target home:** [`packages/harness_loop/`](../packages/harness_loop/) (skeleton README only as of 2026-07-13).  
+> **Attach guide:** [`examples/loop_reference_pha.md`](../examples/loop_reference_pha.md).
+
+Online Core stays fail-closed and does **not** self-heal mid-turn. Evolution is offline:
+
+```text
+Telemetry / E2E JSONL
+  → Ring R Reflection Critic (read-only attribution)
+  → Loop A proposal (global recognition, e.g. catalog aliases)
+  → promote_verdict (static + regression veto)
+  → human PR (no auto-merge)
+
+  → Loop B T0 ingest proposal (per-user facts)
+  → gated apply (--confirm) → domain brief recompile
+```
+
+### 11.1 `failure_event/v1` (shape guidance)
+
+Minimum fields for suite harvest (JSONL object per event):
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `schema` | `str` | recommended | e.g. `harness.failure_event/v1` |
+| `session_id` | `str` | yes | |
+| `turn` | `int` | yes | |
+| `check_id` / `error_code` | `str` | yes | Domain check or integrity code |
+| `user_message` | `str` | yes | |
+| `answer_head` | `str` | no | Truncated reply |
+| `harness_profile` | `str` | no | |
+| `signal` | `str` | no | Filled by taxonomy after harvest |
+
+PHA E2E / harness JSONL lines are accepted as a **superset** of this shape.
+
+### 11.2 `loop_proposal/v2` (alias / config propose)
+
+Canonical `schema` string today: **`pha.loop_proposal/v2`**  
+(rename to `harness.loop_proposal/v2` when suite extraction lands; both MUST be accepted during migration.)
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `schema` | `str` | Must be `pha.loop_proposal/v2` |
+| `generated_at` | `str` | ISO timestamp |
+| `stage` | `str` | Pipeline stage id |
+| `source` | `str` | Harvest / human_curated / … |
+| `accepted_catalog` | `list[object]` | Tier-A catalog rows |
+| `accepted_schema` | `list[object]` | Schema triggers (optional) |
+| `slot_candidates` | `list[object]` | Must **not** promote Tier-C to catalog without human review |
+| `rejected` | `list[object]` | Explicit rejects |
+| `patch_ops` | `list[object]` | JSON-patch-like ops; paths restricted by static veto |
+| `counts` | `object` | Summary counts |
+| `suggested_regression` | `list[str]` | e.g. `EN07`, `EN08` |
+| `notes` | `str` | Human / machine notes |
+
+**Static veto (normative):**
+
+- Reject if `schema` ≠ registered proposal schema  
+- Reject if `code_review_items` present (needs human code review, not auto-promote)  
+- Reject `patch_ops` whose `path` is outside the domain allowlist (PHA: `/metric_aliases/…` only)  
+- Reject Tier-C `slot_candidates` promoted as catalog
+
+Reference emitter: `scripts/pha_loop_alias_distiller.py` · curated fixture: `scripts/fixtures/loop_alias_proposal_curated.json`.
+
+### 11.3 `promote_verdict/v1` (gate result)
+
+Canonical `schema` string today: **`pha.loop_promote_verdict/v1`**
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `schema` | `str` | `pha.loop_promote_verdict/v1` |
+| `generated_at` | `str` | ISO timestamp |
+| `proposal_path` | `str` | Input proposal |
+| `proposal` | `object` | Summary counts / suggested_regression |
+| `static_veto` | `list[str]` | Empty ⇒ static pass |
+| `checks` | `list[object]` | Each: `cmd`, `exit_code`, `passed`, `timed_out`, `output_tail` |
+| `passed` | `bool` | `all(checks.passed) and not static_veto` |
+| `notes` | `str` | Must state dry-run / no auto-merge |
+
+**Normative:** `passed: true` permits a **human PR**, never an automatic merge or T0 write.
+
+Reference writer: `scripts/pha_loop_promote_candidate.py`.
+
+### 11.4 Non-goals for §11
+
+- Do not run Reflection inside the user-visible chat turn  
+- Do not allow Loop suite patches to modify `harness_core` assertion modules  
+- Do not require PyPI `harness-loop` until Stage B extraction is tested

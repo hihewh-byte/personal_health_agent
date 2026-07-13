@@ -1,8 +1,11 @@
 # Loop + Reflection Human-in-the-Loop SOP
 
+> **Reference implementation plugin** for harness-core **Official Loop Suite** offline loops
+> (PHA hosts the runnable scripts until `packages/harness_loop` extraction).  
 > **Operational playbook** for evolving PHA catalog aliases (Loop A / R2) and T0 facts (Loop B)
 > without auto-merge. Complements
-> [`harness-loop-reflection-architecture.en.md`](harness-loop-reflection-architecture.en.md).
+> [`harness-loop-reflection-architecture.en.md`](harness-loop-reflection-architecture.en.md) ·
+> attach guide [`examples/loop_reference_pha.md`](../examples/loop_reference_pha.md).
 
 **Iron rules (never waive):**
 
