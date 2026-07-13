@@ -1,0 +1,9 @@
+{
+  "domain": "toy_ops",
+  "version": "0.1.0",
+  "metric_aliases": {
+    "ticket_backlog": ["backlog", "open tickets", "积压工单"],
+    "mttr": ["MTTR", "mean time to repair", "修复时长"]
+  },
+  "notes": "Synthetic catalog for Official Loop Suite attach demo — not a real CMDB."
+}

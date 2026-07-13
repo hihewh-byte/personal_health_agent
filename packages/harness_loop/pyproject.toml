@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "harness-core"
-version = "0.0.0a1"
-description = "Thin domain-agnostic agent harness control-plane interfaces (TurnPlan, FSM, integrity)."
+name = "harness-loop"
+version = "0.1.0a1"
+description = "Official Loop Suite — offline evolution companion to harness-core (harvest/promote/adopt/eval)."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -14,7 +14,13 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]
-loop = []  # install companion separately: pip install -e packages/harness_loop
+
+[project.scripts]
+harness-loop = "harness_loop.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/hihewh-byte/personal_health_agent"
+Documentation = "https://github.com/hihewh-byte/personal_health_agent/blob/main/packages/harness_loop/README.md"
 
 [tool.setuptools.packages.find]
 where = ["src"]

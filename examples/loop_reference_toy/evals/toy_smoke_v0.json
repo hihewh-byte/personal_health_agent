@@ -1,0 +1,61 @@
+{
+  "schema": "harness.eval_set/v1",
+  "id": "toy.ops.smoke.v0",
+  "domain": "toy_ops",
+  "version": "0.1.0",
+  "description": "Non-PHA attach smoke: proves eval_set + catalog_alias work outside health.",
+  "cases": [
+    {
+      "id": "toy.backlog.alias",
+      "tags": ["toy", "smoke", "loop_a"],
+      "locale": "en",
+      "turns": [
+        {
+          "role": "user",
+          "text": "How large is the backlog?",
+          "attach": false
+        }
+      ],
+      "expects": [
+        {
+          "type": "non_empty_turn_text"
+        },
+        {
+          "type": "catalog_alias",
+          "metric": "ticket_backlog",
+          "alias": "backlog"
+        }
+      ],
+      "source": {
+        "kind": "synthetic",
+        "note": "Toy domain control alias"
+      }
+    },
+    {
+      "id": "toy.mttr.zh",
+      "tags": ["toy", "smoke"],
+      "locale": "zh",
+      "turns": [
+        {
+          "role": "user",
+          "text": "\u4fee\u590d\u65f6\u957f\u600e\u4e48\u6837",
+          "attach": false
+        }
+      ],
+      "expects": [
+        {
+          "type": "non_empty_turn_text"
+        },
+        {
+          "type": "catalog_alias",
+          "metric": "mttr",
+          "alias": "\u4fee\u590d\u65f6\u957f"
+        }
+      ],
+      "source": {
+        "kind": "synthetic",
+        "note": "CJK alias in non-health catalog"
+      }
+    }
+  ]
+}

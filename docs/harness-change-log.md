@@ -4,6 +4,17 @@
 
 ---
 
+## 2026-07-13 (Official Loop Suite α — installable harness-loop)
+
+- **类别**：P1（产品族 α：可安装套件 + CLI + toy attach；不抽 PHA 业务实现）。
+- **包装**：`packages/harness_loop` `0.1.0a1` · entrypoint `harness-loop`（version / eval-check / harvest / promote / adopt）。
+- **可移植**：`harness_loop.eval_set`（catalog_path 可注入）；PHA 仍作 `--plugin pha` 参考实现委托。
+- **Toy**：`examples/loop_reference_toy/` 非健康域 catalog + golden。
+- **CI**：`pip install -e packages/harness_loop` · selfcheck `harness_loop_suite`。
+- **铁律不变**：不 auto-merge；adopt 需 `--confirm YES`。
+
+---
+
 ## 2026-07-13 (Loop A · 1E-d OCR/UI junk + alias_fuzz eval_set)
 
 - **类别**：P1（Loop A 门禁加固 · eval_set 合成 fuzz 薄切片）。
