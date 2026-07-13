@@ -13,6 +13,7 @@
 
 ## Quick links / 快速链接
 
+- **Human-in-the-loop SOP:** [`.en.md`](loop-evolution-human-in-the-loop-sop.en.md) · [`.zh.md`](loop-evolution-human-in-the-loop-sop.zh.md)
 - Upstream protocol: [`harness-core-protocol-v0.md`](harness-core-protocol-v0.md)
 - Stage 4 RFC: [`rfcs/rfc-stage4-offline-loop-engineering.md`](rfcs/rfc-stage4-offline-loop-engineering.md)
 - Loop + Reflection RFC: [`rfcs/rfc-loop-reflection-auto-evolution.md`](rfcs/rfc-loop-reflection-auto-evolution.md)
