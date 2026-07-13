@@ -7,7 +7,7 @@
 
 ## 2026-07-13
 
-- **CI installs Official Loop Suite α**:
+- **CI installs Harness Loop (Alpha)**:
   - `.github/workflows/ci.yml`: add `pip install -e packages/harness_loop` after `harness_core`.
   - Reason: suite selfcheck (`pha_harness_loop_suite_selfcheck`) and `harness-loop` CLI require the package on PATH.
   - No `pha/main.py` startup sequence change.

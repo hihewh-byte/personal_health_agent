@@ -2,7 +2,7 @@
 
 > **Thin slice (2026-07-13):** schema + golden export + offline validator + alias fuzz.  
 > **Not yet:** live HTTP runner, full bank rewrite.  
-> **Home:** Official Loop Suite · [`packages/harness_loop`](../packages/harness_loop/) · goldens under [`evals/goldens/`](../evals/goldens/).
+> **Home:** Harness Loop · [`packages/harness_loop`](../packages/harness_loop/) · goldens under [`evals/goldens/`](../evals/goldens/).
 
 Portable evaluation set contract for cross-domain regression and Loop promote gates.
 Domain banks (PHA `e2e_question_bank_*.json`) remain the rich source; eval_set is the

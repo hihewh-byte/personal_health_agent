@@ -1,4 +1,4 @@
-"""harness-loop CLI — Official Loop Suite α entrypoint."""
+"""harness-loop CLI — Harness Loop (Alpha) entrypoint."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from harness_loop.paths import detect_monorepo_root
 
 def _cmd_version(_: argparse.Namespace) -> int:
     print(f"harness-loop {__version__}")
-    print("Official Loop Suite α — offline evolution companion to harness-core")
+    print("Harness Loop (Alpha) — offline evolution companion to harness-core")
     print("Boundaries: no auto-merge; Core stays online-only; plugins own domain catalogs")
     return 0
 
@@ -114,7 +114,7 @@ def _cmd_adopt(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="harness-loop",
-        description="Official Loop Suite α CLI (offline evolution; no auto-merge)",
+        description="Harness Loop (Alpha) CLI (offline evolution; no auto-merge)",
     )
     sub = p.add_subparsers(dest="command", required=True)
 

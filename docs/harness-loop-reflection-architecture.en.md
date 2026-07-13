@@ -198,11 +198,11 @@ Measure   next Weekly EN50 pass rate / persona battery delta
 | Persona battery (offline + live opt-in) | ✅ offline + `pha_persona_live_e2e_battery.py` |
 | English warehouse CJK guard | ✅ orchestrator `apply_english_locale_leak_guard` |
 | Nightly baseline 148+164 | ✅ seed=20260626 local green (`c8add1f`) |
-| Official Loop Suite product-family docs | ✅ Core README + protocol §11 + `packages/harness_loop` stub (PR #4) |
+| Harness Loop component-family docs | ✅ Core README + protocol §11 + `packages/harness_loop` stub (PR #4) |
 | harness.eval_set/v1 thin slice | ✅ schema + `evals/goldens/pha_smoke_v0.json` + offline selfcheck |
 | Loop A alias fuzz + 1E-d | ✅ `pha_alias_fuzz_v0` · `gate_1e_d_ocr_ui_junk` (blocks `Query`-class OCR junk) |
-| Official Loop Suite α | ✅ installable `harness-loop` CLI · toy attach · suite selfcheck |
-| harness_trace UI / session MVCC | 📋 official ecosystem Phase 1 (see §10) |
+| Harness Loop (Alpha) | ✅ installable `harness-loop` CLI · toy attach · suite selfcheck |
+| harness_trace UI / session MVCC | 📋 companion Phase 1 (see §10) |
 | HIO-A third-domain closure | 📋 Phase 3 |
 
 ---
@@ -238,9 +238,9 @@ python3 scripts/pha_persona_live_e2e_battery.py
 
 ---
 
-## 10. Competitor learnings & official ecosystem (Core spine + ecosystem muscle)
+## 10. Competitor learnings & companion components (Core spine + ecosystem muscle)
 
-**Principle**: `packages/harness_core` stays thin — contracts, phase FSM, integrity/trace **schemas** only. Runbook prose, work orders, and UI stay out of the kernel but ship as **official ecosystem** (`tools/` + plugin slots) in-repo.
+**Principle**: `packages/harness_core` stays thin — contracts, phase FSM, integrity/trace **schemas** only. Runbook prose, work orders, and UI stay out of the kernel but ship as **in-repo companions** (`tools/` + plugin slots + `harness-loop`).
 
 | Source | Learn | Where | Phase |
 |--------|-------|-------|-------|
@@ -253,7 +253,7 @@ python3 scripts/pha_persona_live_e2e_battery.py
 
 1. **Runbook ≠ catalog aliases**: Core adds **Flow-based Evidence Slot** contracts; plugins compile runbook steps into Tier1 flow evidence; POST_AUDIT diffs planned vs claimed steps.  
 2. **Loop B ≠ static CMDB**: evolve `chb_compiler` into a **dynamic artifact compiler** — quantitative device/lifecycle profile from dirty history, not raw ticket dumps.  
-3. **Trace UI + session MVCC as official kit**: kernel emits `trace.json`; `tools/harness_trace_viewer` + **session turn snapshots** (evidence rollback, not LLM replay) ship by default.
+3. **Trace UI + session MVCC as companion defaults**: kernel emits `trace.json`; `tools/harness_trace_viewer` + **session turn snapshots** (evidence rollback, not LLM replay) ship by default.
 
 **Spine unchanged**: Plan-before-Compose · numerics ⊆ manifest/CompareTable · no Loop auto-merge · no routing/registry evolution.
 
@@ -267,6 +267,7 @@ python3 scripts/pha_persona_live_e2e_battery.py
 | 2026-07-12 | v1.0.1: split into `.zh.md` / `.en.md`; removed LinkedIn appendix from architecture docs |
 | 2026-07-12 | v1.0.3: T0 gated adopter, CHB L2 gap, persona live; §10 ecosystem roadmap |
 | 2026-07-13 | v1.0.4: Nightly 148+164 baseline fixes; first human-reviewed alias `steps←多少步` full-veto passed and merged into catalog |
-| 2026-07-13 | v1.0.5: Official Loop Suite product-family docs (PR #4); `harness.eval_set/v1` thin slice + `pha.smoke.v0` golden |
+| 2026-07-13 | v1.0.5: Harness Loop component-family docs (PR #4); `harness.eval_set/v1` thin slice + `pha.smoke.v0` golden |
 | 2026-07-13 | v1.0.6: Loop A `1E-d` OCR/UI junk gate + `pha.alias_fuzz.v0` eval_set |
-| 2026-07-13 | v1.0.7: Official Loop Suite α (installable `harness-loop` CLI + toy attach) |
+| 2026-07-13 | v1.0.7: Harness Loop (Alpha) (installable `harness-loop` CLI + toy attach) |
+| 2026-07-13 | v1.0.8: naming — **Harness Loop (Alpha)**; drop “Official Loop Suite” |

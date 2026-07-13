@@ -1,4 +1,4 @@
-"""Official Loop Suite (harness-loop) — offline evolution companion to harness-core."""
+"""Harness Loop (Alpha) — offline evolution companion to harness-core."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-# Toy domain attach — Official Loop Suite α
+# Toy domain attach — Harness Loop (Alpha)
 
 > **Purpose:** prove the suite is not health-only.  
 > **Not a product:** synthetic ops catalog + offline eval_set only.

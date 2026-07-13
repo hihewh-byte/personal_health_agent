@@ -1,4 +1,4 @@
-# Attaching another agent to the Official Loop Suite
+# Attaching another agent to the Harness Loop
 
 > **Audience:** authors of a second domain Agent (industrial, tax, ops, …) who already
 > (or will) adapt to `harness_core`.  
@@ -10,12 +10,12 @@
 Your Agent
   ├─ Adapter → harness_core          # online Plan → Audit
   ├─ Emit failure / E2E JSONL        # compatible telemetry
-  └─ Official Loop Suite             # offline; today: PHA scripts as reference
+  └─ Harness Loop             # offline; today: PHA scripts as reference
         └─ Your plugin Adapter       # taxonomy, distiller targets, regression gate
 ```
 
-Core does **not** contain Loop source. The **product family** does: protocol in
-Core docs + suite package + reference plugin.
+Core does **not** contain Loop source. The **component family** does: protocol in
+Core docs + `harness-loop` companion + reference plugin.
 
 ## Minimal attach checklist
 
@@ -24,7 +24,7 @@ Core docs + suite package + reference plugin.
 2. **Telemetry:** write one JSONL line per failed / interesting turn with at least:
    - `session_id`, `turn`, `check_id` / error code, `user_message`, `answer` head
    - optional: `harness.profile`, `compare_audit`
-3. **Harvest:** point the suite at that JSONL (PHA today):
+3. **Harvest:** point Harness Loop at that JSONL (PHA today):
 
 ```bash
 export PYTHONPATH=.
