@@ -177,7 +177,7 @@ Measure   next Weekly EN50 pass rate / persona battery delta
 
 ---
 
-## 7. Shipped status (2026-07-12)
+## 7. Shipped status (2026-07-13)
 
 | Capability | Status |
 |------------|--------|
@@ -190,12 +190,14 @@ Measure   next Weekly EN50 pass rate / persona battery delta
 | CHB daily cron script | ✅ P3 |
 | USER_CONTEXT_BRIEF injection | ✅ P1 (`PHA_USER_CONTEXT_BRIEF=1`) |
 | R2 promote dry-run/veto | ✅ `scripts/pha_loop_promote_candidate.py` (no auto-merge) |
+| R2 first human-reviewed alias | ✅ `steps←多少步` (`promote_verdict_20260713T045002Z` full-veto passed; catalog merge) |
 | R3 EN10 Nightly opt-in | ✅ `PHA_NIGHTLY_EN10=1` in `nightly_harness_regression.sh` |
 | 3H → T0 ingest proposals | ✅ P2 proposal-only (`pha_t0_ingest_proposal.py`) |
 | T0 gated adopter | ✅ `scripts/pha_t0_gated_adopter.py` (`--apply --confirm`) |
 | Loop B L2 CHB gap harvest | ✅ `pha_chb_gap_harvest.py` + compile merge |
 | Persona battery (offline + live opt-in) | ✅ offline + `pha_persona_live_e2e_battery.py` |
 | English warehouse CJK guard | ✅ orchestrator `apply_english_locale_leak_guard` |
+| Nightly baseline 148+164 | ✅ seed=20260626 local green (`c8add1f`) |
 | harness_trace UI / session MVCC | 📋 official ecosystem Phase 1 (see §10) |
 | HIO-A third-domain closure | 📋 Phase 3 |
 
@@ -260,3 +262,4 @@ python3 scripts/pha_persona_live_e2e_battery.py
 | 2026-07-12 | v1.0: R0/P4 Harvest+E2E, R1 Reflection v0, P1/P3 CHB daily loop, this doc |
 | 2026-07-12 | v1.0.1: split into `.zh.md` / `.en.md`; removed LinkedIn appendix from architecture docs |
 | 2026-07-12 | v1.0.3: T0 gated adopter, CHB L2 gap, persona live; §10 ecosystem roadmap |
+| 2026-07-13 | v1.0.4: Nightly 148+164 baseline fixes; first human-reviewed alias `steps←多少步` full-veto passed and merged into catalog |

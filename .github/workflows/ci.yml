@@ -11,6 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Consensus gates need merge-base vs origin/main; depth=1 breaks HEAD~1 fallback.
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -42,9 +45,13 @@ jobs:
         run: PYTHONPATH=. python scripts/pha_harness_profile_registry_generate.py --check
 
       - name: Startup consensus gate
+        env:
+          GITHUB_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: python scripts/ci/check_startup_consensus.py
 
       - name: Harness consensus gate
+        env:
+          GITHUB_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: python scripts/ci/check_harness_consensus.py
 
       - name: Import smoke test

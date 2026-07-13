@@ -53,7 +53,7 @@
       "lipid"
     ],
     "sleep": ["睡眠", "waso", "深睡", "睡多久", "sleep", "slept", "deep sleep"],
-    "steps": ["步数", "走路", "步行", "走了多少步", "steps", "step count", "walking"],
+    "steps": ["步数", "走路", "步行", "走了多少步", "多少步", "steps", "step count", "walking"],
     "rhr": [
       "静息心率",
       "静息",

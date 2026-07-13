@@ -177,7 +177,7 @@ Measure   下一 Weekly EN50 pass 率 / persona battery delta
 
 ---
 
-## 7. 当前落地状态（2026-07-12）
+## 7. 当前落地状态（2026-07-13）
 
 | 能力 | 状态 |
 |------|------|
@@ -190,12 +190,14 @@ Measure   下一 Weekly EN50 pass 率 / persona battery delta
 | CHB 每日 cron 脚本 | ✅ P3 |
 | USER_CONTEXT_BRIEF 注入 | ✅ P1（`PHA_USER_CONTEXT_BRIEF=1`） |
 | R2 promote dry-run/veto | ✅ `scripts/pha_loop_promote_candidate.py`（不 auto-merge） |
+| R2 首条人审 alias | ✅ `steps←多少步`（`promote_verdict_20260713T045002Z` full-veto passed；合入 catalog） |
 | R3 EN10 Nightly opt-in | ✅ `PHA_NIGHTLY_EN10=1` in `nightly_harness_regression.sh` |
 | 3H → T0 ingest 提案 | ✅ P2 proposal-only（`pha_t0_ingest_proposal.py`） |
 | T0 gated adopter | ✅ `scripts/pha_t0_gated_adopter.py`（`--apply --confirm`） |
 | Loop B L2 CHB gap harvest | ✅ `pha_chb_gap_harvest.py` + compile merge |
 | persona battery（离线 + live opt-in） | ✅ offline + `pha_persona_live_e2e_battery.py` |
 | 英文 warehouse CJK 兜底 | ✅ orchestrator `apply_english_locale_leak_guard` |
+| Nightly 基线 148+164 | ✅ seed=20260626 本地全绿（`c8add1f`） |
 | harness_trace UI / session MVCC | 📋 官方套件 Phase 1（见 §10） |
 | HIO-A 第三域闭环 | 📋 Phase 3 |
 
@@ -260,3 +262,4 @@ python3 scripts/pha_persona_live_e2e_battery.py
 | 2026-07-12 | v1.0：R0/P4 Harvest+E2E、R1 Reflection v0、P1/P3 CHB 日常闭环、本文档 |
 | 2026-07-12 | v1.0.1：拆分为 `.zh.md` / `.en.md` 双语版本；移除 Appendix LinkedIn 文案 |
 | 2026-07-12 | v1.0.3：T0 gated adopter、CHB L2 gap、persona live；§10 竞品/官方套件路线 |
+| 2026-07-13 | v1.0.4：Nightly 148+164 基线修复；首条人审 alias `steps←多少步` full-veto 通过并合入 catalog |
