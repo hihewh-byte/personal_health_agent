@@ -9,6 +9,7 @@ from pathlib import Path
 from harness_loop import __version__
 from harness_loop.eval_set import validate_file
 from harness_loop.paths import detect_monorepo_root
+from harness_loop.proposals import validate_proposal_file, validate_verdict_file
 
 
 def _cmd_version(_: argparse.Namespace) -> int:
@@ -59,6 +60,41 @@ def _cmd_eval_check(args: argparse.Namespace) -> int:
         else:
             print(f"PASS {g.name}")
     return 1 if failed else 0
+
+
+def _cmd_reflect(args: argparse.Namespace) -> int:
+    if args.plugin != "pha":
+        print("ERROR: α reflect currently requires --plugin pha (reference impl)", file=sys.stderr)
+        return 2
+    from harness_loop.plugins import pha as pha_plugin
+
+    print("== harness-loop reflect → Ring R Reflection Critic (read-only) ==")
+    print("NOTE: attribution only; never auto-merges or edits routing")
+    return pha_plugin.run_reflect(
+        candidates=args.candidates,
+        e2e_jsonl=args.e2e_jsonl,
+        out_dir=args.out_dir,
+    )
+
+
+def _cmd_proposal_check(args: argparse.Namespace) -> int:
+    path = Path(args.path).resolve()
+    if not path.is_file():
+        print(f"FAIL missing {path}")
+        return 1
+    if args.kind == "verdict":
+        errors = validate_verdict_file(path)
+        label = "promote_verdict"
+    else:
+        errors = validate_proposal_file(path)
+        label = "loop_proposal"
+    if errors:
+        print(f"FAIL {label} {path.name}")
+        for e in errors:
+            print("  - " + e)
+        return 1
+    print(f"PASS {label} {path.name}")
+    return 0
 
 
 def _cmd_harvest(args: argparse.Namespace) -> int:
@@ -131,6 +167,30 @@ def build_parser() -> argparse.ArgumentParser:
         help="Reference plugin (pha enables 1E reject expects + default goldens)",
     )
     sp.set_defaults(func=_cmd_eval_check)
+
+    sp = sub.add_parser("reflect", help="Ring R: offline failure attribution (read-only)")
+    sp.add_argument("--plugin", default="pha", choices=["pha"])
+    sp.add_argument(
+        "--candidates",
+        default="",
+        help="slow_round_candidates.jsonl (default: reports/loop/...)",
+    )
+    sp.add_argument("--e2e-jsonl", default="", help="Optional E2E stress JSONL")
+    sp.add_argument("--out-dir", default="", help="Output dir for reflection_*.md/json")
+    sp.set_defaults(func=_cmd_reflect)
+
+    sp = sub.add_parser(
+        "proposal-check",
+        help="Validate loop_proposal/v2 or promote_verdict/v1 JSON shape",
+    )
+    sp.add_argument("path", help="Proposal or verdict JSON path")
+    sp.add_argument(
+        "--kind",
+        default="proposal",
+        choices=["proposal", "verdict"],
+        help="Document kind (default: loop proposal)",
+    )
+    sp.set_defaults(func=_cmd_proposal_check)
 
     sp = sub.add_parser("harvest", help="Run offline harvest/critic/distill pipeline")
     sp.add_argument("--plugin", default="pha", choices=["pha"])

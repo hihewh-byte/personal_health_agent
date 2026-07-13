@@ -6,6 +6,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 os.environ.setdefault("PYTHONUTF8", "1")
@@ -48,6 +49,32 @@ def main() -> int:
         print(f"FAIL unexpected version {__version__}")
         return 1
     print(f"OK import harness_loop {__version__}")
+
+    curated = ROOT / "scripts" / "fixtures" / "loop_alias_proposal_curated.json"
+    if _run(["proposal-check", str(curated)]) != 0:
+        print("FAIL harness-loop proposal-check curated fixture")
+        return 1
+    print("OK proposal-check curated fixture")
+
+    fixture_e2e = ROOT / "scripts" / "fixtures" / "loop_e2e_sample.jsonl"
+    fixture_candidates = ROOT / "scripts" / "fixtures" / "loop_candidates_sample.jsonl"
+    with tempfile.TemporaryDirectory(prefix="harness-loop-reflect-") as tmp:
+        if _run(
+            [
+                "reflect",
+                "--plugin",
+                "pha",
+                "--candidates",
+                str(fixture_candidates),
+                "--e2e-jsonl",
+                str(fixture_e2e),
+                "--out-dir",
+                tmp,
+            ]
+        ) != 0:
+            print("FAIL harness-loop reflect --plugin pha")
+            return 1
+    print("OK reflect --plugin pha")
 
     if _run(["version"]) != 0:
         print("FAIL harness-loop version")

@@ -4,7 +4,15 @@
 
 ---
 
-## 2026-07-13 (naming — Harness Loop Alpha)
+## 2026-07-13 (Harness Loop α2 — Ring R reflect CLI + portable proposal validation)
+
+- **类别**：P1（Loop+Reflection β 薄切片：环 R 独立 CLI + 可移植 proposal/verdict 形状校验）。
+- **CLI**：`harness-loop reflect`（委托 `pha_reflection_critic.py`）；`harness-loop proposal-check`（`loop_proposal/v2` / `promote_verdict/v1`）。
+- **包**：`harness_loop.proposals` · 版本 `0.1.0a2`。
+- **自检**：`pha_reflection_critic_selfcheck.py` + suite selfcheck 覆盖 reflect/proposal-check。
+- **铁律不变**：环 R 只读归因；不 auto-merge；不改编路由。
+
+---
 
 - **类别**：P0（口径）：公开名 **Harness Loop (Alpha)** = offline evolution companion to harness-core；弃用 “Official Loop Suite / 官方套件产品族”。
 - **叙事**：component family（core + companion + domain adapter），非商业 “official suite”。

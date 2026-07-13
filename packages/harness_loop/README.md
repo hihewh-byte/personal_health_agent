@@ -1,6 +1,6 @@
 # harness-loop — Harness Loop (Alpha)
 
-> **Status:** **α installable** (2026-07-13) — CLI + portable eval_set + PHA reference plugin delegate.  
+> **Status:** **α installable** (2026-07-13) — CLI + portable eval_set/proposals + PHA reference plugin delegate.  
 > **Role:** offline evolution companion to [`harness-core`](../harness_core/).  
 > **Not yet:** Trace UI, live HTTP runner, fully extracted harvest modules (still delegates to PHA scripts).
 
@@ -37,6 +37,8 @@ pip install -e 'packages/harness_core' -e 'packages/harness_loop'
 | `harness-loop version` | Package version + boundaries |
 | `harness-loop eval-check --plugin pha` | Validate PHA smoke + alias_fuzz goldens |
 | `harness-loop eval-check --golden … --catalog …` | Portable domain golden |
+| `harness-loop reflect --plugin pha` | Ring R: offline failure attribution (read-only) |
+| `harness-loop proposal-check PATH` | Validate `loop_proposal/v2` JSON shape |
 | `harness-loop harvest --plugin pha` | Delegate to PHA harvest/critic/distill pipeline |
 | `harness-loop promote --plugin pha --proposal …` | Dry-run/veto (optional `--full-veto`) |
 | `harness-loop adopt --plugin pha --proposal … --confirm YES` | Gated T0 write |

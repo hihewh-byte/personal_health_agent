@@ -72,6 +72,27 @@ def run_script(script_rel: str, args: Sequence[str], *, root: Path | None = None
     return int(proc.returncode)
 
 
+def run_reflect(
+    *,
+    candidates: str,
+    e2e_jsonl: str = "",
+    out_dir: str = "",
+    root: Path | None = None,
+) -> int:
+    root = root or detect_monorepo_root()
+    default_candidates = root / "reports" / "loop" / "slow_round_candidates.jsonl"
+    default_out = root / "reports" / "loop"
+    cmd_args = [
+        "--candidates",
+        candidates or str(default_candidates),
+        "--out-dir",
+        out_dir or str(default_out),
+    ]
+    if e2e_jsonl:
+        cmd_args.extend(["--e2e-jsonl", e2e_jsonl])
+    return run_script("pha_reflection_critic.py", cmd_args, root=root)
+
+
 def run_shell(script_rel: str, *, root: Path | None = None) -> int:
     root = root or detect_monorepo_root()
     script = root / script_rel
