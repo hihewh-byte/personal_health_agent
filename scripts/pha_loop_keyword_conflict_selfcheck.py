@@ -21,6 +21,7 @@ from pha.loop_keyword_conflicts import (  # noqa: E402
     detect_schema_fuzzy_baseline_debt,
     gate_1e_a_layer_denylist,
     gate_1e_c_narrow_pollution,
+    gate_1e_d_ocr_ui_junk,
     validate_alias_proposals,
 )
 from pha.universal_catalog_manager import reload_catalog_manager  # noqa: E402
@@ -100,6 +101,16 @@ def test_classify_strips_to_tier_a_and_c() -> None:
     _assert(any("gate_1e_b_catalog_exists" in r for r in c4.reject_reasons), c4.as_dict())
 
 
+def test_gate_1e_d_blocks_ocr_ui_junk() -> None:
+    r = gate_1e_d_ocr_ui_junk("Query")
+    _assert(not r.ok, "Query must fail 1E-d")
+    r_steps = gate_1e_d_ocr_ui_junk("steps")
+    _assert(r_steps.ok, "curated English alias steps must pass 1E-d")
+    c = classify_alias_phrase("Query", metric_id="hrv", source_message="Query")
+    _assert(c.tier == "rejected", c.as_dict())
+    _assert(any("gate_1e_d" in x for x in c.reject_reasons), c.as_dict())
+
+
 def test_gate_1e_c_blocks_symptom_probe_alias() -> None:
     report = gate_1e_c_narrow_pollution("睡得好吗", metric_id="sleep")
     _assert(not report.ok, "affective sleep alias must fail symptom probe")
@@ -145,6 +156,8 @@ def main() -> int:
     print("PASS classify Tier-A/C strip")
     test_gate_1e_c_blocks_symptom_probe_alias()
     print("PASS 1E-c symptom probe")
+    test_gate_1e_d_blocks_ocr_ui_junk()
+    print("PASS 1E-d OCR/UI junk")
     test_harvest_and_distiller_pipeline()
     print("PASS harvest + distiller dry-run pipeline")
     print("OK loop keyword conflict selfcheck (Stage 1E / 4-α.1)")

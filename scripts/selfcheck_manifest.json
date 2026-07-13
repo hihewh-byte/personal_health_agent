@@ -45,6 +45,7 @@
     {"id": "loop_keyword_conflict", "script": "scripts/pha_loop_keyword_conflict_selfcheck.py", "tags": ["stage4", "loop", "p0"]},
     {"id": "loop_failure_taxonomy", "script": "scripts/pha_loop_failure_taxonomy_selfcheck.py", "tags": ["stage4", "loop", "p0"]},
     {"id": "eval_set", "script": "scripts/pha_eval_set_selfcheck.py", "tags": ["stage4", "loop", "eval", "p1"]},
+    {"id": "eval_set_alias_fuzz", "script": "scripts/pha_eval_set_alias_fuzz_selfcheck.py", "tags": ["stage4", "loop", "eval", "fuzz", "p1"]},
     {"id": "t0_ingest_proposal", "script": "scripts/pha_t0_ingest_proposal_selfcheck.py", "tags": ["stage4b", "loop", "p0"]},
     {"id": "t0_gated_adopter", "script": "scripts/pha_t0_gated_adopter_selfcheck.py", "tags": ["stage4b", "loop", "p0"]},
     {"id": "chb_gap_harvest", "script": "scripts/pha_chb_gap_harvest_selfcheck.py", "tags": ["stage4b", "loop", "p0"]},

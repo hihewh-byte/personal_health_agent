@@ -8,6 +8,7 @@ Gates (4-α.1):
   1E-a  layer denylist — time / aggregation / affective templates
   1E-b  substring inheritance — catalog must not duplicate broader schema bait
   1E-c  narrow-domain pollution probes — symptom compounds must not promote metric
+  1E-d  OCR/UI junk — pure-Latin chrome words (Query/Cancel/…) must not promote
 """
 
 from __future__ import annotations
@@ -110,6 +111,44 @@ NARROW_POLLUTION_PROBES: tuple[str, ...] = (
     "心慌得睡不着，是HRV低吗？",
     "胸闷一整晚，是不是走得怎么样的问题？",
 )
+
+# 1E-d: OCR / UI chrome that must never become catalog aliases (toxic Loop A bait).
+# Pure-Latin tokens already curated in metric_aliases (e.g. "steps") are exempt.
+OCR_UI_JUNK_ALIASES: frozenset[str] = frozenset(
+    {
+        "query",
+        "cancel",
+        "ok",
+        "submit",
+        "button",
+        "close",
+        "menu",
+        "settings",
+        "error",
+        "loading",
+        "next",
+        "back",
+        "yes",
+        "no",
+        "continue",
+        "skip",
+        "retry",
+        "done",
+        "save",
+        "delete",
+        "edit",
+        "search",
+        "filter",
+        "share",
+        "copy",
+        "paste",
+        "select",
+        "home",
+        "login",
+        "logout",
+    },
+)
+_ASCII_WORD_RE = re.compile(r"^[A-Za-z]{2,16}$")
 
 
 @dataclass
@@ -592,6 +631,30 @@ def gate_1e_c_narrow_pollution(
     return out
 
 
+def gate_1e_d_ocr_ui_junk(phrase: str) -> ConflictReport:
+    """Reject pure-Latin UI/OCR chrome words that are not already curated aliases."""
+    out = ConflictReport()
+    alias = (phrase or "").strip()
+    if not alias or not _ASCII_WORD_RE.fullmatch(alias):
+        return out
+    norm = _norm_token(alias)
+    catalog = _load_catalog_dict()
+    for tokens in (catalog.get("metric_aliases") or {}).values():
+        for existing in tokens or []:
+            if _norm_token(str(existing)) == norm:
+                return out
+    if norm in {_norm_token(x) for x in OCR_UI_JUNK_ALIASES}:
+        out.add(
+            KeywordConflict(
+                kind="gate_1e_d_ocr_ui_junk",
+                token=alias,
+                detail="alias looks like OCR/UI chrome, not a health phrase",
+                owners=["ocr_ui_junk"],
+            ),
+        )
+    return out
+
+
 def classify_alias_phrase(
     phrase: str,
     *,
@@ -705,6 +768,17 @@ def classify_alias_phrase(
             reject_reasons=reasons,
         )
 
+    for junk_phrase in (core, phrase):
+        d_report = gate_1e_d_ocr_ui_junk(junk_phrase)
+        if not d_report.ok:
+            reasons.extend(d_report.errors())
+            return TierClassification(
+                tier="rejected",
+                core_alias=core,
+                slot_candidates=slots,
+                reject_reasons=reasons,
+            )
+
     return TierClassification(
         tier="catalog",
         core_alias=core,
@@ -769,12 +843,13 @@ def validate_alias_proposals(proposals: list[AliasProposal]) -> ConflictReport:
             )
             continue
 
-        # Tier-A catalog proposals must pass 1E-a/b/c.
+        # Tier-A catalog proposals must pass 1E-a/b/c/d.
         if prop.layer == "catalog":
             for gate in (
                 gate_1e_a_layer_denylist(alias),
                 gate_1e_b_substring_inheritance(alias, metric_id=prop.metric_id or prop.target),
                 gate_1e_c_narrow_pollution(alias, metric_id=prop.metric_id or prop.target),
+                gate_1e_d_ocr_ui_junk(alias),
             ):
                 out.conflicts.extend(gate.conflicts)
 

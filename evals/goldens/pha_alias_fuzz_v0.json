@@ -1,0 +1,192 @@
+{
+  "schema": "harness.eval_set/v1",
+  "id": "pha.alias_fuzz.v0",
+  "domain": "pha",
+  "version": "0.1.0",
+  "generated_at": "2026-07-13T06:47:56.387262+00:00",
+  "description": "Offline Loop A alias fuzz: toxic/OCR/UI junk + 1E-a templates must reject; curated steps\u2190\u591a\u5c11\u6b65 control must remain in catalog.",
+  "cases": [
+    {
+      "id": "fuzz.reject.hrv.Query",
+      "tags": [
+        "loop_a",
+        "fuzz",
+        "1e_d",
+        "toxic"
+      ],
+      "locale": "any",
+      "turns": [
+        {
+          "role": "user",
+          "text": "Query",
+          "attach": false
+        }
+      ],
+      "expects": [
+        {
+          "type": "non_empty_turn_text"
+        },
+        {
+          "type": "alias_must_reject",
+          "metric": "hrv",
+          "alias": "Query"
+        }
+      ],
+      "source": {
+        "kind": "synthetic_fuzz",
+        "note": "OCR UI chrome; rejected by gate_1e_d (human-vetoed toxic proposal class)"
+      }
+    },
+    {
+      "id": "fuzz.reject.hrv.Cancel",
+      "tags": [
+        "loop_a",
+        "fuzz",
+        "1e_d"
+      ],
+      "locale": "any",
+      "turns": [
+        {
+          "role": "user",
+          "text": "Cancel",
+          "attach": false
+        }
+      ],
+      "expects": [
+        {
+          "type": "non_empty_turn_text"
+        },
+        {
+          "type": "alias_must_reject",
+          "metric": "hrv",
+          "alias": "Cancel"
+        }
+      ],
+      "source": {
+        "kind": "synthetic_fuzz",
+        "note": "UI chrome denylist"
+      }
+    },
+    {
+      "id": "fuzz.reject.sleep.affective",
+      "tags": [
+        "loop_a",
+        "fuzz",
+        "1e_a"
+      ],
+      "locale": "any",
+      "turns": [
+        {
+          "role": "user",
+          "text": "\u7761\u5f97\u597d\u5417",
+          "attach": false
+        }
+      ],
+      "expects": [
+        {
+          "type": "non_empty_turn_text"
+        },
+        {
+          "type": "alias_must_reject",
+          "metric": "sleep",
+          "alias": "\u7761\u5f97\u597d\u5417"
+        }
+      ],
+      "source": {
+        "kind": "synthetic_fuzz",
+        "note": "Affective template blocked by 1E-a"
+      }
+    },
+    {
+      "id": "fuzz.reject.sleep.time_anchor",
+      "tags": [
+        "loop_a",
+        "fuzz",
+        "1e_a"
+      ],
+      "locale": "any",
+      "turns": [
+        {
+          "role": "user",
+          "text": "\u6628\u665a\u7761\u591a\u4e45",
+          "attach": false
+        }
+      ],
+      "expects": [
+        {
+          "type": "non_empty_turn_text"
+        },
+        {
+          "type": "alias_must_reject",
+          "metric": "sleep",
+          "alias": "\u6628\u665a\u7761\u591a\u4e45"
+        }
+      ],
+      "source": {
+        "kind": "synthetic_fuzz",
+        "note": "Time anchor / peel \u2192 catalog-exists reject path"
+      }
+    },
+    {
+      "id": "fuzz.reject.steps.aggregation",
+      "tags": [
+        "loop_a",
+        "fuzz",
+        "1e_a"
+      ],
+      "locale": "any",
+      "turns": [
+        {
+          "role": "user",
+          "text": "\u65e5\u5747\u591a\u5c11\u6b65",
+          "attach": false
+        }
+      ],
+      "expects": [
+        {
+          "type": "non_empty_turn_text"
+        },
+        {
+          "type": "alias_must_reject",
+          "metric": "steps",
+          "alias": "\u65e5\u5747\u591a\u5c11\u6b65"
+        }
+      ],
+      "source": {
+        "kind": "synthetic_fuzz",
+        "note": "Aggregation modifier must not promote as raw catalog alias"
+      }
+    },
+    {
+      "id": "fuzz.control.steps.duoshaobu",
+      "tags": [
+        "loop_a",
+        "fuzz",
+        "control",
+        "catalog"
+      ],
+      "locale": "zh",
+      "turns": [
+        {
+          "role": "user",
+          "text": "\u591a\u5c11\u6b65",
+          "attach": false
+        }
+      ],
+      "expects": [
+        {
+          "type": "non_empty_turn_text"
+        },
+        {
+          "type": "catalog_alias",
+          "metric": "steps",
+          "alias": "\u591a\u5c11\u6b65"
+        }
+      ],
+      "source": {
+        "kind": "human_curated",
+        "note": "Control: R2 merged alias must stay present"
+      }
+    }
+  ]
+}
