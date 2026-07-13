@@ -55,14 +55,24 @@ def detect_explicit_locale_request(user_message: str) -> Optional[str]:
 
 
 def detect_message_locale_heuristic(user_message: str, *, min_chars: int = 4) -> Optional[str]:
-    """CJK vs Latin ratio on meaningful user text (no API locale)."""
+    """CJK vs Latin ratio on meaningful user text (no API locale).
+
+    Short pure-CJK acks (谢谢 / 好的) must resolve to ``zh`` — otherwise the OSS
+    default ``en`` incorrectly answers Chinese close tokens. Short Latin acks
+    (hi / ok) intentionally fall through to env/default so PHA_RESPONSE_LOCALE
+    can still steer them.
+    """
     text = (user_message or "").strip()
-    if len(text) < min_chars:
+    if not text:
         return None
     cjk = len(_CJK_RE.findall(text))
     latin = len(_LATIN_RE.findall(text))
     total = cjk + latin
-    if total < min_chars:
+    if total == 0:
+        return None
+    if len(text) < min_chars or total < min_chars:
+        if cjk and not latin:
+            return "zh"
         return None
     if cjk > latin:
         return "zh"

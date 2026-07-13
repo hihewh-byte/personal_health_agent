@@ -57,6 +57,18 @@ def main() -> int:
     if detect_message_locale_heuristic("我的睡眠深睡比例正常吗") != "zh":
         print("FAIL heuristic zh")
         ok = False
+    if detect_message_locale_heuristic("谢谢") != "zh":
+        print("FAIL short pure-CJK close token should be zh")
+        ok = False
+    if detect_message_locale_heuristic("好的") != "zh":
+        print("FAIL short pure-CJK ack should be zh")
+        ok = False
+    if resolve_response_locale("谢谢", request_locale=None) != "zh":
+        print("FAIL resolve 谢谢 should be zh (not OSS en default)")
+        ok = False
+    if detect_message_locale_heuristic("ok") is not None:
+        print("FAIL short Latin ack should defer to env/default")
+        ok = False
 
     en_dir = build_language_directive("en")
     zh_dir = build_language_directive("zh")
