@@ -4,6 +4,16 @@
 
 ---
 
+## 2026-07-13 (Loop A · 1E-d OCR/UI junk + alias_fuzz eval_set)
+
+- **类别**：P1（Loop A 门禁加固 · eval_set 合成 fuzz 薄切片）。
+- **1E-d**：`gate_1e_d_ocr_ui_junk` — 纯拉丁 UI/OCR chrome（`Query`/`Cancel`/…）不得晋升 catalog；已 curated 英文别名（如 `steps`）豁免。
+- **接线**：`classify_alias_phrase` · `validate_alias_proposals`；`pha_loop_keyword_conflict_selfcheck` 覆盖 Query。
+- **eval_set**：新 expect `alias_must_reject`；golden `evals/goldens/pha_alias_fuzz_v0.json`；`scripts/pha_eval_set_alias_fuzz_selfcheck.py` 入 manifest。
+- **验收**：`eval_set_alias_fuzz` · `loop_keyword_conflict` · harness changelog（本条）。
+
+---
+
 ## 2026-07-13 (Official Loop Suite · harness.eval_set/v1 thin slice)
 
 - **类别**：P1（Loop Suite 可移植回归契约 · 离线 thin slice；不改在线 Core 控制流）。

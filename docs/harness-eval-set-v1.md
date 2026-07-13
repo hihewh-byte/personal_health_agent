@@ -1,7 +1,7 @@
 # harness.eval_set / v1
 
-> **Thin slice (2026-07-13):** schema + golden export + offline validator.  
-> **Not yet:** live HTTP runner, synthetic fuzz, full bank rewrite.  
+> **Thin slice (2026-07-13):** schema + golden export + offline validator + alias fuzz.  
+> **Not yet:** live HTTP runner, full bank rewrite.  
 > **Home:** Official Loop Suite · [`packages/harness_loop`](../packages/harness_loop/) · goldens under [`evals/goldens/`](../evals/goldens/).
 
 Portable evaluation set contract for cross-domain regression and Loop promote gates.
@@ -51,21 +51,25 @@ Domain banks (PHA `e2e_question_bank_*.json`) remain the rich source; eval_set i
 | `tag_required` | `tag` | Case must carry tag (meta) |
 | `live_non_empty_answer` | — | Reserved for live runner (ignored offline) |
 | `live_locale` | `locale` | Reserved for live runner (ignored offline) |
+| `alias_must_reject` | `metric`, `alias` | Offline: 1E gates / classifier must reject promote |
 
 ## Golden sets in this repo
 
 | Path | Purpose |
 |------|---------|
 | `evals/goldens/pha_smoke_v0.json` | EN07/EN08 + QS07 smoke + alias `多少步` offline check |
+| `evals/goldens/pha_alias_fuzz_v0.json` | Loop A reject corpus (OCR/UI junk + 1E-a) + curated control |
 
-Regenerate messages from banks:
+Regenerate messages from banks / fuzz corpus:
 
 ```bash
 PYTHONPATH=. python scripts/pha_eval_set_export_smoke.py --write
+PYTHONPATH=. python scripts/pha_eval_set_export_alias_fuzz.py --write
 PYTHONPATH=. python scripts/pha_eval_set_selfcheck.py
+PYTHONPATH=. python scripts/pha_eval_set_alias_fuzz_selfcheck.py
 ```
 
 ## Relation to Loop
 
 - Loop A `--full-veto` may later consume eval_set ids via `suggested_regression`.
-- Stage C: synthetic fuzz emits new cases with the same schema.
+- Alias fuzz locks `gate_1e_d_ocr_ui_junk` (toxic `Query→hrv` class) + 1E-a templates.

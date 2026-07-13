@@ -397,11 +397,13 @@ Portable case list for offline + future live runners. Spec:
 | `version` | `str` | Semver of the set |
 | `cases` | `list[object]` | Each: `id`, `turns[]`, `expects[]`, optional `tags`/`locale`/`source` |
 
-**Offline expects (normative for CI selfcheck):** `non_empty_turn_text`, `min_turns`, `tag_required`, `catalog_alias`.  
+**Offline expects (normative for CI selfcheck):** `non_empty_turn_text`, `min_turns`,
+`tag_required`, `catalog_alias`, `alias_must_reject`.
 **Reserved:** `live_non_empty_answer`, `live_locale` (ignored offline).
 
-Reference: `pha/harness_eval_set.py` · golden `evals/goldens/pha_smoke_v0.json` ·
-`scripts/pha_eval_set_selfcheck.py`.
+Reference: `pha/harness_eval_set.py` · goldens `evals/goldens/pha_smoke_v0.json` ·
+`pha_alias_fuzz_v0.json` · `scripts/pha_eval_set_selfcheck.py` ·
+`scripts/pha_eval_set_alias_fuzz_selfcheck.py`.
 
 ### 11.5 Non-goals for §11
 

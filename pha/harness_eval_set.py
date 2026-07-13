@@ -121,9 +121,49 @@ def run_offline_expects(doc: dict[str, Any]) -> list[str]:
                     continue
                 if alias not in aliases:
                     errors.append(f"{cid}: catalog {metric!r} missing alias {alias!r}")
+            elif et == "alias_must_reject":
+                metric = str(exp.get("metric") or "")
+                alias = str(exp.get("alias") or "")
+                try:
+                    rejected, detail = _alias_is_rejected(metric=metric, alias=alias)
+                except Exception as exc:  # noqa: BLE001
+                    errors.append(f"{cid}: alias gate failed: {exc}")
+                    continue
+                if not rejected:
+                    errors.append(
+                        f"{cid}: expected reject for {metric!r}/{alias!r} but gates accepted ({detail})"
+                    )
             else:
                 errors.append(f"{cid}: unknown expect type {et!r}")
     return errors
+
+
+def _alias_is_rejected(*, metric: str, alias: str) -> tuple[bool, str]:
+    """True when 1E gates / classifier block promoting alias for metric."""
+    from pha.loop_keyword_conflicts import (
+        AliasProposal,
+        classify_alias_phrase,
+        gate_1e_a_layer_denylist,
+        gate_1e_c_narrow_pollution,
+        gate_1e_d_ocr_ui_junk,
+        validate_alias_proposals,
+    )
+
+    if not gate_1e_a_layer_denylist(alias).ok:
+        return True, "1e_a"
+    if not gate_1e_c_narrow_pollution(alias, metric_id=metric or None).ok:
+        return True, "1e_c"
+    if not gate_1e_d_ocr_ui_junk(alias).ok:
+        return True, "1e_d"
+    cl = classify_alias_phrase(alias, metric_id=metric, source_message=alias)
+    if cl.tier == "rejected":
+        return True, "classify"
+    report = validate_alias_proposals(
+        [AliasProposal(layer="catalog", target=metric, alias=alias, metric_id=metric)]
+    )
+    if not report.ok:
+        return True, "validate"
+    return False, "accepted"
 
 
 def validate_file(path: Path | str, *, offline: bool = True) -> list[str]:
