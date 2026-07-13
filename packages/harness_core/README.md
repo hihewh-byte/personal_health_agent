@@ -45,6 +45,7 @@ Thin **domain-agnostic** online control plane. Part of the **Harness product fam
 | Reference plugin (PHA) | ✅ shipped | scripts `pha_loop_*`, `pha_t0_*`, `pha_reflection_*` |
 | Human-in-the-loop SOP | ✅ | [`docs/loop-evolution-human-in-the-loop-sop.en.md`](../../docs/loop-evolution-human-in-the-loop-sop.en.md) |
 | How other agents attach | ✅ | [`examples/loop_reference_pha.md`](../../examples/loop_reference_pha.md) |
+| Eval set v1 thin slice | ✅ | [`docs/harness-eval-set-v1.md`](../../docs/harness-eval-set-v1.md) · [`evals/goldens/`](../../evals/goldens/) |
 
 **Iron rules (suite + plugins):** no auto-merge · full-veto before catalog merge · `--confirm YES` before T0 write · Loop never edits Core assertion code or routing FSM.
 

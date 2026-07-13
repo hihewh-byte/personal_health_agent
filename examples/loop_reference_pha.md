@@ -84,6 +84,13 @@ Bilingual ops playbook:
 
 | Stage | Deliverable |
 |-------|-------------|
-| A (now) | Protocol + READMEs + this example + `packages/harness_loop` stub |
+| A (done) | Protocol + READMEs + attach example + this stub |
 | B | Extract domain-agnostic orchestration into `harness_loop` + CLI |
-| C | `harness_eval_set/v1` goldens + second toy plugin proving non-PHA attach |
+| C | Second toy plugin proving non-PHA attach |
+
+## Eval set (thin slice)
+
+- Spec: [`docs/harness-eval-set-v1.md`](../docs/harness-eval-set-v1.md)
+- Golden: [`evals/goldens/pha_smoke_v0.json`](../evals/goldens/pha_smoke_v0.json)
+- Offline validate: `python scripts/pha_eval_set_selfcheck.py`
+- Re-export from banks: `python scripts/pha_eval_set_export_smoke.py --write`

@@ -14,6 +14,7 @@
 ## Quick links / 快速链接
 
 - **Product family:** Core [`packages/harness_core`](../packages/harness_core/) · Loop suite stub [`packages/harness_loop`](../packages/harness_loop/) · attach guide [`examples/loop_reference_pha.md`](../examples/loop_reference_pha.md)
+- **Eval set v1:** [`harness-eval-set-v1.md`](harness-eval-set-v1.md) · goldens [`evals/goldens/`](../evals/goldens/)
 - **Human-in-the-loop SOP:** [`.en.md`](loop-evolution-human-in-the-loop-sop.en.md) · [`.zh.md`](loop-evolution-human-in-the-loop-sop.zh.md)
 - Upstream protocol (§11 Offline Evolution): [`harness-core-protocol-v0.md`](harness-core-protocol-v0.md)
 - Stage 4 RFC: [`rfcs/rfc-stage4-offline-loop-engineering.md`](rfcs/rfc-stage4-offline-loop-engineering.md)

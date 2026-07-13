@@ -1,0 +1,216 @@
+{
+  "schema": "harness.eval_set/v1",
+  "id": "pha.smoke.v0",
+  "domain": "pha",
+  "version": "0.1.0",
+  "generated_at": "2026-07-13T06:18:54.188269+00:00",
+  "description": "Thin smoke golden exported from EN/ZH banks + curated Loop A alias / locale / 3H placeholders. Offline expects only; live_* reserved for future runner.",
+  "cases": [
+    {
+      "id": "EN07.t1.warehouse_hrv",
+      "tags": [
+        "bank",
+        "en",
+        "loop_a",
+        "smoke"
+      ],
+      "locale": "en",
+      "turns": [
+        {
+          "role": "user",
+          "slot": "warehouse_hrv",
+          "attach": false,
+          "text": "Please query recent HRV from the warehouse."
+        }
+      ],
+      "expects": [
+        {
+          "type": "non_empty_turn_text"
+        },
+        {
+          "type": "min_turns",
+          "n": 1
+        }
+      ],
+      "source": {
+        "kind": "e2e_question_bank",
+        "bank": "e2e_question_bank_en_v1.json",
+        "set_id": "EN07",
+        "turn_limit": 1
+      }
+    },
+    {
+      "id": "EN08.t1-2.warehouse_steps",
+      "tags": [
+        "bank",
+        "en",
+        "loop_a",
+        "alias",
+        "smoke"
+      ],
+      "locale": "en",
+      "turns": [
+        {
+          "role": "user",
+          "slot": "steps_warehouse",
+          "attach": false,
+          "text": "Query recent 90-day steps."
+        },
+        {
+          "role": "user",
+          "slot": "steps",
+          "attach": false,
+          "text": "Recent step count?"
+        }
+      ],
+      "expects": [
+        {
+          "type": "non_empty_turn_text"
+        },
+        {
+          "type": "min_turns",
+          "n": 2
+        },
+        {
+          "type": "tag_required",
+          "tag": "alias"
+        }
+      ],
+      "source": {
+        "kind": "e2e_question_bank",
+        "bank": "e2e_question_bank_en_v1.json",
+        "set_id": "EN08",
+        "turn_limit": 2
+      }
+    },
+    {
+      "id": "QS07.t1.warehouse_hrv",
+      "tags": [
+        "bank",
+        "zh",
+        "smoke"
+      ],
+      "locale": "zh",
+      "turns": [
+        {
+          "role": "user",
+          "slot": "warehouse_hrv",
+          "attach": false,
+          "text": "我最近的 HRV 怎么样？"
+        }
+      ],
+      "expects": [
+        {
+          "type": "non_empty_turn_text"
+        },
+        {
+          "type": "min_turns",
+          "n": 1
+        }
+      ],
+      "source": {
+        "kind": "e2e_question_bank",
+        "bank": "e2e_question_bank_v1.json",
+        "set_id": "QS07",
+        "turn_limit": 1
+      }
+    },
+    {
+      "id": "catalog.steps.多少步",
+      "tags": [
+        "loop_a",
+        "alias",
+        "catalog",
+        "smoke"
+      ],
+      "locale": "zh",
+      "turns": [
+        {
+          "role": "user",
+          "slot": "steps",
+          "attach": false,
+          "text": "日均多少步"
+        }
+      ],
+      "expects": [
+        {
+          "type": "non_empty_turn_text"
+        },
+        {
+          "type": "catalog_alias",
+          "metric": "steps",
+          "alias": "多少步"
+        },
+        {
+          "type": "live_non_empty_answer"
+        }
+      ],
+      "source": {
+        "kind": "human_curated",
+        "note": "First R2 merged alias (PR #2); offline catalog gate"
+      }
+    },
+    {
+      "id": "locale.close.谢谢",
+      "tags": [
+        "locale",
+        "skip_llm",
+        "smoke"
+      ],
+      "locale": "zh",
+      "turns": [
+        {
+          "role": "user",
+          "text": "谢谢",
+          "attach": false
+        }
+      ],
+      "expects": [
+        {
+          "type": "non_empty_turn_text"
+        },
+        {
+          "type": "live_locale",
+          "locale": "zh"
+        }
+      ],
+      "source": {
+        "kind": "regression_fixture",
+        "note": "Short CJK close token; live runner should expect zh ack"
+      }
+    },
+    {
+      "id": "3h.lane.structural",
+      "tags": [
+        "3h",
+        "attachment",
+        "smoke"
+      ],
+      "locale": "any",
+      "turns": [
+        {
+          "role": "user",
+          "text": "帮我看看这些数据",
+          "attach": true,
+          "slot": "attach_open"
+        }
+      ],
+      "expects": [
+        {
+          "type": "non_empty_turn_text"
+        },
+        {
+          "type": "tag_required",
+          "tag": "3h"
+        },
+        {
+          "type": "live_non_empty_answer"
+        }
+      ],
+      "source": {
+        "kind": "stage3h_stress",
+        "note": "Placeholder for live 3H attach turn; offline validates shape only"
+      }
+    }
+  ]
+}

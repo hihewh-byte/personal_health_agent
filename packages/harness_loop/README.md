@@ -26,6 +26,16 @@ Until code is extracted, run the PHA-hosted pipeline (same contracts):
 | Schemas | `pha.loop_proposal/v2`, `pha.loop_promote_verdict/v1` (see Core protocol §11) |
 | SOP | [`docs/loop-evolution-human-in-the-loop-sop.en.md`](../../docs/loop-evolution-human-in-the-loop-sop.en.md) |
 | Attach guide | [`examples/loop_reference_pha.md`](../../examples/loop_reference_pha.md) |
+| Eval set v1 | [`docs/harness-eval-set-v1.md`](../../docs/harness-eval-set-v1.md) · [`evals/goldens/pha_smoke_v0.json`](../../evals/goldens/pha_smoke_v0.json) |
+
+## Eval set (thin slice)
+
+```bash
+PYTHONPATH=. python scripts/pha_eval_set_export_smoke.py --write
+PYTHONPATH=. python scripts/pha_eval_set_selfcheck.py
+```
+
+Offline expects only (`catalog_alias`, shape checks). Live HTTP runner is Stage C.
 
 ## Planned layout (Stage B)
 
