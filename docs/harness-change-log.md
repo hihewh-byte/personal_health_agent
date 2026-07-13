@@ -4,9 +4,13 @@
 
 ---
 
----
+## 2026-07-13 (Official Loop Suite · harness.eval_set/v1 thin slice)
 
----
+- **类别**：P1（Loop Suite 可移植回归契约 · 离线 thin slice；不改在线 Core 控制流）。
+- **契约**：`harness.eval_set/v1` — schema 文档 [`docs/harness-eval-set-v1.md`](harness-eval-set-v1.md)；协议登记 [`docs/harness-core-protocol-v0.md`](harness-core-protocol-v0.md) §11.4。
+- **实现**：`pha/harness_eval_set.py`（load + shape/offline expects）；golden `evals/goldens/pha_smoke_v0.json`（`pha.smoke.v0`）；导出 `scripts/pha_eval_set_export_smoke.py`；自检 `scripts/pha_eval_set_selfcheck.py` 挂入 `selfcheck_manifest.json`。
+- **离线门禁**：`catalog_alias` 直接读 `rules/health_intent_catalog.json`（含 R2 `steps←多少步`）；`live_*` expects 预留给后续 runner。
+- **验收**：`pha_eval_set_selfcheck` · 全量 `run_selfchecks.sh` · harness consensus（本 changelog）。
 
 ---
 
