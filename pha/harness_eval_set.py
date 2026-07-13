@@ -3,12 +3,36 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
 SCHEMA_ID = "harness.eval_set/v1"
-ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_GOLDENS = ROOT / "evals" / "goldens"
+
+
+def repo_root() -> Path:
+    """Resolve monorepo root even under editable / site-packages imports."""
+    env = (os.environ.get("PHA_REPO_ROOT") or "").strip()
+    if env:
+        return Path(env).resolve()
+    here = Path(__file__).resolve()
+    candidates = [here.parents[1], Path.cwd(), *list(here.parents)[:6]]
+    for p in candidates:
+        if (p / "evals" / "goldens").is_dir() and (p / "rules" / "health_intent_catalog.json").is_file():
+            return p
+    return here.parents[1]
+
+
+def goldens_dir() -> Path:
+    env = (os.environ.get("PHA_EVAL_GOLDENS_DIR") or "").strip()
+    if env:
+        return Path(env).resolve()
+    return repo_root() / "evals" / "goldens"
+
+
+# Back-compat aliases used by scripts
+ROOT = repo_root()
+DEFAULT_GOLDENS = goldens_dir()
 
 
 def load_eval_set(path: Path | str) -> dict[str, Any]:
@@ -55,9 +79,11 @@ def validate_eval_set_shape(doc: dict[str, Any]) -> list[str]:
 
 
 def _catalog_aliases(metric: str) -> list[str]:
-    from pha.health_intent_catalog import catalog_metric_aliases
-
-    return list(catalog_metric_aliases(metric))
+    """Read catalog JSON directly (no heavy pha imports / flag gating)."""
+    path = repo_root() / "rules" / "health_intent_catalog.json"
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    aliases = (doc.get("metric_aliases") or {}).get(metric) or []
+    return [str(a) for a in aliases]
 
 
 def run_offline_expects(doc: dict[str, Any]) -> list[str]:
@@ -110,7 +136,10 @@ def validate_file(path: Path | str, *, offline: bool = True) -> list[str]:
 
 __all__ = [
     "SCHEMA_ID",
+    "ROOT",
     "DEFAULT_GOLDENS",
+    "repo_root",
+    "goldens_dir",
     "load_eval_set",
     "validate_eval_set_shape",
     "run_offline_expects",

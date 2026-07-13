@@ -3,7 +3,7 @@
   "id": "pha.smoke.v0",
   "domain": "pha",
   "version": "0.1.0",
-  "generated_at": "2026-07-13T06:18:54.188269+00:00",
+  "generated_at": "2026-07-13T06:36:16.408118+00:00",
   "description": "Thin smoke golden exported from EN/ZH banks + curated Loop A alias / locale / 3H placeholders. Offline expects only; live_* reserved for future runner.",
   "cases": [
     {
@@ -96,7 +96,7 @@
           "role": "user",
           "slot": "warehouse_hrv",
           "attach": false,
-          "text": "我最近的 HRV 怎么样？"
+          "text": "\u6211\u6700\u8fd1\u7684 HRV \u600e\u4e48\u6837\uff1f"
         }
       ],
       "expects": [
@@ -116,7 +116,7 @@
       }
     },
     {
-      "id": "catalog.steps.多少步",
+      "id": "catalog.steps.duoshaobu",
       "tags": [
         "loop_a",
         "alias",
@@ -129,7 +129,7 @@
           "role": "user",
           "slot": "steps",
           "attach": false,
-          "text": "日均多少步"
+          "text": "\u65e5\u5747\u591a\u5c11\u6b65"
         }
       ],
       "expects": [
@@ -139,7 +139,7 @@
         {
           "type": "catalog_alias",
           "metric": "steps",
-          "alias": "多少步"
+          "alias": "\u591a\u5c11\u6b65"
         },
         {
           "type": "live_non_empty_answer"
@@ -151,7 +151,7 @@
       }
     },
     {
-      "id": "locale.close.谢谢",
+      "id": "locale.close.xiexie",
       "tags": [
         "locale",
         "skip_llm",
@@ -161,7 +161,7 @@
       "turns": [
         {
           "role": "user",
-          "text": "谢谢",
+          "text": "\u8c22\u8c22",
           "attach": false
         }
       ],
@@ -190,7 +190,7 @@
       "turns": [
         {
           "role": "user",
-          "text": "帮我看看这些数据",
+          "text": "\u5e2e\u6211\u770b\u770b\u8fd9\u4e9b\u6570\u636e",
           "attach": true,
           "slot": "attach_open"
         }

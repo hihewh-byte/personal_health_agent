@@ -115,7 +115,7 @@ def build_smoke_set() -> dict[str, Any]:
             locale="zh",
         ),
         {
-            "id": "catalog.steps.多少步",
+            "id": "catalog.steps.duoshaobu",
             "tags": ["loop_a", "alias", "catalog", "smoke"],
             "locale": "zh",
             "turns": [
@@ -137,7 +137,7 @@ def build_smoke_set() -> dict[str, Any]:
             },
         },
         {
-            "id": "locale.close.谢谢",
+            "id": "locale.close.xiexie",
             "tags": ["locale", "skip_llm", "smoke"],
             "locale": "zh",
             "turns": [{"role": "user", "text": "谢谢", "attach": False}],
@@ -193,7 +193,8 @@ def main() -> int:
     ap.add_argument("--out", default=str(OUT_DEFAULT))
     args = ap.parse_args()
     doc = build_smoke_set()
-    text = json.dumps(doc, ensure_ascii=False, indent=2) + "\n"
+    # ASCII JSON (\uXXXX for CJK) keeps CI/log encoding boring.
+    text = json.dumps(doc, ensure_ascii=True, indent=2) + "\n"
     if args.write:
         out = Path(args.out)
         out.parent.mkdir(parents=True, exist_ok=True)
