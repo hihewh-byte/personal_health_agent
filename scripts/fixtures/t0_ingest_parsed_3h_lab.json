@@ -1,0 +1,27 @@
+{
+  "document_family": "lab",
+  "report_date": "2026-06-26",
+  "source_filename": "3h_grounded_lab_panel.png",
+  "parse_confidence": "high",
+  "metrics": [
+    {
+      "item": "CO2",
+      "value_text": "27",
+      "unit": "mmol/L",
+      "reference_range": "22-29"
+    },
+    {
+      "item": "CREA",
+      "value_text": "110",
+      "unit": "umol/L",
+      "reference_range": "44-133"
+    },
+    {
+      "item": "GFR",
+      "value_text": "72",
+      "unit": "mL/min/1.73m2",
+      "reference_range": ">60"
+    }
+  ],
+  "notes": "Representative 3H attachment_grounded_review lab panel (from universal-attachment lane selfcheck shape)."
+}
