@@ -30,6 +30,8 @@ Core docs + `harness-loop` companion + reference plugin.
 export PYTHONPATH=.
 PHA_E2E_JSONL=/path/to/your_failures.jsonl \
   bash scripts/pha_loop_run_from_e2e.sh
+# or: harness-loop harvest --plugin pha   # full pipeline
+# or: harness-loop reflect --plugin pha --e2e-jsonl /path/to/your_failures.jsonl
 ```
 
 4. **Curate proposal:** keep only domain-safe rows; drop toxic tokens
@@ -94,4 +96,6 @@ Bilingual ops playbook:
 - Spec: [`docs/harness-eval-set-v1.md`](../docs/harness-eval-set-v1.md)
 - Goldens: [`evals/goldens/`](../evals/goldens/) · toy [`loop_reference_toy/evals/`](loop_reference_toy/evals/)
 - Suite CLI: `harness-loop eval-check --plugin pha`
+- Ring R only: `harness-loop reflect --plugin pha --e2e-jsonl …`
+- Proposal shape: `harness-loop proposal-check reports/loop/proposals/*.json`
 - Offline scripts: `python scripts/pha_eval_set_selfcheck.py`

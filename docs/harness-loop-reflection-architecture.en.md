@@ -202,6 +202,7 @@ Measure   next Weekly EN50 pass rate / persona battery delta
 | harness.eval_set/v1 thin slice | ✅ schema + `evals/goldens/pha_smoke_v0.json` + offline selfcheck |
 | Loop A alias fuzz + 1E-d | ✅ `pha_alias_fuzz_v0` · `gate_1e_d_ocr_ui_junk` (blocks `Query`-class OCR junk) |
 | Harness Loop (Alpha) | ✅ installable `harness-loop` CLI · toy attach · suite selfcheck |
+| Ring R `harness-loop reflect` | ✅ standalone CLI (`0.1.0a2`) · portable `proposal-check` |
 | harness_trace UI / session MVCC | 📋 companion Phase 1 (see §10) |
 | HIO-A third-domain closure | 📋 Phase 3 |
 
@@ -270,4 +271,4 @@ python3 scripts/pha_persona_live_e2e_battery.py
 | 2026-07-13 | v1.0.5: Harness Loop component-family docs (PR #4); `harness.eval_set/v1` thin slice + `pha.smoke.v0` golden |
 | 2026-07-13 | v1.0.6: Loop A `1E-d` OCR/UI junk gate + `pha.alias_fuzz.v0` eval_set |
 | 2026-07-13 | v1.0.7: Harness Loop (Alpha) (installable `harness-loop` CLI + toy attach) |
-| 2026-07-13 | v1.0.8: naming — **Harness Loop (Alpha)**; drop “Official Loop Suite” |
+| 2026-07-13 | v1.0.9: Harness Loop `0.1.0a2` — `reflect` CLI + portable `proposal-check` |

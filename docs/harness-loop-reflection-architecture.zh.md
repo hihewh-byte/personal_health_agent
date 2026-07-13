@@ -202,6 +202,7 @@ Measure   下一 Weekly EN50 pass 率 / persona battery delta
 | harness.eval_set/v1 薄切片 | ✅ schema + `evals/goldens/pha_smoke_v0.json` + 离线 selfcheck |
 | Loop A alias fuzz + 1E-d | ✅ `pha_alias_fuzz_v0` · `gate_1e_d_ocr_ui_junk`（拒 `Query` 类 OCR junk） |
 | Harness Loop (Alpha) | ✅ `harness-loop` 可安装 CLI · toy attach · suite selfcheck |
+| 环 R `harness-loop reflect` | ✅ CLI 独立暴露（`0.1.0a2`）· `proposal-check` 可移植校验 |
 | harness_trace UI / session MVCC | 📋 配套组件 Phase 1（见 §10） |
 | HIO-A 第三域闭环 | 📋 Phase 3 |
 
@@ -270,4 +271,4 @@ python3 scripts/pha_persona_live_e2e_battery.py
 | 2026-07-13 | v1.0.5：Harness Loop 组件族叙事（PR #4）；`harness.eval_set/v1` 薄切片 + `pha.smoke.v0` golden |
 | 2026-07-13 | v1.0.6：Loop A `1E-d` OCR/UI junk 门禁 + `pha.alias_fuzz.v0` eval_set |
 | 2026-07-13 | v1.0.7：Harness Loop (Alpha)（`harness-loop` 可安装 + CLI + toy attach） |
-| 2026-07-13 | v1.0.8：口径 — **Harness Loop (Alpha)**；弃用 “Official Loop Suite / 官方套件产品族” |
+| 2026-07-13 | v1.0.9：Harness Loop `0.1.0a2` — `reflect` CLI + `proposal-check` 可移植校验 |
