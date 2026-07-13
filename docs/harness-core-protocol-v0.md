@@ -382,8 +382,30 @@ Canonical `schema` string today: **`pha.loop_promote_verdict/v1`**
 
 Reference writer: `scripts/pha_loop_promote_candidate.py`.
 
-### 11.4 Non-goals for §11
+### 11.4 `eval_set/v1` (regression goldens)
+
+Canonical `schema` string: **`harness.eval_set/v1`**
+
+Portable case list for offline + future live runners. Spec:
+[`docs/harness-eval-set-v1.md`](harness-eval-set-v1.md).
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `schema` | `str` | `harness.eval_set/v1` |
+| `id` | `str` | Set id, e.g. `pha.smoke.v0` |
+| `domain` | `str` | Plugin domain |
+| `version` | `str` | Semver of the set |
+| `cases` | `list[object]` | Each: `id`, `turns[]`, `expects[]`, optional `tags`/`locale`/`source` |
+
+**Offline expects (normative for CI selfcheck):** `non_empty_turn_text`, `min_turns`, `tag_required`, `catalog_alias`.  
+**Reserved:** `live_non_empty_answer`, `live_locale` (ignored offline).
+
+Reference: `pha/harness_eval_set.py` · golden `evals/goldens/pha_smoke_v0.json` ·
+`scripts/pha_eval_set_selfcheck.py`.
+
+### 11.5 Non-goals for §11
 
 - Do not run Reflection inside the user-visible chat turn  
 - Do not allow Loop suite patches to modify `harness_core` assertion modules  
-- Do not require PyPI `harness-loop` until Stage B extraction is tested
+- Do not require PyPI `harness-loop` until Stage B extraction is tested  
+- Do not replace full PHA E2E banks with eval_set (eval_set is the exported subset)

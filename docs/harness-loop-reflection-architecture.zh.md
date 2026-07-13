@@ -198,6 +198,8 @@ Measure   下一 Weekly EN50 pass 率 / persona battery delta
 | persona battery（离线 + live opt-in） | ✅ offline + `pha_persona_live_e2e_battery.py` |
 | 英文 warehouse CJK 兜底 | ✅ orchestrator `apply_english_locale_leak_guard` |
 | Nightly 基线 148+164 | ✅ seed=20260626 本地全绿（`c8add1f`） |
+| Official Loop Suite 产品族叙事 | ✅ Core README + protocol §11 + `packages/harness_loop` stub（PR #4） |
+| harness.eval_set/v1 薄切片 | ✅ schema + `evals/goldens/pha_smoke_v0.json` + 离线 selfcheck |
 | harness_trace UI / session MVCC | 📋 官方套件 Phase 1（见 §10） |
 | HIO-A 第三域闭环 | 📋 Phase 3 |
 
@@ -263,3 +265,4 @@ python3 scripts/pha_persona_live_e2e_battery.py
 | 2026-07-12 | v1.0.1：拆分为 `.zh.md` / `.en.md` 双语版本；移除 Appendix LinkedIn 文案 |
 | 2026-07-12 | v1.0.3：T0 gated adopter、CHB L2 gap、persona live；§10 竞品/官方套件路线 |
 | 2026-07-13 | v1.0.4：Nightly 148+164 基线修复；首条人审 alias `steps←多少步` full-veto 通过并合入 catalog |
+| 2026-07-13 | v1.0.5：Official Loop Suite 产品族叙事（PR #4）；`harness.eval_set/v1` 薄切片 + `pha.smoke.v0` golden |
