@@ -5,6 +5,17 @@
 
 ---
 
+## 2026-07-13
+
+- **CI checkout depth for consensus gates**:
+  - `.github/workflows/ci.yml`: `actions/checkout@v4` now uses `fetch-depth: 0`.
+  - Reason: default depth=1 made `check_startup_consensus.py` / `check_harness_consensus.py`
+    crash (`merge-base` + `HEAD~1` both unavailable), turning green selfchecks into red CI.
+  - Scripts hardened: fall back to `GITHUB_BASE_SHA`, then soft-empty instead of traceback.
+  - No `pha/main.py` startup sequence change.
+
+---
+
 ## 2026-06-24
 
 - **Stage 3F-γ / 3F-δ flags 接入**（无 `pha/main.py` 启动序列变更）:

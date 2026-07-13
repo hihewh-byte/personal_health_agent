@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -31,15 +32,33 @@ def run_git(args: list[str], *, suppress_stderr: bool = False) -> str:
 
 
 def changed_files() -> list[str]:
+    """Return files changed vs origin/main (or last commit / empty on shallow fail)."""
     try:
         base = run_git(["merge-base", "HEAD", "origin/main"], suppress_stderr=True).strip()
         if not base:
             raise RuntimeError("empty merge-base")
         diff = run_git(["diff", "--name-only", f"{base}...HEAD"])
+        return [x.strip() for x in diff.splitlines() if x.strip()]
     except Exception:
-        # Fallback for shallow clones or non-main branches in CI.
+        pass
+    # GitHub Actions PR checkout may be depth=1 (no HEAD~1 / no origin/main).
+    base_sha = (os.environ.get("GITHUB_BASE_SHA") or "").strip()
+    if base_sha:
+        try:
+            diff = run_git(["diff", "--name-only", f"{base_sha}...HEAD"])
+            return [x.strip() for x in diff.splitlines() if x.strip()]
+        except Exception:
+            pass
+    try:
         diff = run_git(["diff", "--name-only", "HEAD~1..HEAD"])
-    return [x.strip() for x in diff.splitlines() if x.strip()]
+        return [x.strip() for x in diff.splitlines() if x.strip()]
+    except Exception as exc:
+        print(
+            f"startup-consensus: WARN cannot determine changed files ({exc}); "
+            "assuming none (prefer checkout fetch-depth: 0 in CI)",
+            file=sys.stderr,
+        )
+        return []
 
 
 def is_startup_related(path: str) -> bool:
