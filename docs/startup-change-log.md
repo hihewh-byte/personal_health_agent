@@ -7,6 +7,11 @@
 
 ## 2026-07-13
 
+- **CI installs Official Loop Suite α**:
+  - `.github/workflows/ci.yml`: add `pip install -e packages/harness_loop` after `harness_core`.
+  - Reason: suite selfcheck (`pha_harness_loop_suite_selfcheck`) and `harness-loop` CLI require the package on PATH.
+  - No `pha/main.py` startup sequence change.
+
 - **CI checkout depth for consensus gates**:
   - `.github/workflows/ci.yml`: `actions/checkout@v4` now uses `fetch-depth: 0`.
   - Reason: default depth=1 made `check_startup_consensus.py` / `check_harness_consensus.py`
