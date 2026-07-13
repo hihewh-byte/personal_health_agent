@@ -16,6 +16,28 @@
 
 ---
 
+## Builder? 10 seconds · no LLM · no health domain
+
+**Building agents, not using PHA as an app?** Prove the harness control plane in one terminal block — no Ollama, no Apple Health data, no PyPI.
+
+```bash
+git clone https://github.com/hihewh-byte/personal_health_agent.git
+cd personal_health_agent
+bash scripts/bootstrap.sh
+source .venv/bin/activate
+pip install -e packages/harness_core packages/harness_loop
+harness-loop eval-check \
+  --golden examples/loop_reference_toy/evals/toy_smoke_v0.json \
+  --catalog examples/loop_reference_toy/catalog.json
+```
+
+You should see `RESULT: PASS` (bootstrap) and `PASS toy_smoke_v0.json` — a **non-health toy domain** on the portable `harness.eval_set/v1` contract.
+
+**Harness Loop (Alpha)** is vendored in-repo (`0.1.0a2`; not on PyPI yet): `harness-loop version` · `harness-loop reflect --plugin pha` (offline Ring R; read-only).  
+Deeper: [harness-builder-overview](docs/harness-builder-overview.md) · [Loop attach guide](examples/loop_reference_pha.md) · [Issue #1 — call for builders](https://github.com/hihewh-byte/personal_health_agent/issues/1).
+
+---
+
 ## Why PHA?
 
 Most “health chatbots” let the LLM invent numbers. PHA flips the control plane:
