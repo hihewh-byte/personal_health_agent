@@ -106,7 +106,8 @@
 
 ### P1-2 · 主动获取第一个外部 builder（对应 F4；人类主导，agent 辅助）
 
-- 状态：`TODO`
+- 状态：`TODO`（事务预备材料已就绪；邀请正文与外部反馈仍缺）
+- 预备材料：[`docs/p1-2-outreach-prep.md`](p1-2-outreach-prep.md)（Issue #1 现状、邀请对象表、反馈登记模板；不含 High 档邀请文案）
 - 目标：至少 1 个外部开发者完整跑通 README「Builder? 10 seconds」块并留下书面反馈
   （Issue 评论 / DM 均可，需可引用）。
 - 步骤：维护者定向邀请 2–3 名做数值敏感 Agent 的开发者；agent 负责起草邀请文案、
@@ -154,7 +155,8 @@
 | 日期 | 发现 | 来源任务 | 处置 |
 |------|------|----------|------|
 | 2026-07-14 | 维护者要求把「任务-模型档位路由」自动化，避免人工选模型（外部建议经审校：去掉硬编码模型名，改档位语义；明确软门禁边界） | 执行协议 §0 | 已落地：`.cursor/rules/audit-plan-execution.mdc` 新增 Model Routing Protocol 段 |
-| 2026-07-14 | README Builder 段仍写 harness-loop `0.1.0a3`，main 已是 `0.1.0a4`（P1-1） | P1-3 | 暂不顺手改（P1-3 范围仅导航）；留给后续小修或下次 README 触达 |
+| 2026-07-14 | README Builder 段仍写 harness-loop `0.1.0a3`，main 已是 `0.1.0a4`（P1-1） | P1-3 | **已修**：README + `packages/harness_loop/README.md` → `0.1.0a4`（分支 chore/a-readme-a4-and-p12-prep） |
+| 2026-07-14 | High 额度不足，P1-2 邀请正文 / P1-4 威胁模型暂缓；先做 Mid 事务辅助 | P1-2 | 已写 [`docs/p1-2-outreach-prep.md`](p1-2-outreach-prep.md)（Issue #1 现状、邀请对象表、§4 反馈登记模板；**不含**邀请正文） |
 
 ---
 
