@@ -2,6 +2,10 @@
 
 本文件是 coding agent 的**文档索引**；强制规则见 [`.cursor/rules/pha-mandatory-reads.mdc`](.cursor/rules/pha-mandatory-reads.mdc)。
 
+## 当前执行中的实施方案（先看这里）
+
+- [`docs/audit-implementation-plan-2026-07.md`](docs/audit-implementation-plan-2026-07.md) — 2026-07 审计后的唯一执行真源（P0/P1/P2 任务卡 + DoD）。执行其中任务前必读，并遵守 [`.cursor/rules/audit-plan-execution.mdc`](.cursor/rules/audit-plan-execution.mdc)（确认行：`CONSENSUS_ACK: audit-plan-2026-07 read`）。
+
 ## 写代码前必读（按改动类型）
 
 | 范围 | 必读文档 |

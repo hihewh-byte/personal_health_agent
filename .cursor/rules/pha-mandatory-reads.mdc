@@ -1,0 +1,49 @@
+---
+description: PHA 写代码前必读共识与变更流程（全局）
+alwaysApply: true
+---
+
+# PHA 写代码前必读
+
+在修改 `personal_health_agent/` 内任何代码前，**必须先阅读**与改动范围匹配的文档（未读不得开工）。
+
+## 全局（每次必读）
+
+1. [`docs/pha-pm-constitution.md`](../docs/pha-pm-constitution.md) — 上位法：反硬编码、Telemetry 驱动、确定性 Harness
+2. [`docs/harness-consensus-opus48-2026-06-08.md`](../docs/harness-consensus-opus48-2026-06-08.md) — Harness 硬约束与 P0/P1/P2 优先级
+
+## Harness / 聊天 / 路由 / 意图（`pha/chat_*`、`pha/harness_*`、`pha/health_*`、`pha/intent_*`）
+
+3. 上列 harness 共识全文
+4. [`docs/harness-change-log.md`](../docs/harness-change-log.md) — 改动后**同 PR 必须更新**
+5. [`docs/stage3c-multi-turn-episodic-focus-rfc.md`](../docs/stage3c-multi-turn-episodic-focus-rfc.md) — 会话锚点 / clarify / episodic
+6. [`docs/stage3f-intent-resolution-completeness-rfc.md`](../docs/stage3f-intent-resolution-completeness-rfc.md) — GoalClassifier / Harness Arbiter / 多域升舱（3F 编码必读）
+7. [`rules/health_intent_catalog.json`](../rules/health_intent_catalog.json) — 声明式意图 catalog（禁止逐句 if-else 扩规则）
+8. [`docs/harness-tier0-fuse-v2.2.6.1.md`](../docs/harness-tier0-fuse-v2.2.6.1.md) — Tier0 预算与 Protected SLA
+
+## 启动 / 导入 / 进程 / 部署（`scripts/pha_*`、`pha/main.py`、launchd）
+
+9. [`docs/stability-remediation-plan-2026-06-10.md`](../docs/stability-remediation-plan-2026-06-10.md) — 唯一执行真源 + §6 行为红线
+10. [`docs/startup-change-log.md`](../docs/startup-change-log.md) — 改动后**同 PR 必须更新**
+
+## Catalog / Schema / Registry
+
+11. [`docs/metadata-catalog-v2.3.md`](../docs/metadata-catalog-v2.3.md) — Schema 真源与 MC 生成
+12. [`rules/harness_profile_registry.generated.json`](../rules/harness_profile_registry.generated.json) — profile 契约快照（漂移时 `--write` 重生）
+
+## 子 agent / Catalog 工具循环
+
+13. [`docs/harness-subagent-protocol-v1.md`](../docs/harness-subagent-protocol-v1.md)
+
+## 开工确认行（PR / 首条实施回复）
+
+- Harness 改动：`CONSENSUS_ACK: harness-opus48-v2026-06-08 read`
+- 启动改动：`CONSENSUS_ACK: stability-plan-v2026-06-10 read`
+- Episodic 改动：`CONSENSUS_ACK: stage3c-multi-turn-episodic-focus-rfc read`
+- Goal / Arbiter / 3F 改动：`CONSENSUS_ACK: stage3f-intent-resolution-completeness-rfc read`
+
+## 禁止
+
+- 不得为通过单条 E2E 加 phrase 硬编码；用会话锚点 + catalog + clarify
+- 不得削弱 TurnEvidencePlan / Numerics 审计 / Harness Veto
+- 不得让 LLM 夺权改写健康数字
