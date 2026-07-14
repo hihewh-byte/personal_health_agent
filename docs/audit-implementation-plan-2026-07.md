@@ -139,6 +139,54 @@
 
 ---
 
+## 2.5 P1.5 — Minimal Attach（商业化解耦；可与 P1-2/P1-4 并行）
+
+> 来源：2026-07-14「Core+Loop 如何直接进用户 Agent」规划 + 外部审校（Gemini）经采纳。
+> **档位：High**（Adapter 契约与隔离边界设计）。Grok Fast / Mid **不得**开工本卡实现。
+> **前置：** 仅要求 P0 全部 DONE（已满足）。不阻塞于 P1-2/P1-4。
+
+### P1.5-1 · Minimal Attach 示例与 Adapter 契约冻结
+
+- 状态：`TODO`
+- 前置：P0 全部 DONE。
+- 目标：将业务语义与底层熔断剥离。冻结域适配器契约（Domain Adapter），使外部开发者无需阅读 PHA 健康域即可在 15 分钟内挂上 harness-core；提供**零健康域词汇**的极简 IT 工单防线示例，并打出可供 Loop 消费的失败 JSONL。
+- 交付物：
+  1. `packages/harness_core/src/harness_core/interfaces.py` — 冻结 ≤15 个公开符号的契约（`Protocol` / 类型别名优先于厚重 ABC），至少覆盖：`build_plan`、`extract_atoms`（或等价 allowlist 抽出）、`post_audit`、`emit_failure_event`（字段与现有 failure JSONL 超集对齐）。
+  2. `examples/attach_minimal/` — ≤3 个 Python 文件：`ticket_adapter.py`、`fake_agent.py`、`run_demo.py`（内存工单/权限变更场景；**禁止**出现 wearable / biomarker / health / HRV 等域词）。
+  3. `docs/attach-in-15-minutes.md` — 单页接入指南；README「Attach Harness」路径增加指向（仅加链接，不重写正文）。
+- 架构约束：
+  - **零重依赖**：`harness_core` 与 `interfaces.py` 不得新增第三方运行时依赖；不得 `import pha.*`。
+  - **PHA 降级为参考实现**：本卡要求 `pha/harness_core_adapter.py`（或薄包装）**符合契约的静态/运行时对账**（`isinstance` / Protocol 检查或等价 selfcheck）。**禁止**借机重写 PHA 聊天/路由主路径；大迁移另开任务卡。
+  - **红线不变**：不引入运行时自愈；demo 第二轮必须 fail-closed；不写真实 catalog。
+- 视觉/行为（`run_demo.py` 必须物理打印）：
+  - Round 1 合规 → 明确 `PASS`（或等价成功标记）
+  - Round 2 越权/串数 → 明确 `FAIL-CLOSED` / `verdict.ok=False`
+  - 自动写出至少一行失败快照到 `examples/attach_minimal/failures.jsonl`（或 `/tmp` 下可配置路径；默认相对该目录）
+- DoD：
+
+  ```bash
+  # 1. 非健康域极简 sandbox：合规通过 + 违规熔断
+  PYTHONPATH=packages/harness_core/src python examples/attach_minimal/run_demo.py
+  # 期望含 PASS 与 FAIL-CLOSED（或等价字样）；exit 0（演示成功跑完两条路径）
+
+  # 2. 失败打点
+  test -f examples/attach_minimal/failures.jsonl
+  grep -q '"passed": false\|"passed":false' examples/attach_minimal/failures.jsonl
+
+  # 3. 文档与契约存在
+  test -f docs/attach-in-15-minutes.md
+  test -f packages/harness_core/src/harness_core/interfaces.py
+
+  # 4. 包测试 + 全量自检仍绿；CI 增加独立一步跑 run_demo.py
+  python -m pytest packages/harness_core/tests -q
+  bash scripts/run_selfchecks.sh
+  ```
+
+  另需：`docs/harness-change-log.md` 记录；本卡状态同 PR 标 `DONE`。
+- 完成记录：（待填）
+
+---
+
 ## 3. P2 — 有外部信号后（触发条件不满足一律不做）
 
 | ID | 任务 | 触发条件 | 状态 |
@@ -157,6 +205,7 @@
 | 2026-07-14 | 维护者要求把「任务-模型档位路由」自动化，避免人工选模型（外部建议经审校：去掉硬编码模型名，改档位语义；明确软门禁边界） | 执行协议 §0 | 已落地：`.cursor/rules/audit-plan-execution.mdc` 新增 Model Routing Protocol 段 |
 | 2026-07-14 | README Builder 段仍写 harness-loop `0.1.0a3`，main 已是 `0.1.0a4`（P1-1） | P1-3 | **已修**：README + `packages/harness_loop/README.md` → `0.1.0a4`（分支 chore/a-readme-a4-and-p12-prep） |
 | 2026-07-14 | High 额度不足，P1-2 邀请正文 / P1-4 威胁模型暂缓；先做 Mid 事务辅助 | P1-2 | 已写 [`docs/p1-2-outreach-prep.md`](p1-2-outreach-prep.md)（Issue #1 现状、邀请对象表、§4 反馈登记模板；**不含**邀请正文） |
+| 2026-07-14 | Core+Loop「直接进用户 Agent」需 Adapter 契约 + 脱水 minimal 示例；外部审校赞同并建议立 P1.5 | 规划 | **已立卡** P1.5-1（见 §2.5）；实现须 High；本提交只入库任务卡，不动架构代码 |
 
 ---
 
@@ -166,3 +215,4 @@
 |------|------|------|
 | 2026-07-14 | 初版：由 2026-07-14 审计报告转化为可执行方案 | audit agent |
 | 2026-07-14 | 执行协议新增模型算力对账（Model Routing Protocol，见规则文件） | audit agent |
+| 2026-07-14 | 新增 §2.5 P1.5-1 Minimal Attach / Adapter 契约任务卡（审校采纳；实现待 High） | audit agent |
