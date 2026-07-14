@@ -5,7 +5,12 @@ Reads ``slow_round_candidates.jsonl``, classifies phrases into:
   Tier-A  accepted_catalog  — pure metric cores for health_intent_catalog.json
   Tier-B  accepted_schema   — optional schema trigger proposals (non-fuzzy)
   Tier-C  slot_candidates   — time/aggregation modifiers (never enter catalog)
-  rejected                  — failed 1E-a/b/c or classic conflict gates
+  rejected                  — failed 1E-a/b/c gates or classic conflict gates
+
+Since Harness Loop 0.1.0a4 the portable stages (phrase extraction, cluster,
+tiered admission, budget, patch ops, artifact writing) live in
+``harness_loop.distill``; this script keeps only PHA domain knowledge
+(catalog lookups, 1E gates, schema asset map, PR budget priorities).
 
 No auto-merge. Human PR review required before promote.
 """
@@ -14,10 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
-from collections import defaultdict
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +27,15 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from harness_loop.distill import (  # noqa: E402
+    apply_catalog_patch,
+    apply_promote_budget,
+    assemble_proposal_doc,
+    build_tiered_proposals,
+    cluster_rows,
+    extract_phrases,
+    write_distill_outputs,
+)
 from pha.health_intent_catalog import (  # noqa: E402
     catalog_metric_aliases,
     load_health_intent_catalog,
@@ -54,6 +65,7 @@ SCHEMA_ASSET_FOR_METRIC = {
 
 # Prefer at most this many Tier-A catalog proposals per run (PR draft budget).
 _MAX_CATALOG_PROMOTE = 2
+_CATALOG_BUDGET_PRIORITY = {"睡多久": 0, "走了多少步": 1, "多少步": 2}
 
 
 def _load_candidates(path: Path) -> list[dict[str, Any]]:
@@ -71,228 +83,32 @@ def _load_candidates(path: Path) -> list[dict[str, Any]]:
     return out
 
 
-def _existing_aliases(metric: str) -> set[str]:
-    return {_norm(a) for a in catalog_metric_aliases(metric)}
+def _row_metric(row: dict[str, Any]) -> str | None:
+    """PHA cluster rule: known metric families only; holistic/attachment skipped."""
+    metric = str(row.get("suggested_metric") or row.get("intent_family") or "").strip()
+    if not metric or metric in ("holistic", "attachment"):
+        return None
+    if metric not in SCHEMA_ASSET_FOR_METRIC and metric not in load_health_intent_catalog().get(
+        "metric_aliases",
+        {},
+    ):
+        return None
+    return metric
 
 
-def _norm(s: str) -> str:
-    return (s or "").strip().lower()
+def _phrase_fn(message: str, metric: str) -> list[str]:
+    """PHA phrase extraction: skip aliases already curated for this metric."""
+    known = {a for a in catalog_metric_aliases(metric)}
+    return extract_phrases(message, known_aliases=known)
 
 
-def _extract_candidate_phrases(message: str, metric: str) -> list[str]:
-    """Deterministic phrase extraction — no LLM. Prefer full short messages."""
-    msg = (message or "").strip()
-    if not msg:
-        return []
-    existing = _existing_aliases(metric)
-    phrases: list[str] = []
-
-    # Full message if short enough and not already known.
-    if 2 <= len(msg) <= 16 and _norm(msg) not in existing:
-        phrases.append(msg)
-
-    # Metric-specific colloquial n-grams (2–8 CJK chars or ASCII tokens).
-    for m in re.finditer(r"[\u4e00-\u9fff]{2,8}|[a-zA-Z]{2,12}", msg):
-        tok = m.group(0)
-        if _norm(tok) in existing:
-            continue
-        if len(tok) < 2:
-            continue
-        phrases.append(tok)
-
-    seen: set[str] = set()
-    out: list[str] = []
-    for p in phrases:
-        n = _norm(p)
-        if n in seen:
-            continue
-        seen.add(n)
-        out.append(p)
-    return out[:5]
+def _classify_fn(phrase: str, metric: str, source_message: str):
+    return classify_alias_phrase(phrase, metric_id=metric, source_message=source_message)
 
 
-def _cluster_candidates(rows: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
-    clusters: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    for row in rows:
-        metric = str(row.get("suggested_metric") or row.get("intent_family") or "").strip()
-        if not metric or metric in ("holistic", "attachment"):
-            continue
-        if metric not in SCHEMA_ASSET_FOR_METRIC and metric not in load_health_intent_catalog().get(
-            "metric_aliases",
-            {},
-        ):
-            continue
-        clusters[metric].append(row)
-    return clusters
-
-
-def _build_tiered_proposals(
-    clusters: dict[str, list[dict[str, Any]]],
-) -> tuple[
-    list[AliasProposal],
-    list[AliasProposal],
-    list[AliasProposal],
-    list[dict[str, Any]],
-]:
-    """Return (catalog, schema, slots, rejected)."""
-    accepted_catalog: list[AliasProposal] = []
-    accepted_schema: list[AliasProposal] = []
-    slot_candidates: list[AliasProposal] = []
-    rejected: list[dict[str, Any]] = []
-
-    seen_catalog: set[str] = set()
-    seen_slots: set[str] = set()
-
-    for metric, rows in sorted(clusters.items()):
-        asset = SCHEMA_ASSET_FOR_METRIC.get(metric, "")
-        for row in rows:
-            msg = str(row.get("message") or "")
-            signal = str(row.get("signal") or "")
-            for phrase in _extract_candidate_phrases(msg, metric):
-                classification = classify_alias_phrase(
-                    phrase,
-                    metric_id=metric,
-                    source_message=msg,
-                )
-
-                # Always record Tier-C slots peeled from the phrase.
-                for slot in classification.slot_candidates:
-                    sk = f"{slot.kind}:{_norm(slot.token)}:{metric}"
-                    if sk in seen_slots:
-                        continue
-                    seen_slots.add(sk)
-                    slot_candidates.append(
-                        AliasProposal(
-                            layer="slot",
-                            target=metric,
-                            alias=slot.token,
-                            metric_id=metric,
-                            source_message=slot.source_message or msg,
-                            signal=signal,
-                            slot_kind=slot.kind,
-                        ),
-                    )
-
-                if classification.tier == "catalog" and classification.core_alias:
-                    core = classification.core_alias
-                    key = f"catalog:{metric}:{_norm(core)}"
-                    if key in seen_catalog:
-                        continue
-                    prop = AliasProposal(
-                        layer="catalog",
-                        target=metric,
-                        alias=core,
-                        metric_id=metric,
-                        source_message=msg,
-                        signal=signal,
-                    )
-                    report = validate_alias_proposals(accepted_catalog + [prop])
-                    if report.ok:
-                        seen_catalog.add(key)
-                        accepted_catalog.append(prop)
-                    else:
-                        rejected.append(
-                            {
-                                "proposal": prop.as_dict(),
-                                "tier_attempted": "catalog",
-                                "conflicts": report.errors(),
-                                "classification": classification.as_dict(),
-                            },
-                        )
-                elif classification.tier == "schema" and classification.core_alias and asset:
-                    core = classification.core_alias
-                    prop = AliasProposal(
-                        layer="schema",
-                        target=asset,
-                        alias=core,
-                        metric_id=metric,
-                        source_message=msg,
-                        signal=signal,
-                    )
-                    report = validate_alias_proposals(accepted_schema + [prop])
-                    if report.ok:
-                        accepted_schema.append(prop)
-                    else:
-                        rejected.append(
-                            {
-                                "proposal": prop.as_dict(),
-                                "tier_attempted": "schema",
-                                "conflicts": report.errors(),
-                                "classification": classification.as_dict(),
-                            },
-                        )
-                elif classification.tier == "slot":
-                    # Slots already recorded; if core failed, note rejection of core.
-                    if classification.reject_reasons:
-                        rejected.append(
-                            {
-                                "proposal": {
-                                    "layer": "catalog",
-                                    "target": metric,
-                                    "alias": phrase,
-                                    "metric_id": metric,
-                                    "signal": signal,
-                                    "source_message": msg,
-                                },
-                                "tier_attempted": "catalog",
-                                "conflicts": classification.reject_reasons,
-                                "classification": classification.as_dict(),
-                                "note": "dynamic modifiers peeled to Tier-C; core not catalog-eligible",
-                            },
-                        )
-                elif classification.tier == "rejected":
-                    rejected.append(
-                        {
-                            "proposal": {
-                                "layer": "catalog",
-                                "target": metric,
-                                "alias": phrase,
-                                "metric_id": metric,
-                                "signal": signal,
-                                "source_message": msg,
-                            },
-                            "tier_attempted": "catalog",
-                            "conflicts": classification.reject_reasons,
-                            "classification": classification.as_dict(),
-                        },
-                    )
-
-    return accepted_catalog, accepted_schema, slot_candidates, rejected
-
-
-def _apply_catalog_proposals(proposals: list[AliasProposal]) -> dict[str, Any]:
-    catalog = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
-    aliases = catalog.setdefault("metric_aliases", {})
-    patch_ops: list[dict[str, Any]] = []
-    for prop in proposals:
-        if prop.layer != "catalog":
-            continue
-        bucket = aliases.setdefault(prop.target, [])
-        if prop.alias in bucket:
-            continue
-        bucket.append(prop.alias)
-        patch_ops.append(
-            {
-                "op": "add",
-                "path": f"/metric_aliases/{prop.target}",
-                "value": prop.alias,
-                "signal": prop.signal,
-                "source_message": prop.source_message,
-            },
-        )
-    return {"catalog_preview": catalog, "patch_ops": patch_ops}
-
-
-def _prefer_catalog_budget(proposals: list[AliasProposal]) -> list[AliasProposal]:
-    """Keep at most N Tier-A proposals for PR draft (prefer sleep/steps cores)."""
-    if len(proposals) <= _MAX_CATALOG_PROMOTE:
-        return proposals
-    priority = {"睡多久": 0, "走了多少步": 1, "多少步": 2}
-    ranked = sorted(
-        proposals,
-        key=lambda p: (priority.get(p.alias, 50), p.target, p.alias),
-    )
-    return ranked[:_MAX_CATALOG_PROMOTE]
+def _validate_fn(proposals: list[AliasProposal]) -> tuple[bool, list[str]]:
+    report = validate_alias_proposals(proposals)
+    return report.ok, report.errors()
 
 
 def main() -> int:
@@ -310,9 +126,14 @@ def main() -> int:
     candidates_path = Path(args.candidates)
     out_dir = Path(args.out_dir)
     rows = _load_candidates(candidates_path)
-    clusters = _cluster_candidates(rows)
-    accepted_catalog, accepted_schema, slot_candidates, rejected = _build_tiered_proposals(
+    clusters = cluster_rows(rows, metric_fn=_row_metric)
+    accepted_catalog, accepted_schema, slot_candidates, rejected = build_tiered_proposals(
         clusters,
+        phrase_fn=_phrase_fn,
+        classify_fn=_classify_fn,
+        validate_fn=_validate_fn,
+        make_proposal=AliasProposal,
+        asset_for_metric=SCHEMA_ASSET_FOR_METRIC,
     )
 
     baseline = detect_all_keyword_conflicts()
@@ -322,42 +143,36 @@ def main() -> int:
             print(f"  {err}", file=sys.stderr)
 
     catalog_for_pr = (
-        accepted_catalog if args.no_budget else _prefer_catalog_budget(accepted_catalog)
+        accepted_catalog
+        if args.no_budget
+        else apply_promote_budget(
+            accepted_catalog,
+            max_promote=_MAX_CATALOG_PROMOTE,
+            priority=_CATALOG_BUDGET_PRIORITY,
+        )
     )
-    deferred = [
-        p.as_dict()
-        for p in accepted_catalog
-        if p not in catalog_for_pr
-    ]
+    deferred = [p.as_dict() for p in accepted_catalog if p not in catalog_for_pr]
 
-    patch_doc = _apply_catalog_proposals(catalog_for_pr)
-    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    proposal = {
-        "schema": "pha.loop_proposal/v2",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "stage": "4-alpha-1",
-        "candidates_path": str(candidates_path),
-        "candidate_count": len(rows),
-        "cluster_metrics": sorted(clusters.keys()),
-        "accepted_catalog": [p.as_dict() for p in catalog_for_pr],
-        "accepted_schema": [p.as_dict() for p in accepted_schema],
-        "slot_candidates": [p.as_dict() for p in slot_candidates],
-        "rejected": rejected,
-        "deferred_catalog": deferred,
-        "patch_ops": patch_doc["patch_ops"],
-        "counts": {
-            "accepted_catalog": len(catalog_for_pr),
-            "accepted_schema": len(accepted_schema),
-            "slot_candidates": len(slot_candidates),
-            "rejected": len(rejected),
-            "deferred_catalog": len(deferred),
-        },
-        "notes": (
+    catalog_doc = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
+    patch_doc = apply_catalog_patch(catalog_doc, catalog_for_pr)
+    proposal = assemble_proposal_doc(
+        schema="pha.loop_proposal/v2",
+        stage="4-alpha-1",
+        candidates_path=str(candidates_path),
+        candidate_count=len(rows),
+        cluster_metrics=list(clusters.keys()),
+        accepted_catalog=catalog_for_pr,
+        accepted_schema=accepted_schema,
+        slot_candidates=slot_candidates,
+        rejected=rejected,
+        deferred_catalog=deferred,
+        patch_ops=patch_doc["patch_ops"],
+        notes=(
             "Proposal-only — Tier-A catalog only for human PR. "
             "Tier-C slot_candidates must NEVER enter health_intent_catalog.json. "
             "Do NOT auto-merge. Run nightly 148+164 before promote."
         ),
-    }
+    )
 
     print("== loop alias distiller (Stage 4-α.1) ==")
     print(f" candidates file     : {candidates_path} ({len(rows)} rows)")
@@ -373,23 +188,15 @@ def main() -> int:
         print(" dry-run: no files written")
         return 0
 
-    out_dir.mkdir(parents=True, exist_ok=True)
-    proposal_path = out_dir / f"alias_proposal_{ts}.json"
-    preview_path = out_dir / f"catalog_preview_{ts}.json"
-    slots_path = out_dir / f"slot_candidates_{ts}.jsonl"
-
-    proposal_path.write_text(json.dumps(proposal, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    preview_path.write_text(
-        json.dumps(patch_doc["catalog_preview"], ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
+    paths = write_distill_outputs(
+        out_dir,
+        proposal_doc=proposal,
+        catalog_preview=patch_doc["catalog_preview"],
+        slot_candidates=slot_candidates,
     )
-    with slots_path.open("w", encoding="utf-8") as fh:
-        for p in slot_candidates:
-            fh.write(json.dumps(p.as_dict(), ensure_ascii=False) + "\n")
-
-    print(f" proposal artifact   : {proposal_path}")
-    print(f" catalog preview     : {preview_path}")
-    print(f" slot candidates     : {slots_path}")
+    print(f" proposal artifact   : {paths['proposal']}")
+    print(f" catalog preview     : {paths['preview']}")
+    print(f" slot candidates     : {paths['slots']}")
     return 0
 
 

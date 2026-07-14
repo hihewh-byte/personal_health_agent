@@ -15,9 +15,32 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
+
+try:
+    from harness_loop.gates import (
+        GateSpec,
+        SlotCandidate,
+        TierClassification,
+        classify_phrase,
+        strip_modifier_tokens,
+    )
+except ImportError:  # pragma: no cover — vendored monorepo fallback (no pip install)
+    _VENDORED_LOOP_SRC = (
+        Path(__file__).resolve().parent.parent / "packages" / "harness_loop" / "src"
+    )
+    if str(_VENDORED_LOOP_SRC) not in sys.path:
+        sys.path.insert(0, str(_VENDORED_LOOP_SRC))
+    from harness_loop.gates import (
+        GateSpec,
+        SlotCandidate,
+        TierClassification,
+        classify_phrase,
+        strip_modifier_tokens,
+    )
 
 from pha.catalog_dch import token_in_message
 
@@ -178,38 +201,8 @@ class ConflictReport:
         return [c.as_error() for c in self.conflicts]
 
 
-@dataclass
-class SlotCandidate:
-    token: str
-    kind: str  # time | aggregation
-    source_message: str = ""
-    metric_id: str | None = None
-
-    def as_dict(self) -> dict[str, Any]:
-        return {
-            "token": self.token,
-            "kind": self.kind,
-            "source_message": self.source_message,
-            "metric_id": self.metric_id,
-        }
-
-
-@dataclass
-class TierClassification:
-    """Result of layer-alignment classification for one phrase."""
-
-    tier: str  # catalog | schema | slot | rejected
-    core_alias: str = ""
-    slot_candidates: list[SlotCandidate] = field(default_factory=list)
-    reject_reasons: list[str] = field(default_factory=list)
-
-    def as_dict(self) -> dict[str, Any]:
-        return {
-            "tier": self.tier,
-            "core_alias": self.core_alias,
-            "slot_candidates": [s.as_dict() for s in self.slot_candidates],
-            "reject_reasons": list(self.reject_reasons),
-        }
+# SlotCandidate / TierClassification now live in harness_loop.gates (0.1.0a4);
+# re-exported here so PHA callers keep importing them from this module.
 
 
 def _norm_token(token: str) -> str:
@@ -440,45 +433,11 @@ def is_affective_phrase(phrase: str) -> bool:
     return False
 
 
-def strip_dynamic_modifiers(
-    phrase: str,
-    *,
-    source_message: str = "",
-    metric_id: str | None = None,
-) -> tuple[str, list[SlotCandidate]]:
-    """Peel time/aggregation modifiers into Tier-C slot candidates; return core."""
-    core = (phrase or "").strip()
-    slots: list[SlotCandidate] = []
-    if not core:
-        return "", slots
+_CJK_TAIL_PARTICLES = re.compile(r"[啊呢吧呀嘛哦欸]+$")
 
-    for tok in TIME_ANCHOR_TOKENS:
-        if tok in core:
-            slots.append(
-                SlotCandidate(
-                    token=tok,
-                    kind="time",
-                    source_message=source_message or phrase,
-                    metric_id=metric_id,
-                ),
-            )
-            core = core.replace(tok, "")
 
-    for tok in AGGREGATION_TOKENS:
-        if tok in core:
-            slots.append(
-                SlotCandidate(
-                    token=tok,
-                    kind="aggregation",
-                    source_message=source_message or phrase,
-                    metric_id=metric_id,
-                ),
-            )
-            core = core.replace(tok, "")
-
-    core = re.sub(r"[啊呢吧呀嘛哦欸]+$", "", core)
-    core = re.sub(r"\s+", "", core).strip()
-
+def _normalize_metric_core(core: str, metric_id: str | None) -> str:
+    """PHA CJK colloquialism normalization (domain knowledge, stays here)."""
     # Normalize common sleep duration colloquialisms to a pure metric core.
     if metric_id == "sleep" or "睡" in core:
         if re.search(r"睡了?(几|多少)?(个)?(小时|钟头)", core):
@@ -491,7 +450,30 @@ def strip_dynamic_modifiers(
         if re.search(r"(走了?)?多少步", core):
             core = "走了多少步" if "走" in core else "多少步"
 
-    return core, slots
+    return core
+
+
+def strip_dynamic_modifiers(
+    phrase: str,
+    *,
+    source_message: str = "",
+    metric_id: str | None = None,
+) -> tuple[str, list[SlotCandidate]]:
+    """Peel time/aggregation modifiers into Tier-C slot candidates; return core.
+
+    Frame delegated to ``harness_loop.gates.strip_modifier_tokens``; PHA owns
+    the token lists, the CJK tail-particle pattern, and core normalization.
+    """
+    core, slots = strip_modifier_tokens(
+        phrase,
+        token_kinds={"time": TIME_ANCHOR_TOKENS, "aggregation": AGGREGATION_TOKENS},
+        source_message=source_message,
+        metric_id=metric_id,
+        tail_pattern=_CJK_TAIL_PARTICLES,
+    )
+    if not core and not slots:
+        return "", slots
+    return _normalize_metric_core(core, metric_id), slots
 
 
 def gate_1e_a_layer_denylist(phrase: str) -> ConflictReport:
@@ -655,135 +637,80 @@ def gate_1e_d_ocr_ui_junk(phrase: str) -> ConflictReport:
     return out
 
 
+def _affective_pre_reject(phrase: str, core: str) -> list[str]:
+    """Pure affective template with no recoverable metric core."""
+    if is_affective_phrase(phrase) and (not core or is_affective_phrase(core)):
+        return ["gate_1e_a_affective"]
+    return []
+
+
 def classify_alias_phrase(
     phrase: str,
     *,
     metric_id: str,
     source_message: str = "",
 ) -> TierClassification:
-    """Classify a raw phrase into Tier-A/B/C or rejected (layer alignment)."""
-    slots: list[SlotCandidate] = []
-    core, peeled = strip_dynamic_modifiers(
-        phrase,
-        source_message=source_message or phrase,
-        metric_id=metric_id,
+    """Classify a raw phrase into Tier-A/B/C or rejected (layer alignment).
+
+    The gate *frame* (strip → pre-reject → ordered gates → verdict) is the
+    portable ``harness_loop.gates.classify_phrase``; the 1E-a/b/c/d gate
+    bodies below are PHA domain knowledge and stay in this module.
+    """
+
+    def _strip(p: str, src: str) -> tuple[str, list[SlotCandidate]]:
+        return strip_dynamic_modifiers(p, source_message=src, metric_id=metric_id)
+
+    gates = (
+        # 1E-a on stripped core; peeled slots may demote to Tier-C.
+        GateSpec(
+            name="1e_a",
+            fn=lambda core: gate_1e_a_layer_denylist(core).errors(),
+            target="core",
+            slot_fallback=True,
+        ),
+        # 1E-b; Tier-C fallback only when a shorter schema bait covers the core.
+        GateSpec(
+            name="1e_b",
+            fn=lambda core: gate_1e_b_substring_inheritance(
+                core, metric_id=metric_id
+            ).errors(),
+            target="core",
+            slot_fallback=lambda reasons: any(
+                "gate_1e_b_schema_covers" in r for r in reasons
+            ),
+        ),
+        # 1E-c on core, then on the original phrase (pre-strip) for safety.
+        GateSpec(
+            name="1e_c_core",
+            fn=lambda core: gate_1e_c_narrow_pollution(core, metric_id=metric_id).errors(),
+            target="core",
+        ),
+        GateSpec(
+            name="1e_c_phrase",
+            fn=lambda p: gate_1e_c_narrow_pollution(p, metric_id=metric_id).errors(),
+            target="phrase",
+        ),
+        # 1E-d OCR/UI junk on core and original phrase.
+        GateSpec(
+            name="1e_d_core",
+            fn=lambda core: gate_1e_d_ocr_ui_junk(core).errors(),
+            target="core",
+        ),
+        GateSpec(
+            name="1e_d_phrase",
+            fn=lambda p: gate_1e_d_ocr_ui_junk(p).errors(),
+            target="phrase",
+        ),
     )
-    slots.extend(peeled)
 
-    # Also peel modifiers from the full source message for Tier-C capture.
-    if source_message and source_message != phrase:
-        _, src_slots = strip_dynamic_modifiers(
-            source_message,
-            source_message=source_message,
-            metric_id=metric_id,
-        )
-        seen = {_norm_token(s.token) for s in slots}
-        for s in src_slots:
-            if _norm_token(s.token) not in seen:
-                slots.append(s)
-                seen.add(_norm_token(s.token))
-
-    reasons: list[str] = []
-
-    # Pure affective with no recoverable core.
-    if is_affective_phrase(phrase) and (not core or is_affective_phrase(core)):
-        reasons.append("gate_1e_a_affective")
-        return TierClassification(
-            tier="rejected",
-            core_alias=core or phrase,
-            slot_candidates=slots,
-            reject_reasons=reasons,
-        )
-
-    if not core or len(core) < _MIN_TOKEN_LEN:
-        if slots:
-            return TierClassification(
-                tier="slot",
-                core_alias="",
-                slot_candidates=slots,
-                reject_reasons=["core_empty_after_strip"],
-            )
-        reasons.append("core_empty")
-        return TierClassification(
-            tier="rejected",
-            core_alias="",
-            slot_candidates=slots,
-            reject_reasons=reasons,
-        )
-
-    # If we peeled dynamic context, Tier-C is always recorded; core may still be Tier-A.
-    a_report = gate_1e_a_layer_denylist(core)
-    if not a_report.ok:
-        reasons.extend(a_report.errors())
-        if slots:
-            return TierClassification(
-                tier="slot",
-                core_alias=core,
-                slot_candidates=slots,
-                reject_reasons=reasons,
-            )
-        return TierClassification(
-            tier="rejected",
-            core_alias=core,
-            slot_candidates=slots,
-            reject_reasons=reasons,
-        )
-
-    b_report = gate_1e_b_substring_inheritance(core, metric_id=metric_id)
-    if not b_report.ok:
-        reasons.extend(b_report.errors())
-        # Covered by shorter schema bait, or already in catalog.
-        if slots and any(c.kind == "gate_1e_b_schema_covers" for c in b_report.conflicts):
-            return TierClassification(
-                tier="slot",
-                core_alias=core,
-                slot_candidates=slots,
-                reject_reasons=reasons,
-            )
-        return TierClassification(
-            tier="rejected",
-            core_alias=core,
-            slot_candidates=slots,
-            reject_reasons=reasons,
-        )
-
-    c_report = gate_1e_c_narrow_pollution(core, metric_id=metric_id)
-    if not c_report.ok:
-        reasons.extend(c_report.errors())
-        return TierClassification(
-            tier="rejected",
-            core_alias=core,
-            slot_candidates=slots,
-            reject_reasons=reasons,
-        )
-
-    # Also run 1E-c on the original phrase (pre-strip) for safety.
-    c_raw = gate_1e_c_narrow_pollution(phrase, metric_id=metric_id)
-    if not c_raw.ok:
-        reasons.extend(c_raw.errors())
-        return TierClassification(
-            tier="rejected",
-            core_alias=core,
-            slot_candidates=slots,
-            reject_reasons=reasons,
-        )
-
-    for junk_phrase in (core, phrase):
-        d_report = gate_1e_d_ocr_ui_junk(junk_phrase)
-        if not d_report.ok:
-            reasons.extend(d_report.errors())
-            return TierClassification(
-                tier="rejected",
-                core_alias=core,
-                slot_candidates=slots,
-                reject_reasons=reasons,
-            )
-
-    return TierClassification(
-        tier="catalog",
-        core_alias=core,
-        slot_candidates=slots,
-        reject_reasons=[],
+    return classify_phrase(
+        phrase,
+        metric_id=metric_id,
+        source_message=source_message,
+        strip_fn=_strip,
+        pre_reject_fn=_affective_pre_reject,
+        gates=gates,
+        min_core_len=_MIN_TOKEN_LEN,
     )
 
 

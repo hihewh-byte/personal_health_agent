@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "harness-loop"
-version = "0.1.0a3"
-description = "Harness Loop (Alpha) — offline evolution companion to harness-core (harvest/promote/adopt/eval/pipeline)."
+version = "0.1.0a4"
+description = "Harness Loop (Alpha) — offline evolution companion to harness-core (harvest/gates/distill/promote/adopt/eval/pipeline)."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
