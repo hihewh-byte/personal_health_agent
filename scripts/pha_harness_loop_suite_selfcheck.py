@@ -76,6 +76,32 @@ def main() -> int:
             return 1
     print("OK reflect --plugin pha")
 
+    with tempfile.TemporaryDirectory(prefix="harness-loop-harvest-") as tmp:
+        out_c = str(Path(tmp) / "candidates.jsonl")
+        if _run(["harvest", "--e2e-jsonl", str(fixture_e2e), "--out", out_c]) != 0:
+            print("FAIL portable harvest --e2e-jsonl")
+            return 1
+        if not Path(out_c).is_file() or Path(out_c).stat().st_size < 10:
+            print("FAIL portable harvest produced empty candidates")
+            return 1
+        verdict_dir = str(Path(tmp) / "verdicts")
+        if (
+            _run(
+                [
+                    "promote",
+                    "--static-only",
+                    "--proposal",
+                    str(curated),
+                    "--out-dir",
+                    verdict_dir,
+                ]
+            )
+            != 0
+        ):
+            print("FAIL portable promote --static-only on curated proposal")
+            return 1
+    print("OK portable harvest + static promote")
+
     if _run(["version"]) != 0:
         print("FAIL harness-loop version")
         return 1

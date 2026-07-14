@@ -4,6 +4,16 @@
 
 ---
 
+## 2026-07-14 (Harness Loop α3 — portable harvest/pipeline/static promote)
+
+- **类别**：P1（Loop β：把编排从 PHA bash 委托抽进 `harness_loop`；业务脚本仍作 reference plugin）。
+- **可移植**：`harness_loop.candidates` · `harvest` · `pipeline` · `proposals.static_veto` / `write_static_promote_verdict`。
+- **CLI**：`harvest --e2e-jsonl`（无 PHA 也可跑）；`promote --static-only`；`harvest --plugin pha` 走包内 `run_harvest_pipeline` 分阶段编排。
+- **版本**：`0.1.0a3`；自检 `pha_harness_loop_pipeline_selfcheck`。
+- **铁律不变**：不 auto-merge；不写 catalog；不改编路由。
+
+---
+
 ## 2026-07-13 (Harness Loop α2 — Ring R reflect CLI + portable proposal validation)
 
 - **类别**：P1（Loop+Reflection β 薄切片：环 R 独立 CLI + 可移植 proposal/verdict 形状校验）。
