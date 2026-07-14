@@ -4,6 +4,17 @@
 
 ---
 
+## 2026-07-14 (Harness Loop α4 — portable gates/distill; audit plan P1-1)
+
+- **类别**：P1（审计方案 P1-1：1E 门框 + distill 域无关阶段迁入 `harness_loop`）。
+- **可移植**：`harness_loop.gates`（strip → pre-reject → ordered gates → tier verdict；injectable token maps / gate fns）· `harness_loop.distill`（phrase extract / cluster / tiered admission / budget / patch ops / proposal assembly）。
+- **PHA 退化为域参数**：`scripts/pha_loop_alias_distiller.py` 397→204 行，委托 `harness_loop.distill`；`pha/loop_keyword_conflicts.py` 的 `classify_alias_phrase` 委托 `harness_loop.gates.classify_phrase`，域词表与 1E-a/b/c/d 具体规则仍留 PHA。
+- **测试**：包内新增 `test_gates.py` + `test_distill.py`（共 38 个 harness_loop 用例）；全量自检仍绿。
+- **版本**：`0.1.0a4`。
+- **铁律不变**：proposal-only；不 auto-merge；不写 catalog。
+
+---
+
 ## 2026-07-14 (Harness Loop — package-local pytest suite; audit plan P0-2)
 
 - **类别**：P0（审计方案 P0-2：包脱离仓库可自证，为 PyPI 铺路）。

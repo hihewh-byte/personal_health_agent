@@ -82,7 +82,7 @@
 
 ### P1-1 · Loop 核心算法二次抽取（对应 F3）
 
-- 状态：`TODO`
+- 状态：`DONE`
 - 前置：P0 全部 DONE。
 - 目标：按 α3 的模式，把 1E 门禁与 alias distill 中**域无关**的部分迁入
   `harness_loop`，PHA 脚本退化为「域参数 + 委托调用」。
@@ -102,7 +102,7 @@
 
   版本升至 `0.1.0a4`，changelog 记录；`harness-loop harvest --plugin pha` 行为与迁移前一致
   （用 `scripts/fixtures/loop_e2e_sample.jsonl` 对比迁移前后产物 JSON 逐字段一致）。
-- 完成记录：（待填）
+- 完成记录：2026-07-14 · 分支 feat/p1-1-loop-gates-distill（`harness_loop.gates` + `distill` 迁入包；`pha_loop_alias_distiller.py` 397→204 行；包内 pytest 38 passed；全量自检 ALL PASS；版本 0.1.0a4）
 
 ### P1-2 · 主动获取第一个外部 builder（对应 F4；人类主导，agent 辅助）
 
