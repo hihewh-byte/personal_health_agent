@@ -1,0 +1,18 @@
+---
+description: Harness 共识门禁（聊天/路由/计划/审计）
+globs: pha/chat_*.py,pha/harness_*.py,pha/health_*.py,pha/intent_*.py,pha/numerics_manifest.py,pha/catalog_*.py,pha/shadow_routing.py,rules/**
+alwaysApply: false
+---
+
+# Harness 共识（改动前读）
+
+必读：[`docs/harness-consensus-opus48-2026-06-08.md`](../docs/harness-consensus-opus48-2026-06-08.md)
+
+硬约束摘要：
+- TurnEvidencePlan **先于** LLM；Tier0 关键槽不可被尾截断挤掉
+- C 层数值审计 + Harness Veto；Shadow 默认 zero-adopt
+- 路由：resolver `turn_scope` / 会话锚点 > phrase 规则；歧义才 clarify
+
+变更流程：声明 P0/P1/P2 → 更新 `docs/harness-change-log.md` → 回滚路径 → 至少一条 harness 自检/E2E
+
+Registry：改 profile 槽位后运行 `python scripts/pha_harness_profile_registry_generate.py --write`

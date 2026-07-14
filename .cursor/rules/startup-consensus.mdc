@@ -1,0 +1,13 @@
+---
+description: 启动/导入/进程生命周期共识
+globs: scripts/pha_*.sh,scripts/pha_*.py,pha/main.py,docker/**
+alwaysApply: false
+---
+
+# 启动共识（改动前读）
+
+必读：[`docs/stability-remediation-plan-2026-06-10.md`](../docs/stability-remediation-plan-2026-06-10.md)
+
+要点：restart 先预检再起新实例；禁止无差别 `kill -9` 占端口进程；M4 内存红线。
+
+变更流程：更新 `docs/startup-change-log.md`；PR 含 `CONSENSUS_ACK: stability-plan-v2026-06-10 read`

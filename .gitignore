@@ -29,7 +29,8 @@ reports/e2e/question_manifest_*.json
 # PHA local snapshots (use git tags for releases)
 .pha-versions/
 
-# IDE / logs
-.cursor/
+# IDE / logs (agent rules in .cursor/rules/ are tracked; rest of .cursor/ stays local)
+.cursor/*
+!.cursor/rules/
 *.log
 /tmp/

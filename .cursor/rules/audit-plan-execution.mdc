@@ -1,0 +1,21 @@
+---
+description: 审计实施方案 2026-07 强制执行协议（全局）
+alwaysApply: true
+---
+
+# 审计实施方案执行协议（2026-07）
+
+仓库存在唯一执行真源：[`docs/audit-implementation-plan-2026-07.md`](../docs/audit-implementation-plan-2026-07.md)。
+凡执行其中任务（P0-1 … P2-4）或被要求「继续审计后续工作 / 继续改进计划」，**必须**：
+
+1. **先读全文**该方案，并在首条实施回复与 PR 描述输出：
+   `CONSENSUS_ACK: audit-plan-2026-07 read`
+2. **遵守顺序**：P0 未全部 DONE 不开工 P1；P2 任务触发条件（写在方案 §3 表格里）不满足一律不做。
+3. **状态同 PR 更新**：开工改 `IN_PROGRESS`，完成改 `DONE` 并填完成记录（日期 + commit/PR）。
+   状态变更必须与代码改动同一 PR。
+4. **DoD 即验收**：任务卡里的命令必须实际运行，PR 描述粘贴真实输出；不通过不得声称完成。
+5. **不扩 scope**：方案没写的不做；新发现登记进方案 §4，开新任务卡走人审。
+6. **红线**：不得引入运行时自愈 / 自动合并 / catalog 自动写入；Loop 产物 proposal-only + 人审 PR。
+7. **推送边界**：agent 只做本地 commit 并提供 PR 文案；push / merge 由维护者执行。
+
+本规则不豁免既有门禁（`pha-mandatory-reads.mdc`、harness/startup 共识与 changelog 要求），需叠加执行。
