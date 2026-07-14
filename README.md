@@ -14,6 +14,14 @@
 | **Release** | [`v0.4.0-beta.1`](https://github.com/hihewh-byte/personal_health_agent/releases/tag/v0.4.0-beta.1) |
 | **Build** | `pha-v2.3.32-full-import-only` |
 
+### Choose your path
+
+| Path | For whom | Start here |
+|------|----------|------------|
+| **Use PHA** | Run the personal health app locally | [5-minute Quick Start](#5-minute-quick-start-native--recommended-first-try) · [Clone & verify](#clone--verify-60-seconds--no-ollama) |
+| **Attach Harness** | Build agents on the portable control plane | [harness-builder-overview](docs/harness-builder-overview.md) · [Builder? 10 seconds](#builder-10-seconds--no-llm--no-health-domain) |
+| **Contribute Loop** | Evolve offline recognition via harvest → promote → PR | [Loop attach guide](examples/loop_reference_pha.md) · [CONTRIBUTING](CONTRIBUTING.md) |
+
 ---
 
 ## Builder? 10 seconds · no LLM · no health domain

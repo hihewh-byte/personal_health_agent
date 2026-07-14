@@ -116,7 +116,7 @@
 
 ### P1-3 · 文档三入口导航（对应 F5）
 
-- 状态：`TODO`
+- 状态：`DONE`
 - 目标：README 顶部固定三条路径，每条指向唯一 landing 文档：
   1. **用 PHA**（个人健康应用）→ 现有 quick start；
   2. **接 Harness**（builder）→ `docs/harness-builder-overview.md`；
@@ -124,7 +124,7 @@
 - 约束：只加导航，不重写正文；不新增文档（landing 用现有文档，缺口先登记 §4）。
 - DoD：README 顶部（第一屏内）出现三入口区块；三个链接在仓库内全部可解析
   （`python -c` 或 lychee 校验相对路径存在）。
-- 完成记录：（待填）
+- 完成记录：2026-07-14 · 分支 docs/p1-3-three-path-nav（README 顶部新增 Choose your path 三入口；landing 链接全部可解析；未新增文档）
 
 ### P1-4 · 威胁模型短文（对应审计安全维度缺口）
 
@@ -154,6 +154,7 @@
 | 日期 | 发现 | 来源任务 | 处置 |
 |------|------|----------|------|
 | 2026-07-14 | 维护者要求把「任务-模型档位路由」自动化，避免人工选模型（外部建议经审校：去掉硬编码模型名，改档位语义；明确软门禁边界） | 执行协议 §0 | 已落地：`.cursor/rules/audit-plan-execution.mdc` 新增 Model Routing Protocol 段 |
+| 2026-07-14 | README Builder 段仍写 harness-loop `0.1.0a3`，main 已是 `0.1.0a4`（P1-1） | P1-3 | 暂不顺手改（P1-3 范围仅导航）；留给后续小修或下次 README 触达 |
 
 ---
 
