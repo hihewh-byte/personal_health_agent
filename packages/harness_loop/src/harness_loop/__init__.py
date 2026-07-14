@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__version__ = "0.1.0a2"
+__version__ = "0.1.0a3"
 
 SCHEMA_EVAL_SET = "harness.eval_set/v1"
 SCHEMA_LOOP_PROPOSAL = "pha.loop_proposal/v2"  # reference plugin schema id (v0)

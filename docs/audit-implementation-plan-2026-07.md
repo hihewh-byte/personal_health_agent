@@ -35,7 +35,7 @@
 
 ### P0-1 · 合入 α3 分支（对应 F1）
 
-- 状态：`TODO`
+- 状态：`DONE`（合并本 PR 即完成；DoD 已在变基后分支实测，输出见 PR 描述）
 - 目标：`feat/harness-loop-pipeline-extract`（808dfd2，harness-loop 0.1.0a3：
   portable harvest / candidates / pipeline / static promote）合入 main，
   使 main 实态与 README / changelog 口径一致。
@@ -51,7 +51,7 @@
   bash scripts/run_selfchecks.sh           # ALL SELF CHECKS PASSED
   ```
 
-- 完成记录：（待填）
+- 完成记录：2026-07-14 · commit 3fe1eb0（α3 变基至 main 399618d 后，DoD 四项全部实测通过：`harness-loop version` = 0.1.0a3；三个可移植模块存在；pipeline selfcheck PASS；全量自检 ALL PASS）
 
 ### P0-2 · harness_loop 包内独立测试（对应 F2）
 

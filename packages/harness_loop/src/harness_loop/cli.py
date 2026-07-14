@@ -8,8 +8,14 @@ from pathlib import Path
 
 from harness_loop import __version__
 from harness_loop.eval_set import validate_file
+from harness_loop.harvest import harvest_file_to_path
 from harness_loop.paths import detect_monorepo_root
-from harness_loop.proposals import validate_proposal_file, validate_verdict_file
+from harness_loop.pipeline import default_out_layout
+from harness_loop.proposals import (
+    validate_proposal_file,
+    validate_verdict_file,
+    write_static_promote_verdict,
+)
 
 
 def _cmd_version(_: argparse.Namespace) -> int:
@@ -98,22 +104,75 @@ def _cmd_proposal_check(args: argparse.Namespace) -> int:
 
 
 def _cmd_harvest(args: argparse.Namespace) -> int:
+    # Portable path: domain-agnostic failed-turn harvest (no PHA required).
+    if args.e2e_jsonl:
+        out = args.out
+        if not out:
+            root = detect_monorepo_root()
+            out = str(default_out_layout(root)["candidates"])
+        classify = None
+        if args.plugin == "pha":
+            try:
+                from harness_loop.plugins import pha as pha_plugin
+
+                root = detect_monorepo_root()
+                if str(root) not in sys.path:
+                    sys.path.insert(0, str(root))
+                from pha.loop_failure_taxonomy import classify_e2e_check  # noqa: WPS433
+
+                classify = classify_e2e_check
+            except Exception as exc:  # noqa: BLE001
+                print(f"WARN: PHA classify unavailable ({exc}); using default", file=sys.stderr)
+        print("== harness-loop harvest → portable failed-turn JSONL ==")
+        print("NOTE: candidates only; never auto-merges")
+        path, n_sig, n_rows = harvest_file_to_path(
+            args.e2e_jsonl,
+            out,
+            classify_check=classify,
+        )
+        print(f" signals : {n_sig}")
+        print(f" rows    : {n_rows}")
+        print(f" output  : {path}")
+        return 0
+
     if args.plugin != "pha":
-        print("ERROR: α harvest currently requires --plugin pha (reference impl)", file=sys.stderr)
+        print(
+            "ERROR: provide --e2e-jsonl PATH for portable harvest, "
+            "or --plugin pha for full PHA pipeline",
+            file=sys.stderr,
+        )
         return 2
     from harness_loop.plugins import pha as pha_plugin
 
-    print("== harness-loop harvest → PHA reference pipeline ==")
+    print("== harness-loop harvest → PHA reference pipeline (orchestrated) ==")
     print("NOTE: proposal-only; never auto-merges")
-    return pha_plugin.run_shell("scripts/pha_loop_run_from_e2e.sh")
+    return pha_plugin.run_harvest_pipeline()
 
 
 def _cmd_promote(args: argparse.Namespace) -> int:
-    if args.plugin != "pha":
-        print("ERROR: α promote currently requires --plugin pha", file=sys.stderr)
-        return 2
     if not args.proposal:
         print("ERROR: --proposal PATH required", file=sys.stderr)
+        return 2
+
+    if args.static_only or args.plugin is None:
+        out_dir = args.out_dir
+        if not out_dir:
+            root = detect_monorepo_root()
+            out_dir = str(default_out_layout(root)["verdicts"])
+        print("== harness-loop promote → portable static veto (dry-run) ==")
+        print("NOTE: no regression suite; no catalog write; no auto-merge")
+        path, verdict = write_static_promote_verdict(
+            args.proposal,
+            out_dir=out_dir,
+            patch_path_prefix=args.patch_prefix,
+        )
+        status = "PASS" if verdict.get("passed") else "VETO"
+        print(f" {status} static_veto={verdict.get('static_veto')}")
+        print(f" verdict : {path}")
+        return 0 if verdict.get("passed") else 1
+
+    if args.plugin != "pha":
+        print("ERROR: --plugin pha or --static-only required", file=sys.stderr)
         return 2
     from harness_loop.plugins import pha as pha_plugin
 
@@ -192,14 +251,40 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sp.set_defaults(func=_cmd_proposal_check)
 
-    sp = sub.add_parser("harvest", help="Run offline harvest/critic/distill pipeline")
-    sp.add_argument("--plugin", default="pha", choices=["pha"])
+    sp = sub.add_parser(
+        "harvest",
+        help="Portable failed-turn harvest, or full PHA offline pipeline",
+    )
+    sp.add_argument(
+        "--plugin",
+        default=None,
+        choices=["pha"],
+        help="pha = full reference pipeline (when --e2e-jsonl omitted)",
+    )
+    sp.add_argument("--e2e-jsonl", default="", help="Failed-turn JSONL → portable harvest")
+    sp.add_argument("--out", default="", help="Candidates JSONL output path")
     sp.set_defaults(func=_cmd_harvest)
 
     sp = sub.add_parser("promote", help="Dry-run/veto a loop proposal (never applies)")
-    sp.add_argument("--plugin", default="pha", choices=["pha"])
+    sp.add_argument(
+        "--plugin",
+        default="pha",
+        choices=["pha"],
+        help="pha = reference regression veto; use --static-only for portable gates",
+    )
     sp.add_argument("--proposal", required=True, help="Path to loop_proposal JSON")
     sp.add_argument("--full-veto", action="store_true")
+    sp.add_argument(
+        "--static-only",
+        action="store_true",
+        help="Portable static veto only (no PHA regression suites)",
+    )
+    sp.add_argument("--out-dir", default="", help="Verdict output dir (static-only)")
+    sp.add_argument(
+        "--patch-prefix",
+        default="/metric_aliases/",
+        help="Allowed patch_ops path prefix for static veto",
+    )
     sp.set_defaults(func=_cmd_promote)
 
     sp = sub.add_parser("adopt", help="Gated adopt (requires --confirm YES)")
