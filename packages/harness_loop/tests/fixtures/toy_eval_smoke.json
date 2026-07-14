@@ -1,0 +1,29 @@
+{
+  "schema": "harness.eval_set/v1",
+  "id": "toy.ops.smoke.pkgtest",
+  "domain": "toy_ops",
+  "version": "0.1.0",
+  "description": "Package-local non-health smoke for eval_set + catalog_alias.",
+  "cases": [
+    {
+      "id": "toy.backlog.alias",
+      "tags": ["toy", "smoke"],
+      "locale": "en",
+      "turns": [{"role": "user", "text": "How large is the backlog?", "attach": false}],
+      "expects": [
+        {"type": "non_empty_turn_text"},
+        {"type": "catalog_alias", "metric": "ticket_backlog", "alias": "backlog"}
+      ]
+    },
+    {
+      "id": "toy.mttr.zh",
+      "tags": ["toy", "smoke"],
+      "locale": "zh",
+      "turns": [{"role": "user", "text": "修复时长怎么样", "attach": false}],
+      "expects": [
+        {"type": "non_empty_turn_text"},
+        {"type": "catalog_alias", "metric": "mttr", "alias": "修复时长"}
+      ]
+    }
+  ]
+}

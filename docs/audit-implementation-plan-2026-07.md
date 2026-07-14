@@ -55,7 +55,7 @@
 
 ### P0-2 · harness_loop 包内独立测试（对应 F2）
 
-- 状态：`TODO`
+- 状态：`DONE`
 - 前置：P0-1 DONE。
 - 目标：`packages/harness_loop/tests/` 建立 pytest 单测，使包脱离本仓库也能自证。
   把 selfcheck 中针对 proposals / harvest / pipeline / eval_set 的断言下沉为 6–10 个用例：
@@ -74,7 +74,7 @@
 
   另需在 `.github/workflows/ci.yml` 增加一步 `python -m pytest packages/harness_loop/tests -q`
   （harness_core 的 tests 若尚未进 CI，同步补上），并更新 `docs/harness-change-log.md`。
-- 完成记录：（待填）
+- 完成记录：2026-07-14 · 分支 feat/harness-loop-package-tests（20 个用例覆盖 proposals/harvest/pipeline/eval_set，fixture 包内自足、零 pha/scripts 依赖；CI 新增 Harness packages unit tests 步骤同时纳入 harness_core tests；DoD 实测：包内 pytest 20 passed，全量自检 ALL PASS）
 
 ---
 

@@ -5,6 +5,17 @@
 
 ---
 
+## 2026-07-14
+
+- **CI adds "Harness packages unit tests" step**:
+  - `.github/workflows/ci.yml`: new step before the selfcheck suite —
+    `pip install pytest` + `python -m pytest packages/harness_core/tests packages/harness_loop/tests -q`.
+  - Reason: audit plan P0-2 — packages must prove themselves via package-local
+    pytest suites; also brings previously-uncovered `harness_core` tests into CI.
+  - No `pha/main.py` startup sequence change.
+
+---
+
 ## 2026-07-13
 
 - **CI installs Harness Loop (Alpha)**:
