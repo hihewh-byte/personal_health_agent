@@ -41,7 +41,7 @@ harness-loop eval-check \
 
 You should see `RESULT: PASS` (bootstrap) and `PASS toy_smoke_v0.json` — a **non-health toy domain** on the portable `harness.eval_set/v1` contract.
 
-**Harness Loop (Alpha)** is vendored in-repo (`0.1.0a3`; not on PyPI yet): `harness-loop version` · portable `harvest --e2e-jsonl` / `promote --static-only` · `reflect --plugin pha`.  
+**Harness Loop (Alpha)** is vendored in-repo (`0.1.0a4`; not on PyPI yet): `harness-loop version` · portable `harvest --e2e-jsonl` / `promote --static-only` · `reflect --plugin pha` · `gates`/`distill`.  
 Deeper: [harness-builder-overview](docs/harness-builder-overview.md) · [Loop attach guide](examples/loop_reference_pha.md) · [Issue #1 — call for builders](https://github.com/hihewh-byte/personal_health_agent/issues/1).
 
 ---

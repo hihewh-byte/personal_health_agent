@@ -1,6 +1,6 @@
 # harness-loop — Harness Loop (Alpha)
 
-> **Status:** **α installable** `0.1.0a3` — CLI + portable harvest/pipeline/proposals + PHA reference plugin.  
+> **Status:** **α installable** `0.1.0a4` — CLI + portable harvest/pipeline/gates/distill/proposals + PHA reference plugin.  
 > **Role:** offline evolution companion to [`harness-core`](../harness_core/).  
 > **Not yet:** Trace UI, live HTTP runner; PHA-specific harvest/distill bodies still live in PHA scripts (orchestration extracted).
 
