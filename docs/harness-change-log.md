@@ -4,6 +4,15 @@
 
 ---
 
+## 2026-07-14 (Harness Loop — package-local pytest suite; audit plan P0-2)
+
+- **类别**：P0（审计方案 P0-2：包脱离仓库可自证，为 PyPI 铺路）。
+- **测试**：`packages/harness_loop/tests/` 新增 20 个 pytest 用例（proposals 静态否决 / harvest 去重与字段 / pipeline 顺序与熔断 / eval_set toy 域），fixture 全部包内、零 `pha.*` / `scripts/` 依赖。
+- **CI**：新步骤 `Harness packages unit tests` 统一跑 `harness_core` + `harness_loop` 包内测试（此前 core 的 tests 也未进 CI）。
+- **铁律不变**：测试仅覆盖离线纯函数；不触碰在线路径。
+
+---
+
 ## 2026-07-14 (Harness Loop α3 — portable harvest/pipeline/static promote)
 
 - **类别**：P1（Loop β：把编排从 PHA bash 委托抽进 `harness_loop`；业务脚本仍作 reference plugin）。

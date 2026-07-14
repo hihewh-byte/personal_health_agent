@@ -39,6 +39,11 @@ jobs:
       - name: Doctor (offline — Ollama expected to fail)
         run: python scripts/doctor.py --quick || true
 
+      - name: Harness packages unit tests
+        run: |
+          pip install pytest
+          python -m pytest packages/harness_core/tests packages/harness_loop/tests -q
+
       - name: Offline selfcheck suite
         run: bash scripts/run_selfchecks.sh
 
