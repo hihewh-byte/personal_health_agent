@@ -1,8 +1,8 @@
 # harness-loop — Harness Loop (Alpha)
 
-> **Status:** **α installable** (2026-07-13) — CLI + portable eval_set/proposals + PHA reference plugin delegate.  
+> **Status:** **α installable** `0.1.0a3` — CLI + portable harvest/pipeline/proposals + PHA reference plugin.  
 > **Role:** offline evolution companion to [`harness-core`](../harness_core/).  
-> **Not yet:** Trace UI, live HTTP runner, fully extracted harvest modules (still delegates to PHA scripts).
+> **Not yet:** Trace UI, live HTTP runner; PHA-specific harvest/distill bodies still live in PHA scripts (orchestration extracted).
 
 ## Component family
 
@@ -39,8 +39,10 @@ pip install -e 'packages/harness_core' -e 'packages/harness_loop'
 | `harness-loop eval-check --golden … --catalog …` | Portable domain golden |
 | `harness-loop reflect --plugin pha` | Ring R: offline failure attribution (read-only) |
 | `harness-loop proposal-check PATH` | Validate `loop_proposal/v2` JSON shape |
-| `harness-loop harvest --plugin pha` | Delegate to PHA harvest/critic/distill pipeline |
-| `harness-loop promote --plugin pha --proposal …` | Dry-run/veto (optional `--full-veto`) |
+| `harness-loop harvest --e2e-jsonl …` | **Portable** failed-turn harvest → candidates JSONL |
+| `harness-loop harvest --plugin pha` | Full PHA pipeline (Harvest→Reflect→Distill), orchestrated in-package |
+| `harness-loop promote --static-only --proposal …` | Portable static veto (no regression suite) |
+| `harness-loop promote --plugin pha --proposal …` | PHA reference dry-run/veto (optional `--full-veto`) |
 | `harness-loop adopt --plugin pha --proposal … --confirm YES` | Gated T0 write |
 
 Env: `HARNESS_LOOP_REPO_ROOT` (or `PHA_REPO_ROOT`) → monorepo root for script delegation.
