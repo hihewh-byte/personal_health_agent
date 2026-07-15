@@ -71,7 +71,7 @@ consumes. Once you have a few real failures:
 
 ```bash
 pip install -e packages/harness_loop
-harness-loop harvest --e2e-jsonl failures.jsonl --out-dir reports/loop
+harness-loop harvest --e2e-jsonl failures.jsonl --out reports/loop/candidates.jsonl
 ```
 
 Harvest → distill → gated proposal → **human PR** — the loop never rewrites
