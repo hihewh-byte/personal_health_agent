@@ -4,6 +4,15 @@
 
 ---
 
+## 2026-07-15 (Threat model v0; audit plan P1-4)
+
+- **类别**：P1（审计方案 P1-4：补齐安全叙事，ToB/医疗场景可直接引用）。
+- **文档**：`docs/threat-model-v0.md` — 三级信任边界（在线 Core / 离线 Loop / 人审 PR）；在线 O1–O3（数值替换 / 相位混乱 / adapter 走私）与离线 L1–L4（JSONL 投毒 → 1E 门禁 + static veto + 人审三道防线；`--confirm YES` 采纳门；产物篡改残余风险）；显式非目标（不做运行时输入过滤 / 多租户 / 产物签名）。
+- **索引**：`AGENTS.md` 文档表新增「安全 / 威胁模型」行。
+- **铁律不变**：纯文档；不改任何在线/离线代码路径。
+
+---
+
 ## 2026-07-14 (Harness Loop α4 — portable gates/distill; audit plan P1-1)
 
 - **类别**：P1（审计方案 P1-1：1E 门框 + distill 域无关阶段迁入 `harness_loop`）。

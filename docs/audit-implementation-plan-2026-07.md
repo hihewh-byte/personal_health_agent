@@ -129,13 +129,13 @@
 
 ### P1-4 · 威胁模型短文（对应审计安全维度缺口）
 
-- 状态：`TODO`
+- 状态：`DONE`
 - 目标：新增 `docs/threat-model-v0.md`（1–2 页），覆盖：
   信任边界图（在线 Core / 离线 Loop / 人审 PR）、Loop 提案攻击面
   （恶意 JSONL 投毒 → 1E 门禁 + static veto + 人审三道防线）、
   Loop B `--confirm YES` 与 T0 采纳的防线、明确的非目标（不做运行时输入过滤）。
 - DoD：文档存在且被 `AGENTS.md` 文档索引表引用；`docs/harness-change-log.md` 记录。
-- 完成记录：（待填）
+- 完成记录：2026-07-15 · 分支 docs/p1-4-threat-model（`docs/threat-model-v0.md`：三级信任边界 + 在线 O1–O3 / 离线 L1–L4 威胁与三道防线 + 显式非目标 + 运维清单；AGENTS.md 索引与 harness changelog 同 PR 更新）
 
 ---
 
