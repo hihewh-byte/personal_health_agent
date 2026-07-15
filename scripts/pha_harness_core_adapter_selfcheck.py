@@ -43,8 +43,45 @@ def main() -> int:
     )
     assert any(d.startswith("tool_not_allowed:") for d in diffs), diffs
 
+    # P1.5-1: PHA must conform to the frozen v1 DomainAdapter contract.
+    from pha.harness_core_adapter import (
+        PHANumericsAdapter,
+        selfcheck_domain_adapter_conformance,
+    )
+
+    conf = selfcheck_domain_adapter_conformance()
+    assert conf["conforms"] is True, conf
+
+    from harness_core.interfaces import run_post_audit
+    from pha.numerics_manifest import ManifestEntry, NumericsManifest
+
+    manifest = NumericsManifest(
+        profile="selfcheck",
+        user_id="selfcheck",
+        entries=[
+            ManifestEntry(
+                domain="lipid",
+                metric="ldl",
+                value=4.05,
+                unit="mmol/L",
+                anchor="2026-06-01",
+                source="selfcheck",
+            )
+        ],
+    )
+    ad = PHANumericsAdapter(manifest)
+    core_plan2 = ad.build_plan("我最近一次的LDL是多少？")
+    ok_verdict = run_post_audit(ad, core_plan2, "你 2026-06-01 的LDL为 4.05 mmol/L。")
+    assert ok_verdict.ok, ok_verdict.violations
+    bad_verdict = run_post_audit(ad, core_plan2, "你 2026-06-02 的LDL为 9.99 mmol/L。")
+    assert not bad_verdict.ok
+    assert any(v.startswith("atom_not_allowed:") for v in bad_verdict.violations), (
+        bad_verdict.violations
+    )
+
     print("PASS pha_harness_core_adapter_selfcheck")
     print(f"  profile={core.profile} phases={smoke['core_phases']}")
+    print(f"  adapter_contract={conf['contract']} fail_closed_codes={list(bad_verdict.violations)}")
     return 0
 
 

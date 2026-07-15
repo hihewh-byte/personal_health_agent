@@ -147,7 +147,7 @@
 
 ### P1.5-1 · Minimal Attach 示例与 Adapter 契约冻结
 
-- 状态：`TODO`
+- 状态：`DONE`
 - 前置：P0 全部 DONE。
 - 目标：将业务语义与底层熔断剥离。冻结域适配器契约（Domain Adapter），使外部开发者无需阅读 PHA 健康域即可在 15 分钟内挂上 harness-core；提供**零健康域词汇**的极简 IT 工单防线示例，并打出可供 Loop 消费的失败 JSONL。
 - 交付物：
@@ -183,7 +183,7 @@
   ```
 
   另需：`docs/harness-change-log.md` 记录；本卡状态同 PR 标 `DONE`。
-- 完成记录：（待填）
+- 完成记录：2026-07-15 · 分支 feat/p1.5-1-minimal-attach — `harness_core.interfaces` v1（10 公开符号：`DomainAdapter` 三方法 Protocol / `run_post_audit` / `emit_failure_event` / `AuditVerdict` / `is_domain_adapter` 等）；`examples/attach_minimal/` 三文件 IT 工单 demo（Turn 1 PASS / Turn 2 FAIL-CLOSED 落 failures.jsonl，已验证可被 `harness-loop harvest` 消费）；PHA 参考实现 `PHANumericsAdapter` + selfcheck 契约对账；`packages/harness_core/tests/test_interfaces.py` 8 例；CI 独立步骤；`docs/attach-in-15-minutes.md`；harness-core `0.0.0a2`
 
 ---
 

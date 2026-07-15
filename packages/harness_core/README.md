@@ -39,6 +39,7 @@ harness-loop version
 | `turn_fsm` | `CoreTurnPhase` + `PhaseRecorder` + plan-before-compose |
 | `integrity` | `IntegrityResult` |
 | `plan_vs_actual` | Portable diff codes |
+| `interfaces` | **Frozen `DomainAdapter` contract (v1)** + `run_post_audit` + `emit_failure_event` — see [attach in 15 minutes](../../docs/attach-in-15-minutes.md) |
 
 **Not included here:** Tier0 assemblers, health/tax plugins, CompareTable, filing_table, Loop scripts.
 
