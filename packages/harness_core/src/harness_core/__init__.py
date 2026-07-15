@@ -1,4 +1,4 @@
-"""harness-core — thin control-plane interfaces (v0.0.0a1)."""
+"""harness-core — thin control-plane interfaces (v0.0.0a2)."""
 
 from harness_core.integrity import IntegrityResult, SlotIntegrityRow, integrity_diff_codes
 from harness_core.plan_vs_actual import compute_plan_vs_actual
@@ -11,7 +11,7 @@ from harness_core.turn_fsm import (
 )
 from harness_core.turn_plan import TurnPlan, TurnPlanData, as_turn_plan_data
 
-__version__ = "0.0.0a1"
+__version__ = "0.0.0a2"
 
 __all__ = [
     "__version__",

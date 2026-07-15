@@ -44,6 +44,13 @@ jobs:
           pip install pytest
           python -m pytest packages/harness_core/tests packages/harness_loop/tests -q
 
+      - name: Minimal attach demo (P1.5-1 — must fail-closed)
+        run: |
+          rm -f examples/attach_minimal/failures.jsonl
+          PYTHONPATH=packages/harness_core/src python examples/attach_minimal/run_demo.py
+          test -f examples/attach_minimal/failures.jsonl
+          grep -q '"passed": false' examples/attach_minimal/failures.jsonl
+
       - name: Offline selfcheck suite
         run: bash scripts/run_selfchecks.sh
 

@@ -4,6 +4,19 @@
 
 ---
 
+## 2026-07-15 (harness-core α2 — frozen DomainAdapter contract + minimal attach; audit plan P1.5-1)
+
+- **类别**：P1.5（审计方案 P1.5-1：Adapter 契约冻结 + 零健康域 minimal attach 示例）。
+- **契约**：`harness_core.interfaces`（v1，10 个公开符号 ≤15 预算）— `DomainAdapter`（`build_plan` / `extract_atoms` / `allowed_atoms` 三方法结构化 Protocol，不要求继承）、`run_post_audit`（fail-closed 成员审计：`atom_not_allowed:*` + `compute_plan_vs_actual` 机器差异码；空白名单遇原子即拦）、`emit_failure_event`（字段为 `harness_loop.harvest` 消费超集：`passed`/`message`/`session_name`/`turn`/`lane`/`harness_profile`/`checks`）、`AuditVerdict`、`is_domain_adapter`。新增公开符号需任务卡。
+- **示例**：`examples/attach_minimal/`（`ticket_adapter.py` / `fake_agent.py` / `run_demo.py`）— 内存 IT 工单场景，零健康域词；Turn 1 PASS，Turn 2 捏造工单+越权角色 → FAIL-CLOSED 并落 `failures.jsonl`（已验证可被 `harness-loop harvest` 直接消费）。
+- **PHA 降级为参考实现**：`pha/harness_core_adapter.py` 新增 `PHANumericsAdapter` 薄包装（复用 numerics manifest 值/日期集与既有抽取正则；**不动**聊天/路由主路径）；`pha_harness_core_adapter_selfcheck` 增加契约对账（`is_domain_adapter` + 通过/熔断双路径断言）。
+- **测试/CI**：`packages/harness_core/tests/test_interfaces.py`（8 例；含符号预算冻结断言）；CI 新增独立步骤跑 `run_demo.py` 并断言 FAIL-CLOSED 落盘。
+- **文档**：`docs/attach-in-15-minutes.md` 单页接入指南；README「Attach Harness」行加链接。
+- **版本**：harness-core `0.0.0a2`。
+- **铁律不变**：零第三方依赖；`harness_core` 不 `import pha.*`；不引入运行时自愈。
+
+---
+
 ## 2026-07-15 (Threat model v0; audit plan P1-4)
 
 - **类别**：P1（审计方案 P1-4：补齐安全叙事，ToB/医疗场景可直接引用）。

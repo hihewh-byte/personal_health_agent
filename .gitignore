@@ -18,6 +18,7 @@ storage/attachments/
 
 # Runtime reports (may contain personal health data or local paths)
 reports/loop/
+examples/attach_minimal/failures.jsonl
 reports/chb/**/brief_*.json
 reports/chb/**/gap_candidates.json
 reports/p1_golden/*

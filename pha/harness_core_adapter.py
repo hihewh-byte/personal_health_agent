@@ -141,6 +141,59 @@ def plan_vs_actual_via_core(
     )
 
 
+class PHANumericsAdapter:
+    """PHA as *reference implementation* of ``harness_core.interfaces.DomainAdapter``.
+
+    Thin wrapper only — delegates to existing PHA plan building and the
+    numerics-manifest value/date sets. Does not touch chat/routing paths.
+
+    ``manifest`` supplies the turn's allowlist (values + report dates).
+    Callers that already hold a built ``NumericsManifest`` inject it here;
+    selfchecks may inject a synthetic one.
+    """
+
+    def __init__(self, manifest: Any = None) -> None:
+        self._manifest = manifest
+
+    def build_plan(self, user_message: str) -> Any:
+        from pha.harness_plan import build_turn_evidence_plan
+
+        return to_core_plan(build_turn_evidence_plan(user_message))
+
+    def extract_atoms(self, text: str) -> list[str]:
+        # Same normalization the C-layer numerics audit uses.
+        from pha.numerics_manifest import (
+            _extract_decimal_tokens,
+            _extract_normalized_dates,
+        )
+
+        atoms: list[str] = []
+        for tok in _extract_normalized_dates(text or "") + _extract_decimal_tokens(text or ""):
+            if tok and tok not in atoms:
+                atoms.append(tok)
+        return atoms
+
+    def allowed_atoms(self, plan: Any) -> set[str]:
+        if self._manifest is None:
+            return set()
+        return set(self._manifest.allowed_values) | set(self._manifest.allowed_dates)
+
+
+def selfcheck_domain_adapter_conformance() -> dict[str, Any]:
+    """Runtime proof that PHA conforms to the frozen v1 adapter contract."""
+    ensure_harness_core()
+    from harness_core.interfaces import is_domain_adapter
+
+    adapter = PHANumericsAdapter()
+    if not is_domain_adapter(adapter):
+        raise AssertionError("PHANumericsAdapter does not satisfy DomainAdapter")
+    return {
+        "conforms": True,
+        "adapter": type(adapter).__name__,
+        "contract": "harness_core.interfaces.DomainAdapter/v1",
+    }
+
+
 def smoke_adapter_roundtrip(plan: Any) -> dict[str, Any]:
     """Dry-run proof used by golden / selfcheck. Raises if core missing."""
     core_plan = to_core_plan(plan)
@@ -167,12 +220,14 @@ def smoke_adapter_roundtrip(plan: Any) -> dict[str, Any]:
 
 __all__ = [
     "HarnessCoreUnavailable",
+    "PHANumericsAdapter",
     "assert_plan_before_compose_domain",
     "ensure_harness_core",
     "harness_core_available",
     "integrity_from_mapping",
     "plan_vs_actual_via_core",
     "record_domain_phases",
+    "selfcheck_domain_adapter_conformance",
     "smoke_adapter_roundtrip",
     "to_core_plan",
 ]

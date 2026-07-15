@@ -5,6 +5,18 @@
 
 ---
 
+## 2026-07-15
+
+- **CI adds "Minimal attach demo" step (audit plan P1.5-1)**:
+  - `.github/workflows/ci.yml`: after packages unit tests — run
+    `examples/attach_minimal/run_demo.py` with `PYTHONPATH=packages/harness_core/src`,
+    then assert `failures.jsonl` exists and contains a `"passed": false` row.
+  - Reason: P1.5-1 DoD — the non-health minimal attach demo must prove both PASS
+    and FAIL-CLOSED paths independently in CI.
+  - No `pha/main.py` startup sequence change.
+
+---
+
 ## 2026-07-14
 
 - **CI adds "Harness packages unit tests" step**:
