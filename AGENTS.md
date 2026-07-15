@@ -17,6 +17,7 @@
 | **启动 / 导入 / 进程** | [`docs/stability-remediation-plan-2026-06-10.md`](docs/stability-remediation-plan-2026-06-10.md)、[`docs/startup-change-log.md`](docs/startup-change-log.md) |
 | **Catalog / Schema** | [`docs/metadata-catalog-v2.3.md`](docs/metadata-catalog-v2.3.md) |
 | **子 agent 协议** | [`docs/harness-subagent-protocol-v1.md`](docs/harness-subagent-protocol-v1.md) |
+| **安全 / 威胁模型** | [`docs/threat-model-v0.md`](docs/threat-model-v0.md) |
 | **Profile Registry** | [`rules/harness_profile_registry.generated.json`](rules/harness_profile_registry.generated.json) |
 
 ## CI 门禁
