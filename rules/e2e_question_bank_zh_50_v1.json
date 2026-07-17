@@ -1,0 +1,3242 @@
+{
+  "bank_version": "zh-50-1.0",
+  "language": "zh",
+  "colloquial_ratio_target": 0.7,
+  "description": "50 Chinese E2E stress sets; each ≥8 turns; wearable screenshots, warehouse lipids/wearables, prior lab images. Seed via PHA_E2E_BANK_SEED.",
+  "variant_pools": {
+    "upload_exercise": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "哥附件是今天身体指标，上午撸了组阻力训练，明天能练不？练啥好？",
+        "传了张表，早上 workout 是力量课，帮我瞅瞅明天适合动吗",
+        "这是今天的数据截图哈，上午力量训练过了，明天要不要休息",
+        "附件是 Apple Watch 那些数，上午练了阻力，明天还能练吗练啥"
+      ],
+      "formal": [
+        "附件是我今天的一些身体指标情况，需要说明的是上午有一个workout是阻力训练，我想知道明天是否适合运动，如果适合，请建议运动类型。",
+        "已上传今日穿戴截图；上午完成阻力训练，请评估明日运动适宜性并给出类型建议。"
+      ]
+    },
+    "lipid": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "血脂咋样啊",
+        "帮我看看胆固醇",
+        "LDL 高不高",
+        "血脂指标正常不"
+      ],
+      "formal": [
+        "血脂怎么样",
+        "请分析我的血脂指标",
+        "低密度脂蛋白情况如何"
+      ]
+    },
+    "hrv": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "HRV 咋样",
+        "心率变异性瞅瞅",
+        "rmssd 正常吗",
+        "HRV 行不行啊"
+      ],
+      "formal": [
+        "HRV 怎么样",
+        "请分析 HRV 指标",
+        "心率变异性是否正常"
+      ]
+    },
+    "sleep_duration": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "睡了几小时",
+        "昨晚睡多久啊",
+        "睡眠时长多少",
+        "睡了几个小时"
+      ],
+      "formal": [
+        "睡眠时长多少",
+        "请报告本次睡眠总时长"
+      ]
+    },
+    "sleep_verify": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "睡眠数据不对吧，重新核一下",
+        "今天睡眠明显有问题，再分析下",
+        "睡眠定账好像错了帮我核实"
+      ],
+      "formal": [
+        "请核实今天的睡眠数据，明显不对请重新分析",
+        "请重新核对截图中的睡眠定账数据"
+      ]
+    },
+    "deep_sleep": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "深睡多久",
+        "深睡时间呢",
+        "深睡够不够"
+      ],
+      "formal": [
+        "深睡时长是多少",
+        "请报告深睡时间"
+      ]
+    },
+    "workout_origin": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "锻炼8次哪来的",
+        "锻炼次数咋算的",
+        "workout 次数从哪读的"
+      ],
+      "formal": [
+        "锻炼次数8次从哪来",
+        "近期锻炼次数的数据来源是什么"
+      ]
+    },
+    "workout_recent": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "最近四周练了几天",
+        "近4周运动几天啊",
+        "这个月练了多少天"
+      ],
+      "formal": [
+        "最近4周运动了几天",
+        "请报告近四周锻炼天数"
+      ]
+    },
+    "steps": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "步数呢",
+        "走了多少步",
+        "今天步数咋样",
+        "步数多少"
+      ],
+      "formal": [
+        "最近步数",
+        "请报告步数情况",
+        "日均步数是多少"
+      ]
+    },
+    "steps_warehouse": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "最近步数",
+        "步数咋样",
+        "走路多不多",
+        "日均多少步"
+      ],
+      "formal": [
+        "请查询近90天步数",
+        "报告步数均值"
+      ]
+    },
+    "thanks": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "谢谢",
+        "谢啦",
+        "感谢",
+        "好的谢谢"
+      ],
+      "formal": [
+        "谢谢",
+        "感谢",
+        "谢谢您"
+      ]
+    },
+    "advisory": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "还有啥要注意的",
+        "还要注意啥",
+        "有啥提醒吗",
+        "还有别的吗"
+      ],
+      "formal": [
+        "还有什么要注意的",
+        "还有哪些需要注意的事项"
+      ]
+    },
+    "ok_close": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "好的",
+        "嗯嗯",
+        "知道了",
+        "收到"
+      ],
+      "formal": [
+        "好的",
+        "知道了",
+        "收到"
+      ]
+    },
+    "hrv_normal": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "HRV 正常吗",
+        "hrv 还行不",
+        "心率变异正常吧"
+      ],
+      "formal": [
+        "HRV 正常吗",
+        "心率变异性是否在正常范围"
+      ]
+    },
+    "delta_week": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "和上周比呢",
+        "比上周咋样",
+        "跟上周比怎么样"
+      ],
+      "formal": [
+        "和上周比呢",
+        "与上周相比如何"
+      ]
+    },
+    "exercise_tomorrow": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "明天适合运动吗",
+        "明天能练吗",
+        "明天动一动行不行"
+      ],
+      "formal": [
+        "明天适合运动吗",
+        "请评估明日运动适宜性"
+      ]
+    },
+    "exercise_day_after": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "那后天呢",
+        "后天能练不",
+        "后天怎么样"
+      ],
+      "formal": [
+        "那后天呢",
+        "后天是否适合运动"
+      ]
+    },
+    "low_intensity": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "低强度有氧行吗",
+        "推荐轻松有氧吗",
+        "慢跑可以吗"
+      ],
+      "formal": [
+        "推荐低强度有氧吗",
+        "是否适合低强度有氧运动"
+      ]
+    },
+    "running": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "明天能跑步吗",
+        "能跑吗",
+        "跑步行不行"
+      ],
+      "formal": [
+        "明天能跑步吗",
+        "明日是否适合跑步"
+      ]
+    },
+    "running_duration": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "跑多久合适",
+        "跑多长合适",
+        "跑几分钟好"
+      ],
+      "formal": [
+        "跑多久合适",
+        "建议跑步时长是多少"
+      ]
+    },
+    "year_2023": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "2023年",
+        "23年",
+        "看2023"
+      ],
+      "formal": [
+        "2023年",
+        "请查看2023年数据"
+      ]
+    },
+    "year_2025": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "2025年",
+        "25年",
+        "看2025"
+      ],
+      "formal": [
+        "2025年",
+        "请查看2025年数据"
+      ]
+    },
+    "lipid_year": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "哪年",
+        "哪一年的",
+        "看哪年"
+      ],
+      "formal": [
+        "哪一年",
+        "请指定年份"
+      ]
+    },
+    "remerge_sleep": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "睡眠截图还要重传吗",
+        "睡眠数据能再解析不",
+        "要不要重新上传睡眠"
+      ],
+      "formal": [
+        "能不能再次解析睡眠的截图的数据？需要我再次上传吗？"
+      ]
+    },
+    "remerge_workout": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "锻炼数据重新看下",
+        "workout 再分析下",
+        "运动记录重新定账"
+      ],
+      "formal": [
+        "请重新分析截图里的锻炼数据"
+      ]
+    },
+    "respiratory": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "呼吸率咋样",
+        "呼吸频率呢",
+        "呼吸正常吗"
+      ],
+      "formal": [
+        "呼吸率怎么样",
+        "请报告呼吸率"
+      ]
+    },
+    "respiratory_normal": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "呼吸率正常吗",
+        "呼吸没事吧",
+        "呼吸频率正常不"
+      ],
+      "formal": [
+        "呼吸率正常吗",
+        "呼吸频率是否在正常范围"
+      ]
+    },
+    "resting_hr": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "静息心率多少",
+        "静息心率呢",
+        "resting hr 多少"
+      ],
+      "formal": [
+        "静息心率多少",
+        "请报告静息心率"
+      ]
+    },
+    "hr_range": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "心率范围呢",
+        "锻炼心率范围",
+        "心率区间多少"
+      ],
+      "formal": [
+        "心率范围呢",
+        "请报告锻炼心率范围"
+      ]
+    },
+    "spo2": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "血氧咋样",
+        "血氧饱和度",
+        "spo2 正常吗"
+      ],
+      "formal": [
+        "血氧怎么样",
+        "请报告血氧饱和度"
+      ]
+    },
+    "hr_generic": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "心率怎么样",
+        "心跳咋样",
+        "心率正常吗"
+      ],
+      "formal": [
+        "心率怎么样",
+        "请分析心率指标"
+      ]
+    },
+    "warehouse_hrv": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "我最近的 HRV 怎么样？",
+        "最近 hrv 咋样",
+        "HRV 数据瞅瞅",
+        "心率变异性最近如何"
+      ],
+      "formal": [
+        "我最近的 HRV 怎么样？",
+        "请查询近90天HRV均值"
+      ]
+    },
+    "warehouse_sleep": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "睡眠呢",
+        "睡得好吗",
+        "睡眠咋样"
+      ],
+      "formal": [
+        "睡眠呢",
+        "请报告睡眠均值"
+      ]
+    },
+    "warehouse_steps": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "步数呢",
+        "走路多吗",
+        "步数多少"
+      ],
+      "formal": [
+        "步数呢",
+        "请报告步数均值"
+      ]
+    },
+    "warehouse_lipid": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "血脂怎么样",
+        "胆固醇咋样",
+        "血脂高吗"
+      ],
+      "formal": [
+        "血脂怎么样",
+        "请查询血脂记录"
+      ]
+    },
+    "combine_hrv": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "结合截图和数仓 HRV 咋样",
+        "截图加库里的 HRV 看看",
+        "综合看 HRV"
+      ],
+      "formal": [
+        "结合截图和数仓，HRV 怎么样",
+        "请综合截图与数仓分析 HRV"
+      ]
+    },
+    "summary": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "总结一下健康数据",
+        "来个健康概览",
+        "整体咋样总结下"
+      ],
+      "formal": [
+        "总结一下我的健康数据",
+        "请提供健康数据概览"
+      ]
+    },
+    "summary_follow": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "异常项呢",
+        "有啥要注意的指标",
+        "哪些不太好"
+      ],
+      "formal": [
+        "有哪些异常指标",
+        "请列出需要关注的指标"
+      ]
+    },
+    "rapid_hrv": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "HRV",
+        "hrv",
+        "HRV呢"
+      ],
+      "formal": [
+        "HRV",
+        "请报告HRV"
+      ]
+    },
+    "rapid_sleep": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "睡眠",
+        "睡"
+      ],
+      "formal": [
+        "睡眠",
+        "请报告睡眠"
+      ]
+    },
+    "rapid_steps": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "步数",
+        "走路"
+      ],
+      "formal": [
+        "步数",
+        "请报告步数"
+      ]
+    },
+    "rapid_workout": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "锻炼",
+        "运动"
+      ],
+      "formal": [
+        "锻炼",
+        "请报告锻炼"
+      ]
+    },
+    "rapid_lipid": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "血脂",
+        "胆固醇"
+      ],
+      "formal": [
+        "血脂",
+        "请报告血脂"
+      ]
+    },
+    "rapid_spo2": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "血氧",
+        "spo2"
+      ],
+      "formal": [
+        "血氧",
+        "请报告血氧"
+      ]
+    },
+    "rapid_resp": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "呼吸率",
+        "呼吸"
+      ],
+      "formal": [
+        "呼吸率",
+        "请报告呼吸率"
+      ]
+    },
+    "rapid_resting": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "静息心率",
+        "静息"
+      ],
+      "formal": [
+        "静息心率",
+        "请报告静息心率"
+      ]
+    },
+    "lipid_trend": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "趋势呢",
+        "变化大吗",
+        "比前年呢"
+      ],
+      "formal": [
+        "历年趋势如何",
+        "请分析血脂趋势"
+      ]
+    },
+    "lipid_ldl": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "LDL呢",
+        "低密度呢",
+        "坏胆固醇"
+      ],
+      "formal": [
+        "LDL 怎么样",
+        "请报告 LDL"
+      ]
+    },
+    "more_tips": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "还有吗",
+        "再说点",
+        "还有啥"
+      ],
+      "formal": [
+        "还有其他建议吗",
+        "请补充建议"
+      ]
+    },
+    "got_it": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "嗯",
+        "懂了",
+        "明白"
+      ],
+      "formal": [
+        "嗯",
+        "我明白了"
+      ]
+    },
+    "upload_lab_image": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "附件是之前存的化验单截图，帮我看血脂 LDL",
+        "传张报告图，把胆固醇指标抠出来"
+      ],
+      "formal": [
+        "附件为化验/报告截图，请解析血脂等指标。",
+        "请分析附件报告图中的血脂与关键数值。"
+      ]
+    },
+    "supplement": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "我库里有没有补剂相关记录？",
+        "血脂和 HRV 差要不要补剂？"
+      ],
+      "formal": [
+        "请结合库内记录，说明是否有补剂相关事实可供引用。"
+      ]
+    },
+    "body_age": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "身体年龄/恢复年龄有信号吗？",
+        "穿戴数据能看出恢复年龄吗？"
+      ],
+      "formal": [
+        "如有相关信号，请概括恢复年龄/身体年龄类穿戴指标。"
+      ]
+    },
+    "disclaimer": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "这不是医疗建议对吧？",
+        "请保持科普口径别当诊断"
+      ],
+      "formal": [
+        "请保持科普、非诊断口径。",
+        "确认本回复不构成医疗诊断。"
+      ]
+    },
+    "chinese_only": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "请全程用中文回复",
+        "后面都用中文",
+        "只用中文答"
+      ],
+      "formal": [
+        "请全程使用中文回复。",
+        "后续回答请使用中文。"
+      ]
+    },
+    "wearable_import": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "我前面导入过穿戴数据，用数仓",
+        "用已入库的穿戴样本"
+      ],
+      "formal": [
+        "请使用已导入的穿戴数仓数据。",
+        "查询历史穿戴入库记录。"
+      ]
+    },
+    "pdf_lab": {
+      "colloquial_weight": 0.7,
+      "colloquial": [
+        "如果之前上传过化验 PDF，用那些血脂",
+        "从以前 PDF 报告里取血脂"
+      ],
+      "formal": [
+        "请使用已入库 PDF/报告中的血脂数值（如有）。",
+        "查询历史 PDF 化验入库记录。"
+      ]
+    }
+  },
+  "sets": [
+    {
+      "set_id": "ZS01",
+      "legacy_name": "upload_holistic_chain",
+      "lane": "upload_holistic_chain",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "sleep_verify",
+          "attach": false
+        },
+        {
+          "slot": "workout_origin",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "metric_focus",
+          "turns": [
+            3
+          ],
+          "forbidden": [
+            "睡眠总时长",
+            "呼吸率",
+            "锻炼心率"
+          ]
+        },
+        {
+          "id": "correction_sleep"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "ZS02",
+      "legacy_name": "upload_exercise_chain",
+      "lane": "upload_exercise_chain",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "exercise_tomorrow",
+          "attach": false
+        },
+        {
+          "slot": "exercise_day_after",
+          "attach": false
+        },
+        {
+          "slot": "low_intensity",
+          "attach": false
+        },
+        {
+          "slot": "running",
+          "attach": false
+        },
+        {
+          "slot": "running_duration",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "ZS03",
+      "legacy_name": "upload_lipid_clarify",
+      "lane": "upload_lipid_clarify",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "lipid_year",
+          "attach": false
+        },
+        {
+          "slot": "year_2023",
+          "attach": false
+        },
+        {
+          "slot": "year_2025",
+          "attach": false
+        },
+        {
+          "slot": "lipid_trend",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        }
+      ]
+    },
+    {
+      "set_id": "ZS04",
+      "legacy_name": "upload_hrv_delta",
+      "lane": "upload_hrv_delta",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "hrv_normal",
+          "attach": false
+        },
+        {
+          "slot": "delta_week",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "spo2",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "metric_focus",
+          "turns": [
+            2,
+            3
+          ],
+          "forbidden": [
+            "睡眠总时长",
+            "步数"
+          ]
+        },
+        {
+          "id": "episodic_delta",
+          "turns": [
+            4
+          ]
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "ZS05",
+      "legacy_name": "upload_sleep_correct",
+      "lane": "upload_sleep_correct",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "sleep_verify",
+          "attach": false
+        },
+        {
+          "slot": "deep_sleep",
+          "attach": false
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "correction_sleep"
+        },
+        {
+          "id": "deep_sleep",
+          "turns": [
+            4
+          ]
+        }
+      ]
+    },
+    {
+      "set_id": "ZS06",
+      "legacy_name": "upload_workout_probe",
+      "lane": "upload_workout_probe",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "workout_origin",
+          "attach": false
+        },
+        {
+          "slot": "workout_recent",
+          "attach": false
+        },
+        {
+          "slot": "hr_range",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "ZS07",
+      "legacy_name": "warehouse_hrv",
+      "lane": "warehouse_hrv",
+      "turns": [
+        {
+          "slot": "warehouse_hrv",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_sleep",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_steps",
+          "attach": false
+        },
+        {
+          "slot": "resting_hr",
+          "attach": false
+        },
+        {
+          "slot": "spo2",
+          "attach": false
+        },
+        {
+          "slot": "respiratory",
+          "attach": false
+        },
+        {
+          "slot": "hrv_normal",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "warehouse_hrv"
+        }
+      ]
+    },
+    {
+      "set_id": "ZS08",
+      "legacy_name": "warehouse_steps",
+      "lane": "warehouse_steps",
+      "turns": [
+        {
+          "slot": "steps_warehouse",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "delta_week",
+          "attach": false
+        },
+        {
+          "slot": "lipid_trend",
+          "attach": false
+        },
+        {
+          "slot": "more_tips",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "set_id": "ZS09",
+      "legacy_name": "upload_respiratory",
+      "lane": "upload_respiratory",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "respiratory",
+          "attach": false
+        },
+        {
+          "slot": "respiratory_normal",
+          "attach": false
+        },
+        {
+          "slot": "spo2",
+          "attach": false
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "metric_focus",
+          "turns": [
+            2,
+            3
+          ],
+          "forbidden": [
+            "HRV",
+            "血脂"
+          ],
+          "max_len": 1000,
+          "expect_fast": false
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "ZS10",
+      "legacy_name": "upload_resting_hr",
+      "lane": "upload_resting_hr",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "resting_hr",
+          "attach": false
+        },
+        {
+          "slot": "hr_range",
+          "attach": false
+        },
+        {
+          "slot": "hr_generic",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "ZS11",
+      "legacy_name": "upload_spo2_chain",
+      "lane": "upload_spo2_chain",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "spo2",
+          "attach": false
+        },
+        {
+          "slot": "respiratory_normal",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "exercise_tomorrow",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "ZS12",
+      "legacy_name": "upload_remerge",
+      "lane": "upload_remerge",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "remerge_sleep",
+          "attach": false
+        },
+        {
+          "slot": "remerge_workout",
+          "attach": false
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "correction_sleep"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "ZS13",
+      "legacy_name": "upload_casual_weak",
+      "lane": "upload_casual_weak",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        },
+        {
+          "slot": "got_it",
+          "attach": false
+        },
+        {
+          "slot": "more_tips",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "no_repeat"
+        },
+        {
+          "id": "weak_followup_skip",
+          "turns": [
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        }
+      ]
+    },
+    {
+      "set_id": "ZS14",
+      "legacy_name": "upload_long_10",
+      "lane": "upload_long",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "exercise_tomorrow",
+          "attach": false
+        },
+        {
+          "slot": "resting_hr",
+          "attach": false
+        },
+        {
+          "slot": "spo2",
+          "attach": false
+        },
+        {
+          "slot": "respiratory",
+          "attach": false
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "no_repeat",
+          "turns": [
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10
+          ]
+        },
+        {
+          "id": "exercise_advice",
+          "turns": [
+            6
+          ]
+        }
+      ]
+    },
+    {
+      "set_id": "ZS15",
+      "legacy_name": "warehouse_lipid",
+      "lane": "warehouse_lipid",
+      "turns": [
+        {
+          "slot": "warehouse_lipid",
+          "attach": false
+        },
+        {
+          "slot": "lipid_year",
+          "attach": false
+        },
+        {
+          "slot": "year_2025",
+          "attach": false
+        },
+        {
+          "slot": "year_2023",
+          "attach": false
+        },
+        {
+          "slot": "lipid_trend",
+          "attach": false
+        },
+        {
+          "slot": "lipid_ldl",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": []
+    },
+    {
+      "set_id": "ZS16",
+      "legacy_name": "warehouse_then_upload",
+      "lane": "warehouse_then_upload",
+      "turns": [
+        {
+          "slot": "steps_warehouse",
+          "attach": false
+        },
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "combine_hrv",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "exercise_tomorrow",
+          "attach": false
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "ZS17",
+      "legacy_name": "upload_hr_generic",
+      "lane": "upload_hr_generic",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "hr_generic",
+          "attach": false
+        },
+        {
+          "slot": "resting_hr",
+          "attach": false
+        },
+        {
+          "slot": "hr_range",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "ZS18",
+      "legacy_name": "upload_running",
+      "lane": "upload_running",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "running",
+          "attach": false
+        },
+        {
+          "slot": "running_duration",
+          "attach": false
+        },
+        {
+          "slot": "hr_generic",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "more_tips",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "ZS19",
+      "legacy_name": "upload_summary",
+      "lane": "upload_summary",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "summary_follow",
+          "attach": false
+        },
+        {
+          "slot": "exercise_tomorrow",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "ZS20",
+      "legacy_name": "upload_rapid_10",
+      "lane": "upload_rapid",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "rapid_hrv",
+          "attach": false
+        },
+        {
+          "slot": "rapid_sleep",
+          "attach": false
+        },
+        {
+          "slot": "rapid_steps",
+          "attach": false
+        },
+        {
+          "slot": "rapid_workout",
+          "attach": false
+        },
+        {
+          "slot": "rapid_lipid",
+          "attach": false
+        },
+        {
+          "slot": "rapid_spo2",
+          "attach": false
+        },
+        {
+          "slot": "rapid_resp",
+          "attach": false
+        },
+        {
+          "slot": "rapid_resting",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "legacy_name": "warehouse_then_upload_fixed",
+      "lane": "warehouse_then_upload",
+      "turns": [
+        {
+          "slot": "steps_warehouse",
+          "attach": false
+        },
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "combine_hrv",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "exercise_tomorrow",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "ZS21"
+    },
+    {
+      "legacy_name": "warehouse_tour_8",
+      "lane": "warehouse_tour",
+      "turns": [
+        {
+          "slot": "wearable_import",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_hrv",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_sleep",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_steps",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_lipid",
+          "attach": false
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "summary_follow",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "ZS22"
+    },
+    {
+      "legacy_name": "pdf_lab_warehouse",
+      "lane": "pdf_lab_warehouse",
+      "turns": [
+        {
+          "slot": "pdf_lab",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_lipid",
+          "attach": false
+        },
+        {
+          "slot": "lipid_ldl",
+          "attach": false
+        },
+        {
+          "slot": "lipid_trend",
+          "attach": false
+        },
+        {
+          "slot": "year_2023",
+          "attach": false
+        },
+        {
+          "slot": "supplement",
+          "attach": false
+        },
+        {
+          "slot": "disclaimer",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "ZS23"
+    },
+    {
+      "legacy_name": "lab_image_chain",
+      "lane": "lab_image_chain",
+      "turns": [
+        {
+          "slot": "upload_lab_image",
+          "attach": true
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "lipid_ldl",
+          "attach": false
+        },
+        {
+          "slot": "lipid_trend",
+          "attach": false
+        },
+        {
+          "slot": "year_2025",
+          "attach": false
+        },
+        {
+          "slot": "summary_follow",
+          "attach": false
+        },
+        {
+          "slot": "disclaimer",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "lab_attach"
+        }
+      ],
+      "set_id": "ZS24"
+    },
+    {
+      "set_id": "ZS25",
+      "legacy_name": "upload_spo2_deep",
+      "lane": "upload_spo2_deep",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "spo2",
+          "attach": false
+        },
+        {
+          "slot": "respiratory",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "deep_sleep",
+          "attach": false
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "ZS26",
+      "legacy_name": "upload_delta_focus",
+      "lane": "upload_delta_focus",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "delta_week",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "delta_week",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "legacy_name": "warehouse_lipid_deep",
+      "lane": "warehouse_lipid_deep",
+      "turns": [
+        {
+          "slot": "warehouse_lipid",
+          "attach": false
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "lipid_ldl",
+          "attach": false
+        },
+        {
+          "slot": "lipid_year",
+          "attach": false
+        },
+        {
+          "slot": "year_2023",
+          "attach": false
+        },
+        {
+          "slot": "lipid_trend",
+          "attach": false
+        },
+        {
+          "slot": "supplement",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "ZS27"
+    },
+    {
+      "legacy_name": "warehouse_sleep_deep",
+      "lane": "warehouse_sleep_deep",
+      "turns": [
+        {
+          "slot": "warehouse_sleep",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "deep_sleep",
+          "attach": false
+        },
+        {
+          "slot": "delta_week",
+          "attach": false
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "exercise_tomorrow",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "ZS28"
+    },
+    {
+      "set_id": "ZS29",
+      "legacy_name": "upload_body_age",
+      "lane": "upload_body_age",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "body_age",
+          "attach": false
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "exercise_tomorrow",
+          "attach": false
+        },
+        {
+          "slot": "disclaimer",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "ZS30",
+      "legacy_name": "upload_supplement_bridge",
+      "lane": "upload_supplement_bridge",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "supplement",
+          "attach": false
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "disclaimer",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "legacy_name": "rapid_warehouse_9",
+      "lane": "rapid_warehouse",
+      "turns": [
+        {
+          "slot": "chinese_only",
+          "attach": false
+        },
+        {
+          "slot": "rapid_hrv",
+          "attach": false
+        },
+        {
+          "slot": "rapid_sleep",
+          "attach": false
+        },
+        {
+          "slot": "rapid_steps",
+          "attach": false
+        },
+        {
+          "slot": "rapid_lipid",
+          "attach": false
+        },
+        {
+          "slot": "rapid_spo2",
+          "attach": false
+        },
+        {
+          "slot": "rapid_resting",
+          "attach": false
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "ZS31"
+    },
+    {
+      "set_id": "ZS32",
+      "legacy_name": "upload_clarify_years",
+      "lane": "upload_clarify_years",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "lipid_year",
+          "attach": false
+        },
+        {
+          "slot": "year_2023",
+          "attach": false
+        },
+        {
+          "slot": "lipid_ldl",
+          "attach": false
+        },
+        {
+          "slot": "year_2025",
+          "attach": false
+        },
+        {
+          "slot": "lipid_trend",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "ZS33",
+      "legacy_name": "upload_reparse_loop",
+      "lane": "upload_reparse_loop",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "sleep_verify",
+          "attach": false
+        },
+        {
+          "slot": "remerge_sleep",
+          "attach": false
+        },
+        {
+          "slot": "deep_sleep",
+          "attach": false
+        },
+        {
+          "slot": "remerge_workout",
+          "attach": false
+        },
+        {
+          "slot": "workout_origin",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "correction_sleep"
+        }
+      ]
+    },
+    {
+      "legacy_name": "combined_review_en",
+      "lane": "combined_review",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "combine_hrv",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_lipid",
+          "attach": false
+        },
+        {
+          "slot": "summary_follow",
+          "attach": false
+        },
+        {
+          "slot": "exercise_tomorrow",
+          "attach": false
+        },
+        {
+          "slot": "disclaimer",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "ZS34"
+    },
+    {
+      "legacy_name": "warehouse_only_long",
+      "lane": "warehouse_only_long",
+      "turns": [
+        {
+          "slot": "wearable_import",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_hrv",
+          "attach": false
+        },
+        {
+          "slot": "hrv_normal",
+          "attach": false
+        },
+        {
+          "slot": "delta_week",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_sleep",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_steps",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_lipid",
+          "attach": false
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "ZS35"
+    },
+    {
+      "set_id": "ZS36",
+      "legacy_name": "upload_hr_spo2_combo",
+      "lane": "upload_hr_spo2_combo",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "hr_generic",
+          "attach": false
+        },
+        {
+          "slot": "resting_hr",
+          "attach": false
+        },
+        {
+          "slot": "spo2",
+          "attach": false
+        },
+        {
+          "slot": "respiratory",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "set_id": "ZS37",
+      "legacy_name": "upload_exercise_caution",
+      "lane": "upload_exercise_caution",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "exercise_tomorrow",
+          "attach": false
+        },
+        {
+          "slot": "low_intensity",
+          "attach": false
+        },
+        {
+          "slot": "running",
+          "attach": false
+        },
+        {
+          "slot": "running_duration",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "disclaimer",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "legacy_name": "prior_sample_replay",
+      "lane": "prior_sample_replay",
+      "turns": [
+        {
+          "slot": "wearable_import",
+          "attach": false
+        },
+        {
+          "slot": "pdf_lab",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_lipid",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_hrv",
+          "attach": false
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "summary_follow",
+          "attach": false
+        },
+        {
+          "slot": "disclaimer",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "ZS38"
+    },
+    {
+      "set_id": "ZS39",
+      "legacy_name": "upload_metric_tour",
+      "lane": "upload_metric_tour",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "spo2",
+          "attach": false
+        },
+        {
+          "slot": "resting_hr",
+          "attach": false
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "legacy_name": "english_locale_lock",
+      "lane": "english_locale_lock",
+      "turns": [
+        {
+          "slot": "chinese_only",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_hrv",
+          "attach": false
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "ZS40"
+    },
+    {
+      "set_id": "ZS41",
+      "legacy_name": "upload_weak_then_metric",
+      "lane": "upload_weak_then_metric",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "got_it",
+          "attach": false
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "weak_followup_skip"
+        }
+      ]
+    },
+    {
+      "legacy_name": "lab_then_wearable",
+      "lane": "lab_then_wearable",
+      "turns": [
+        {
+          "slot": "upload_lab_image",
+          "attach": true
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "combine_hrv",
+          "attach": false
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "exercise_tomorrow",
+          "attach": false
+        },
+        {
+          "slot": "disclaimer",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "lab_attach"
+        }
+      ],
+      "set_id": "ZS42"
+    },
+    {
+      "legacy_name": "warehouse_compare_weeks",
+      "lane": "warehouse_compare_weeks",
+      "turns": [
+        {
+          "slot": "warehouse_hrv",
+          "attach": false
+        },
+        {
+          "slot": "delta_week",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_steps",
+          "attach": false
+        },
+        {
+          "slot": "delta_week",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_sleep",
+          "attach": false
+        },
+        {
+          "slot": "delta_week",
+          "attach": false
+        },
+        {
+          "slot": "summary_follow",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "ZS43"
+    },
+    {
+      "set_id": "ZS44",
+      "legacy_name": "upload_spo2_sleep",
+      "lane": "upload_spo2_sleep",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "spo2",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "deep_sleep",
+          "attach": false
+        },
+        {
+          "slot": "sleep_verify",
+          "attach": false
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "correction_sleep"
+        }
+      ]
+    },
+    {
+      "legacy_name": "formal_heavy_warehouse",
+      "lane": "formal_heavy_warehouse",
+      "turns": [
+        {
+          "slot": "warehouse_lipid",
+          "attach": false
+        },
+        {
+          "slot": "lipid_trend",
+          "attach": false
+        },
+        {
+          "slot": "lipid_ldl",
+          "attach": false
+        },
+        {
+          "slot": "supplement",
+          "attach": false
+        },
+        {
+          "slot": "body_age",
+          "attach": false
+        },
+        {
+          "slot": "disclaimer",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "ZS45"
+    },
+    {
+      "set_id": "ZS46",
+      "legacy_name": "upload_closing_polite",
+      "lane": "upload_closing_polite",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "summary_follow",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "more_tips",
+          "attach": false
+        },
+        {
+          "slot": "thanks",
+          "attach": false
+        },
+        {
+          "slot": "got_it",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ]
+    },
+    {
+      "legacy_name": "warehouse_spo2_resp",
+      "lane": "warehouse_spo2_resp",
+      "turns": [
+        {
+          "slot": "spo2",
+          "attach": false
+        },
+        {
+          "slot": "respiratory",
+          "attach": false
+        },
+        {
+          "slot": "respiratory_normal",
+          "attach": false
+        },
+        {
+          "slot": "resting_hr",
+          "attach": false
+        },
+        {
+          "slot": "hr_generic",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "advisory",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "ZS47"
+    },
+    {
+      "legacy_name": "upload_then_pdf_bridge",
+      "lane": "upload_then_pdf_bridge",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "pdf_lab",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_lipid",
+          "attach": false
+        },
+        {
+          "slot": "lipid_ldl",
+          "attach": false
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "disclaimer",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "ZS48"
+    },
+    {
+      "legacy_name": "mixed_prior_assets",
+      "lane": "mixed_prior_assets",
+      "turns": [
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "pdf_lab",
+          "attach": false
+        },
+        {
+          "slot": "warehouse_lipid",
+          "attach": false
+        },
+        {
+          "slot": "combine_hrv",
+          "attach": false
+        },
+        {
+          "slot": "body_age",
+          "attach": false
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "disclaimer",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        }
+      ],
+      "set_id": "ZS49"
+    },
+    {
+      "legacy_name": "stress_finale_10",
+      "lane": "stress_finale",
+      "turns": [
+        {
+          "slot": "chinese_only",
+          "attach": false
+        },
+        {
+          "slot": "upload_exercise",
+          "attach": true
+        },
+        {
+          "slot": "hrv",
+          "attach": false
+        },
+        {
+          "slot": "sleep_duration",
+          "attach": false
+        },
+        {
+          "slot": "lipid",
+          "attach": false
+        },
+        {
+          "slot": "steps",
+          "attach": false
+        },
+        {
+          "slot": "spo2",
+          "attach": false
+        },
+        {
+          "slot": "summary",
+          "attach": false
+        },
+        {
+          "slot": "summary_follow",
+          "attach": false
+        },
+        {
+          "slot": "ok_close",
+          "attach": false
+        }
+      ],
+      "checks": [
+        {
+          "id": "jun11_metrics"
+        },
+        {
+          "id": "chinese_reply"
+        },
+        {
+          "id": "no_empty"
+        },
+        {
+          "id": "no_repeat"
+        }
+      ],
+      "set_id": "ZS50"
+    }
+  ]
+}

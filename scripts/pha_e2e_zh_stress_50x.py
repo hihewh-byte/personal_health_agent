@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""50-session English multi-turn E2E stress battery (≥8 turns each).
+"""50-session Chinese multi-turn E2E stress battery (≥8 turns each).
 
-Uses rules/e2e_question_bank_en_v1.json, forces response_locale=en, and exercises
+Uses rules/e2e_question_bank_zh_50_v1.json, forces response_locale=zh, and exercises
 wearable screenshots (IMG_690*), optional lab image (IMG_0313*), plus warehouse
 queries against previously ingested PHA data.
 
 Run:
-  PHA_PORT=8788 python3 scripts/pha_e2e_en_stress_50x.py
+  PHA_PORT=8788 python3 scripts/pha_e2e_zh_stress_50x.py
 
 Optional:
   PHA_E2E_BANK_SEED=<int>
-  PHA_E2E_REPORT_DIR=/tmp/pha-e2e-en-50x
-  PHA_E2E_SESSIONS=EN01,EN02   # subset filter
+  PHA_E2E_REPORT_DIR=/tmp/pha-e2e-zh-50x
+  PHA_E2E_SESSIONS=ZS01,ZS02   # subset filter
   PHA_E2E_MODEL=qwen2.5:7b-instruct
   PHA_E2E_MAX_SESSIONS=50
 """
@@ -45,14 +45,14 @@ ASSETS = Path(
     ),
 )
 ATTACH_DIR = ROOT / "storage" / "attachments" / "default"
-BANK_PATH = ROOT / "rules" / "e2e_question_bank_en_v1.json"
+BANK_PATH = ROOT / "rules" / "e2e_question_bank_zh_50_v1.json"
 MODEL = os.environ.get("PHA_E2E_MODEL", "qwen2.5:7b-instruct")
 USER_ID = os.environ.get("PHA_E2E_USER_ID", "default")
 TIMEOUT = float(os.environ.get("PHA_E2E_TIMEOUT", "600"))
 MAX_PER_SESSION = 20
 EXPECTED_SESSIONS = int(os.environ.get("PHA_E2E_MAX_SESSIONS", "50"))
-REPORT_DIR = Path(os.environ.get("PHA_E2E_REPORT_DIR", "/tmp/pha-e2e-en-50x"))
-RESPONSE_LOCALE = "en"
+REPORT_DIR = Path(os.environ.get("PHA_E2E_REPORT_DIR", "/tmp/pha-e2e-zh-50x"))
+RESPONSE_LOCALE = "zh"
 
 FULL_TABLE_MARK_ZH = "根据您上传的 Apple Watch 截图"
 FULL_TABLE_MARK_EN = "Based on your uploaded Apple Watch"
@@ -221,6 +221,45 @@ def check_no_empty(tr: TurnRecord, _prev: list[TurnRecord]) -> list[str]:
     return []
 
 
+def check_chinese_reply(tr: TurnRecord, _prev: list[TurnRecord]) -> list[str]:
+    if not tr.answer or tr.answer_len < 40:
+        return []
+    cjk = len(_CJK_RE.findall(tr.answer))
+    ratio = cjk / max(len(tr.answer), 1)
+    if ratio < 0.15:
+        return [f"low_chinese_cjk_ratio:{ratio:.2f}"]
+    return []
+
+
+def check_metric_focus(
+    tr: TurnRecord,
+    _prev: list[TurnRecord],
+    *,
+    forbidden: list[str] | None = None,
+    max_len: int = 900,
+) -> list[str]:
+    forbidden = forbidden or []
+    fails: list[str] = []
+    if tr.answer_len > max_len:
+        fails.append(f"metric_focus_verbose:{tr.answer_len}")
+    for token in forbidden:
+        if token and token in tr.answer:
+            fails.append(f"metric_focus_forbidden:{token}")
+    return fails
+
+
+def check_episodic_delta_focus(tr: TurnRecord, _prev: list[TurnRecord]) -> list[str]:
+    if tr.answer_len > 1200:
+        return [f"episodic_delta_verbose:{tr.answer_len}"]
+    return []
+
+
+def check_exercise_advice_focus(tr: TurnRecord, _prev: list[TurnRecord]) -> list[str]:
+    if tr.answer_len > 1400:
+        return [f"exercise_advice_verbose:{tr.answer_len}"]
+    return []
+
+
 def check_english_reply(tr: TurnRecord, _prev: list[TurnRecord]) -> list[str]:
     if not tr.answer:
         return []
@@ -242,12 +281,11 @@ def check_jun11_metrics(tr: TurnRecord, _prev: list[TurnRecord]) -> list[str]:
 
 def check_correction_sleep(tr: TurnRecord, _prev: list[TurnRecord]) -> list[str]:
     msg = tr.message.lower()
-    if "verify" not in msg and "re-check" not in msg and "re-parse" not in msg and "wrong" not in msg:
+    if "verify" not in msg and "核实" not in msg and "重新" not in msg and "不对" not in msg:
         return []
     fails: list[str] = []
-    low = tr.answer.lower()
-    if "6" not in tr.answer[:250] and "6hr" not in low[:250] and "6 hr" not in low[:250]:
-        fails.append("correction_missing_6h_sleep_en")
+    if "6" not in tr.answer[:250] and "六" not in tr.answer[:250]:
+        fails.append("correction_missing_6h_sleep_zh")
     return fails
 
 
@@ -297,6 +335,8 @@ def check_lab_attach(tr: TurnRecord, _prev: list[TurnRecord]) -> list[str]:
 def build_check_from_spec(spec: dict[str, Any]) -> Callable[[TurnRecord, list[TurnRecord]], list[str]]:
     check_id = str(spec.get("id") or "")
     turns = spec.get("turns")
+    forbidden = list(spec.get("forbidden") or [])
+    max_len = int(spec.get("max_len") or 900)
 
     def _wrap(fn: Callable[[TurnRecord, list[TurnRecord]], list[str]]):
         if turns:
@@ -305,6 +345,8 @@ def build_check_from_spec(spec: dict[str, Any]) -> Callable[[TurnRecord, list[Tu
 
     if check_id == "jun11_metrics":
         return only_with_upload_metrics(check_jun11_metrics)
+    if check_id == "chinese_reply":
+        return check_chinese_reply
     if check_id == "english_reply":
         return check_english_reply
     if check_id == "no_empty":
@@ -319,7 +361,14 @@ def build_check_from_spec(spec: dict[str, Any]) -> Callable[[TurnRecord, list[Tu
         return _wrap(check_weak_followup_skip)
     if check_id == "lab_attach":
         return check_lab_attach
-    # soft-ignore Chinese-only check ids
+    if check_id == "metric_focus":
+        return _wrap(
+            lambda tr, prev: check_metric_focus(tr, prev, forbidden=forbidden, max_len=max_len),
+        )
+    if check_id == "episodic_delta":
+        return _wrap(check_episodic_delta_focus)
+    if check_id == "exercise_advice":
+        return _wrap(check_exercise_advice_focus)
     return lambda _tr, _prev: []
 
 
@@ -389,7 +438,7 @@ def run_session(
                 tr.checks.extend(fails)
                 tr.passed = False
         # always enforce English + non-empty baseline
-        for baseline in (check_english_reply, check_no_empty):
+        for baseline in (check_chinese_reply, check_no_empty):
             fails = baseline(tr, records)
             for f in fails:
                 if f not in tr.checks:
@@ -417,12 +466,12 @@ def write_reports(
     plan_path: Path,
 ) -> Path:
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    md_path = REPORT_DIR / f"en_stress_50x_{ts}.md"
+    md_path = REPORT_DIR / f"zh_stress_50x_{ts}.md"
     total_turns = len(all_records)
     failed_turns = [r for r in all_records if not r.passed]
     failed_sessions = sorted({r.session_name for r in failed_turns})
     slow_turns = [r for r in all_records if r.elapsed_s > 30]
-    cjk_fails = [r for r in failed_turns if any("non_english" in c for c in r.checks)]
+    cjk_fails = [r for r in failed_turns if any("low_chinese" in c or "non_english" in c for c in r.checks)]
     api_fails = [r for r in failed_turns if any(c.startswith("api_error") for c in r.checks)]
     metric_fails = [r for r in failed_turns if any(c.startswith("metric_") for c in r.checks)]
 
@@ -436,7 +485,7 @@ def write_reports(
         }
 
     lines = [
-        "# PHA English Stress Battery — 50×≥8 Report",
+        "# PHA Chinese Stress Battery — 50×≥8 Report",
         "",
         f"- **Time (UTC)**: {ts}",
         f"- **Endpoint**: `{BASE}`",
@@ -450,14 +499,14 @@ def write_reports(
         f"- **Failed turns**: {len(failed_turns)}",
         f"- **Failed sessions**: {len(failed_sessions)}",
         f"- **API errors**: {len(api_fails)}",
-        f"- **Non-English fails**: {len(cjk_fails)}",
+        f"- **Non-Chinese fails**: {len(cjk_fails)}",
         f"- **Metric fails**: {len(metric_fails)}",
         "",
         "## Pass criteria",
         "",
-        "- Every session ≥8 English turns against live PHA.",
+        "- Every session ≥8 Chinese turns against live PHA.",
         "- Materials: Jun11 wearable panels, optional lab image, warehouse lipids/wearables/prior samples.",
-        "- Checks: non-empty answer, English (CJK ratio ≤12%), optional jun11 metric fidelity on wearable ingest.",
+        "- Checks: non-empty answer, Chinese (CJK ratio ≥15% on longer replies), optional jun11 metric fidelity on wearable ingest.",
         "",
         "## Session summary",
         "",
@@ -510,10 +559,10 @@ def write_plan(path: Path) -> None:
     path.write_text(
         "\n".join(
             [
-                "# PHA English Stress Plan — 50 sessions × ≥8 turns",
+                "# PHA Chinese Stress Plan — 50 sessions × ≥8 turns",
                 "",
                 "## Goals",
-                "- Full-English multi-turn stress of live PHA (response_locale=en).",
+                "- Full-Chinese multi-turn stress of live PHA (response_locale=zh).",
                 "- 50 independent sessions; each ≥8 turns.",
                 "- Materials: IMG_690* wearable panels, IMG_0313 lab/report image if present,",
                 "  warehouse lipids/wearables, and previously ingested PHA samples (PDF/lab via warehouse).",
@@ -527,13 +576,13 @@ def write_plan(path: Path) -> None:
                 "",
                 "## Execution",
                 "```bash",
-                "python3 scripts/seed_e2e_question_bank_en_v1.py",
-                "PHA_PORT=8788 PHA_E2E_BANK_SEED=20260711 \\",
-                "  python3 scripts/pha_e2e_en_stress_50x.py",
+                "python3 scripts/seed_e2e_question_bank_zh_50_v1.py",
+                "PHA_PORT=8788 PHA_E2E_BANK_SEED=20260716 \\",
+                "  python3 scripts/pha_e2e_zh_stress_50x.py",
                 "```",
                 "",
                 "## Pass / Fail",
-                "- Fail turn: API error, empty answer, CJK ratio >12%, wearable metric mismatch when ingest fires.",
+                "- Fail turn: API error, empty answer, CJK ratio <15% on substantive replies, wearable metric mismatch when ingest fires.",
                 "- Session fail if any turn fails.",
                 "",
             ],
@@ -545,7 +594,7 @@ def write_plan(path: Path) -> None:
 
 def main() -> int:
     if not BANK_PATH.is_file():
-        print(f"FAIL missing bank {BANK_PATH}; run scripts/seed_e2e_question_bank_en_v1.py")
+        print(f"FAIL missing bank {BANK_PATH}; run scripts/seed_e2e_question_bank_zh_50_v1.py")
         return 1
 
     seed_raw = (os.environ.get("PHA_E2E_BANK_SEED") or "").strip()
@@ -580,9 +629,9 @@ def main() -> int:
 
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    plan_path = REPORT_DIR / f"plan_en_stress_50x_{ts}.md"
+    plan_path = REPORT_DIR / f"plan_zh_stress_50x_{ts}.md"
     write_plan(plan_path)
-    jsonl_path = REPORT_DIR / f"en_stress_50x_{ts}.jsonl"
+    jsonl_path = REPORT_DIR / f"zh_stress_50x_{ts}.jsonl"
     manifest_path = write_question_manifest(manifest, REPORT_DIR)
     print("plan:", plan_path, flush=True)
     print("question_manifest:", manifest_path, flush=True)
