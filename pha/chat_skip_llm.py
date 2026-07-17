@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -40,7 +41,11 @@ def evaluate_skip_llm_path(
     out = SkipLlmEvaluation()
 
     from pha.health_intent_catalog import is_weak_close_followup
-    from pha.response_language import normalize_response_locale, resolve_response_locale
+    from pha.response_language import (
+        is_locale_preference_only,
+        normalize_response_locale,
+        resolve_response_locale,
+    )
 
     loc = normalize_response_locale(response_locale) or resolve_response_locale(
         raw_user_msg,
@@ -55,6 +60,38 @@ def evaluate_skip_llm_path(
             else "不客气。若还想查看其他记录，随时告诉我。"
         )
         out.status_events.append(_status("弱收尾：已返回致谢"))
+        return out
+
+    # Locale-only preference ("后面都用中文") — acknowledge; do not dump labs.
+    if is_locale_preference_only(raw_user_msg) and not paths_in:
+        out.skip_llm = True
+        out.answer_text = (
+            "Got it — I'll reply in English from here. Ask a specific metric or upload when ready."
+            if loc == "en"
+            else "好的，后面我会用简体中文回复。需要看哪项指标或附件，直接说即可。"
+        )
+        out.status_events.append(_status("语种偏好：已确认，未拉取化验"))
+        return out
+
+    # Boundary confirm ("这不是医疗建议对吧？") — fixed disclaimer, no diagnosis essay.
+    _boundary = re.compile(
+        r"不是医疗建议|不构成诊断|非诊断|not medical advice|not a (?:medical )?diagnosis|"
+        r"educational(?:\s+only)?|keep it educational",
+        re.I,
+    )
+    if (
+        _boundary.search(raw_user_msg or "")
+        and len((raw_user_msg or "").strip()) <= 80
+        and not paths_in
+    ):
+        out.skip_llm = True
+        out.answer_text = (
+            "Correct — this is educational wellness context only, not a medical diagnosis "
+            "or treatment plan. For persistent symptoms or decisions, ask a clinician."
+            if loc == "en"
+            else "对，这里是健康教育参考，不构成医疗诊断或治疗方案。若有持续不适或需决策，请咨询医生。"
+        )
+        out.status_events.append(_status("边界确认：已返回非诊断声明"))
         return out
 
     if plan.profile == "wearable_only" and not wearable_screenshot_review:

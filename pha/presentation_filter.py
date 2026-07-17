@@ -16,7 +16,16 @@ _STRIP_PHRASES_ZH: List[Tuple[re.Pattern[str], str]] = [
     (re.compile(r"静态解构"), "说明"),
     (re.compile(r"###\s*纵向趋势对账\s*"), "### 与以往化验对比\n"),
     (re.compile(r"###\s*多指标横向联动\s*"), "### 相关指标\n"),
+    (re.compile(r"###\s*相关指标对照\s*"), "### 相关指标\n"),
+    (
+        re.compile(
+            r"###\s*(?:Differential\s+Diagnos[ie]s|鉴别诊断|临床鉴别|Differential)\s*",
+            re.I,
+        ),
+        "### 相关指标\n",
+    ),
     (re.compile(r"###\s*硬核非药物干预与筛查建议\s*"), "### 建议\n"),
+    (re.compile(r"###\s*生活方式建议与体检提示\s*"), "### 建议\n"),
     (re.compile(r"Patient State", re.I), "健康记录"),
     (re.compile(r"Manifest", re.I), "指标清单"),
     (re.compile(r"截图定账"), "本次截图"),
@@ -40,7 +49,16 @@ _STRIP_PHRASES_EN: List[Tuple[re.Pattern[str], str]] = [
     (re.compile(r"verdict_note", re.I), ""),
     (re.compile(r"###\s*纵向趋势对账\s*"), "### Trend review\n"),
     (re.compile(r"###\s*多指标横向联动\s*"), "### Related markers\n"),
+    (re.compile(r"###\s*相关指标对照\s*"), "### Related markers\n"),
+    (
+        re.compile(
+            r"###\s*(?:Differential\s+Diagnos[ie]s|鉴别诊断|临床鉴别|Differential)\s*",
+            re.I,
+        ),
+        "### Related markers\n",
+    ),
     (re.compile(r"###\s*硬核非药物干预与筛查建议\s*"), "### Recommendations\n"),
+    (re.compile(r"###\s*生活方式建议与体检提示\s*"), "### Recommendations\n"),
     (
         re.compile(
             r"当前(?:账本|记录)缺乏该项历史基线[，,]?\s*我们将基于单次数据进行静态解构[。.]?\s*",

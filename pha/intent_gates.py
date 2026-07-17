@@ -43,7 +43,8 @@ _LAB_DOSSIER_RE = re.compile(
 
 _WEARABLE_RE = re.compile(
     r"睡眠|步数|hrv|心率|静息|穿戴|运动|活动|活动消耗|activity|waso|清醒|苹果健康|"
-    r"export\.zip|步行|跑步|卡路里|kcal|rmssd|训练量|运动量|血氧|spo2|呼吸率|vo2|体温|腕温",
+    r"export\.zip|步行|跑步|卡路里|kcal|rmssd|训练量|运动量|血氧|spo2|呼吸率|vo2|体温|腕温|"
+    r"\bsteps?\b|oxygen\s*saturation|\boxygen\b|warehouse",
     re.I,
 )
 

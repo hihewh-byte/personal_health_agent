@@ -47,7 +47,16 @@ _WEARABLE_STRIP_ZH: List[Tuple[re.Pattern[str], str]] = [
     (re.compile(r"User Data Snapshot", re.I), "过去约 90 天的记录"),
     (re.compile(r"###\s*纵向趋势对账\s*"), "### 与过去约 90 天对比\n"),
     (re.compile(r"###\s*多指标横向联动\s*"), "### 其他相关指标\n"),
+    (re.compile(r"###\s*相关指标对照\s*"), "### 其他相关指标\n"),
+    (
+        re.compile(
+            r"###\s*(?:Differential\s+Diagnos[ie]s|鉴别诊断|临床鉴别|Differential)\s*",
+            re.I,
+        ),
+        "### 其他相关指标\n",
+    ),
     (re.compile(r"###\s*硬核非药物干预与筛查建议\s*"), "### 建议\n"),
+    (re.compile(r"###\s*生活方式建议与体检提示\s*"), "### 建议\n"),
     (re.compile(r"综合结论"), "小结"),
 ]
 
@@ -69,7 +78,16 @@ _WEARABLE_STRIP_EN: List[Tuple[re.Pattern[str], str]] = [
     (re.compile(r"User Data Snapshot", re.I), "recent ~90-day records"),
     (re.compile(r"###\s*纵向趋势对账\s*"), "### Comparison vs ~90 days\n"),
     (re.compile(r"###\s*多指标横向联动\s*"), "### Related markers\n"),
+    (re.compile(r"###\s*相关指标对照\s*"), "### Related markers\n"),
+    (
+        re.compile(
+            r"###\s*(?:Differential\s+Diagnos[ie]s|鉴别诊断|临床鉴别|Differential)\s*",
+            re.I,
+        ),
+        "### Related markers\n",
+    ),
     (re.compile(r"###\s*硬核非药物干预与筛查建议\s*"), "### Recommendations\n"),
+    (re.compile(r"###\s*生活方式建议与体检提示\s*"), "### Recommendations\n"),
     (re.compile(r"综合结论"), "Summary"),
 ]
 

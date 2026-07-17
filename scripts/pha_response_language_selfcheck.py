@@ -47,6 +47,17 @@ def main() -> int:
     if detect_explicit_locale_request("请用中文回答") != "zh":
         print("FAIL explicit zh")
         ok = False
+    if detect_explicit_locale_request("后面都用中文") != "zh":
+        print("FAIL colloquial 后面都用中文")
+        ok = False
+    from pha.response_language import is_locale_preference_only
+
+    if not is_locale_preference_only("后面都用中文"):
+        print("FAIL is_locale_preference_only 后面都用中文")
+        ok = False
+    if is_locale_preference_only("后面都用中文看血脂"):
+        print("FAIL locale+health should not be preference-only")
+        ok = False
     if resolve_response_locale("请用英文回答我的血脂", request_locale="zh") != "en":
         print("FAIL explicit should beat request_locale")
         ok = False
@@ -105,6 +116,17 @@ def main() -> int:
     zh_ok = polish_user_visible_reply("Patient State LDL high", locale="zh")
     if "健康记录" not in zh_ok:
         print("FAIL zh polish should map Patient State to 健康记录")
+        ok = False
+
+    diag = polish_user_visible_reply(
+        "### Differential Diagnosis\nPossible HPA axis disorder.",
+        locale="en",
+    )
+    if "Differential" in diag:
+        print("FAIL en polish should rewrite Differential Diagnosis heading")
+        ok = False
+    if "Related markers" not in diag:
+        print("FAIL en polish should map to Related markers")
         ok = False
 
     print("pha_response_language_selfcheck:", "PASS" if ok else "FAIL")

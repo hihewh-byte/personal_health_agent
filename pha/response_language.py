@@ -8,16 +8,18 @@ from typing import Optional
 
 _SUPPORTED = frozenset({"en", "zh"})
 
-_EXPLICIT_EN_RE = re.compile(
-    r"(?:^|\b)(?:reply|respond|answer|write)\s+(?:in\s+)?english\b|"
-    r"\buse\s+english\b|"
-    r"请用英文|用英文回答|英文回复|英语回答",
-    re.I,
-)
 _EXPLICIT_ZH_RE = re.compile(
     r"(?:^|\b)(?:reply|respond|answer|write)\s+(?:in\s+)?(?:chinese|mandarin|简体|繁体)\b|"
     r"\buse\s+(?:chinese|mandarin)\b|"
-    r"请用中文|用中文回答|中文回复|简体中文",
+    r"请用中文|用中文回答|中文回复|简体中文|"
+    r"后面都用中文|之后都用中文|都用中文|改用中文|切换到中文|用中文说",
+    re.I,
+)
+_EXPLICIT_EN_RE = re.compile(
+    r"(?:^|\b)(?:reply|respond|answer|write)\s+(?:in\s+)?english\b|"
+    r"\buse\s+english\b|"
+    r"请用英文|用英文回答|英文回复|英语回答|"
+    r"后面都用英文|之后都用英文|都用英文|改用英文|切换到英文",
     re.I,
 )
 _CJK_RE = re.compile(r"[\u4e00-\u9fff\u3400-\u4dbf]")
@@ -52,6 +54,23 @@ def detect_explicit_locale_request(user_message: str) -> Optional[str]:
     if _EXPLICIT_EN_RE.search(text):
         return "en"
     return None
+
+
+_HEALTH_CONTENT_RE = re.compile(
+    r"睡眠|步数|心率|hrv|血脂|胆固醇|ldl|化验|体检|血氧|spo2|呼吸|血糖|"
+    r"sleep|steps?|heart|oxygen|lab|lipid|glucose|warehouse|截图|附件",
+    re.I,
+)
+
+
+def is_locale_preference_only(user_message: str) -> bool:
+    """True when the user only asks to switch reply language (no health ask)."""
+    text = (user_message or "").strip()
+    if not text or len(text) > 48:
+        return False
+    if detect_explicit_locale_request(text) is None:
+        return False
+    return not bool(_HEALTH_CONTENT_RE.search(text))
 
 
 def detect_message_locale_heuristic(user_message: str, *, min_chars: int = 4) -> Optional[str]:
@@ -138,6 +157,7 @@ __all__ = [
     "default_response_locale",
     "detect_explicit_locale_request",
     "detect_message_locale_heuristic",
+    "is_locale_preference_only",
     "normalize_response_locale",
     "resolve_response_locale",
 ]
