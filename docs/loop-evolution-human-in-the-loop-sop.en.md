@@ -42,6 +42,32 @@ PHA_E2E_JSONL=/path/to/en_stress_50x_*.jsonl \
 
 Artifacts: `reports/loop/proposals/alias_proposal_*.json`, `reflection_*.json`.
 
+### A1b. Auto-notify humans (A Draft PR + C webhook)
+
+After distill, `pha_loop_run_from_e2e.sh` calls `scripts/pha_loop_notify_proposal.py`
+when `PHA_LOOP_NOTIFY` is not `0`.
+
+| Gate | Behavior |
+|------|----------|
+| `accepted_catalog` / `patch_ops` empty | **SKIP** — no ping |
+| default | **dry-run** (prints what would send) |
+| `PHA_LOOP_NOTIFY_APPLY=1` | channel **A**: `gh pr create --draft` staging under `scripts/fixtures/loop_proposals/inbox/`; channel **C**: POST `LOOP_NOTIFY_WEBHOOK_URL` |
+
+Still **proposal-only** — Draft PR must not edit `health_intent_catalog.json`. Catalog merge stays in A4 after veto.
+
+```bash
+# Dry-run (safe)
+PYTHONPATH=. python3 scripts/pha_loop_notify_proposal.py \
+  --proposal scripts/fixtures/loop_alias_proposal_curated.json --channels both
+
+# Apply: webhook + Draft PR
+export LOOP_NOTIFY_WEBHOOK_URL='https://…'
+export LOOP_NOTIFY_WEBHOOK_FORMAT=feishu   # or slack | generic
+export PHA_LOOP_NOTIFY_APPLY=1
+PYTHONPATH=. python3 scripts/pha_loop_notify_proposal.py \
+  --proposal reports/loop/proposals/alias_proposal_*.json --channels both --apply
+```
+
 ### A2. Human review (mandatory)
 
 Open the proposal JSON. For each `accepted_catalog` / `patch_ops` row:

@@ -56,10 +56,31 @@ else
   "$PY" scripts/pha_loop_alias_distiller.py --candidates "$OUT" --out-dir "$PROPOSAL_DIR"
 fi
 
+# A+C notify: Draft PR + webhook. Default dry-run; set PHA_LOOP_NOTIFY_APPLY=1 to send.
+# Empty accepted_catalog → script exits 0 with SKIP (no ping).
+NOTIFY="${PHA_LOOP_NOTIFY:-1}"
+if [[ "$NOTIFY" != "0" && "$DRY_DISTILL" != "1" ]]; then
+  echo ""
+  echo "== Loop notify (A Draft PR + C webhook) =="
+  LATEST="$(ls -t "$PROPOSAL_DIR"/alias_proposal_*.json 2>/dev/null | grep -v REJECTED | head -1 || true)"
+  if [[ -n "$LATEST" ]]; then
+    NOTIFY_ARGS=(--proposal "$LATEST" --channels "${PHA_LOOP_NOTIFY_CHANNELS:-both}")
+    if [[ "${PHA_LOOP_NOTIFY_APPLY:-0}" == "1" ]]; then
+      NOTIFY_ARGS+=(--apply)
+    fi
+    "$PY" scripts/pha_loop_notify_proposal.py "${NOTIFY_ARGS[@]}" || {
+      echo "WARN: notify failed (pipeline harvest/distill still OK)" >&2
+    }
+  else
+    echo "SKIP notify: no alias_proposal_*.json in $PROPOSAL_DIR"
+  fi
+fi
+
 echo ""
 echo "== Done =="
 echo " candidates : $OUT"
 echo " proposals  : $PROPOSAL_DIR"
 echo " reflection : ${ROOT}/reports/loop/reflection_*.md"
+echo " notify     : PHA_LOOP_NOTIFY_APPLY=1 + LOOP_NOTIFY_WEBHOOK_URL / gh auth to actually ping"
 echo " Next: review proposals, run EN subset + nightly 148/164 veto, then human PR."
 echo " T0 adopt: python3 scripts/pha_t0_gated_adopter.py --proposal reports/loop/t0_ingest_proposals/*.json --apply --confirm YES"

@@ -44,6 +44,7 @@
     {"id": "universal_attachment_lane_l1", "script": "scripts/pha_universal_attachment_lane_l1_selfcheck.py", "tags": ["stage3h", "harness", "p0", "nightly"]},
     {"id": "loop_keyword_conflict", "script": "scripts/pha_loop_keyword_conflict_selfcheck.py", "tags": ["stage4", "loop", "p0"]},
     {"id": "loop_failure_taxonomy", "script": "scripts/pha_loop_failure_taxonomy_selfcheck.py", "tags": ["stage4", "loop", "p0"]},
+    {"id": "loop_notify", "script": "scripts/pha_loop_notify_selfcheck.py", "tags": ["stage4", "loop", "notify"]},
     {"id": "reflection_critic", "script": "scripts/pha_reflection_critic_selfcheck.py", "tags": ["stage4", "loop", "ring-r", "p1"]},
     {"id": "eval_set", "script": "scripts/pha_eval_set_selfcheck.py", "tags": ["stage4", "loop", "eval", "p1"]},
     {"id": "eval_set_alias_fuzz", "script": "scripts/pha_eval_set_alias_fuzz_selfcheck.py", "tags": ["stage4", "loop", "eval", "fuzz", "p1"]},
