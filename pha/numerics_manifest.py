@@ -334,7 +334,26 @@ def _wearable_entries(
     anchor = f"{window.start.isoformat()}~{window.end.isoformat()}"
 
     if wearable_result is None:
-        metrics = infer_wearable_metrics(user_message) or ["hrv", "activity_kcal"]
+        metrics = infer_wearable_metrics(user_message)
+        if not metrics:
+            # Registry-hint focus (e.g. 「呼吸正常吗」) may not hit catalog triggers;
+            # map focus metric_ids → catalog keys so we do not fall back to hrv+kcal.
+            from pha.wearable_compare_table_v1 import infer_single_metric_focus_ids
+
+            _focus_to_cat = {
+                "sleep_time_asleep": "sleep",
+                "hrv_rmssd_ms": "hrv",
+                "resting_heart_rate_bpm": "rhr",
+                "spo2_percent": "spo2",
+                "respiratory_rate": "respiratory_rate",
+            }
+            metrics = [
+                _focus_to_cat[mid]
+                for mid in infer_single_metric_focus_ids(user_message)
+                if mid in _focus_to_cat
+            ]
+        if not metrics:
+            metrics = ["hrv", "activity_kcal"]
         wearable_result = get_health_data(
             uid,
             window.start,

@@ -1078,16 +1078,31 @@ def infer_single_metric_focus_ids(user_message: str) -> List[str]:
         len(ordered) < 2 or _is_allowed_focus_pair(ordered)
     ):
         return ordered
-    for cat in infer_wearable_metrics(msg):
+    cats = infer_wearable_metrics(msg)
+    for cat in cats:
         for reg_id in _CATALOG_TO_REGISTRY.get(cat, ()):
             if reg_id not in seen:
                 seen.add(reg_id)
                 ordered.append(reg_id)
-    if not ordered or len(ordered) > _SINGLE_METRIC_FOCUS_MAX:
-        return []
-    if len(ordered) == 2 and not _is_allowed_focus_pair(ordered):
-        return []
-    return ordered
+    if ordered and len(ordered) <= _SINGLE_METRIC_FOCUS_MAX and (
+        len(ordered) < 2 or _is_allowed_focus_pair(ordered)
+    ):
+        return ordered
+    # Catalog sleep expands to asleep/deep/rem — collapse to the primary duration metric
+    # so colloquial「昨晚睡多久啊」still takes the skip-LLM focus path.
+    if cats:
+        primaries: List[str] = []
+        seen_p: Set[str] = set()
+        for cat in cats:
+            primary = _CATALOG_PRIMARY_METRIC.get(cat)
+            if primary and primary not in seen_p:
+                seen_p.add(primary)
+                primaries.append(primary)
+        if len(primaries) == 1:
+            return primaries
+        if len(primaries) == 2 and _is_allowed_focus_pair(primaries):
+            return primaries
+    return []
 
 
 def _format_metric_focus_rows(
@@ -1361,6 +1376,7 @@ def user_message_needs_wearable_session_reuse(
 ) -> bool:
     """Follow-up turns that should reload session screenshot parse (skip_llm path)."""
     from pha.intent_gates import (
+        infer_wearable_metrics,
         user_message_needs_attachment_recall,
         user_message_needs_wearable_query,
     )
@@ -1382,6 +1398,10 @@ def user_message_needs_wearable_session_reuse(
     if user_requests_snapshot_correction(msg):
         return True
     if infer_single_metric_focus_ids(msg):
+        return True
+    # Warehouse-only catalog hits (e.g. 「走了多少步」→ steps) have no CompareTable
+    # registry id, but still need session screenshot reuse for skip-LLM / warehouse handoff.
+    if len(infer_wearable_metrics(msg)) == 1:
         return True
     if infer_episodic_delta_focus_ids(msg, prior_user_message):
         return True

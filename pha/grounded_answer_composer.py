@@ -156,7 +156,8 @@ def build_manifest_metric_focus_summary(
     lines = ["根据您近 90 天的健康记录：", ""]
     for entry in manifest.entries[:6]:
         val_s = f"{entry.value:g}{entry.unit or ''}"
-        lines.append(f"- **{entry.metric}**：{val_s}（{entry.anchor}）")
+        label = _WAREHOUSE_FOCUS_LABEL_ZH_DISPLAY.get(entry.metric, entry.metric)
+        lines.append(f"- **{label}**：{val_s}（{entry.anchor}）")
     return "\n".join(lines).strip()
 
 
@@ -290,6 +291,15 @@ _WAREHOUSE_FOCUS_LABEL_BY_CAT: dict[str, str] = {
     "vo2max": "VO2max均值",
 }
 
+# Registry metric_id → warehouse manifest metric label (same strings as numerics_manifest).
+_REGISTRY_TO_WAREHOUSE_LABEL: dict[str, str] = {
+    "sleep_time_asleep": "睡眠均值",
+    "hrv_rmssd_ms": "HRV均值",
+    "resting_heart_rate_bpm": "静息心率均值",
+    "spo2_percent": "血氧均值",
+    "respiratory_rate": "呼吸率均值",
+}
+
 _WAREHOUSE_FOCUS_LABEL_EN: dict[str, str] = {
     "HRV均值": "Mean HRV",
     "步数均值": "Mean steps",
@@ -299,6 +309,12 @@ _WAREHOUSE_FOCUS_LABEL_EN: dict[str, str] = {
     "呼吸率均值": "Mean respiratory rate",
     "活动消耗日均": "Mean active kcal/day",
     "VO2max均值": "Mean VO2max",
+}
+
+# Prefer Chinese display labels in ZH replies (CJK ratio / readability).
+_WAREHOUSE_FOCUS_LABEL_ZH_DISPLAY: dict[str, str] = {
+    "HRV均值": "心率变异性均值",
+    "VO2max均值": "最大摄氧量均值",
 }
 
 
@@ -318,16 +334,32 @@ def _filter_manifest_to_metric_focus(
     user_message: str,
 ) -> NumericsManifest:
     from pha.intent_gates import infer_wearable_metrics
+    from pha.wearable_compare_table_v1 import infer_single_metric_focus_ids
 
-    cats = infer_wearable_metrics(user_message)
-    if len(cats) != 1:
+    labels: list[str] = []
+    # Prefer registry-hint focus (e.g. 「心率正常吗」「呼吸正常吗」) over broad core catalog.
+    for mid in infer_single_metric_focus_ids(user_message):
+        lab = _REGISTRY_TO_WAREHOUSE_LABEL.get(mid)
+        if lab and lab not in labels:
+            labels.append(lab)
+    if not labels:
+        cats = infer_wearable_metrics(user_message)
+        if len(cats) == 1:
+            lab = _WAREHOUSE_FOCUS_LABEL_BY_CAT.get(cats[0])
+            if lab:
+                labels = [lab]
+    if not labels:
         return manifest
-    label = _WAREHOUSE_FOCUS_LABEL_BY_CAT.get(cats[0])
-    if not label:
-        return manifest
-    filtered = [e for e in manifest.entries if e.metric == label]
+    filtered = [e for e in manifest.entries if e.metric in labels]
     if not filtered:
-        return manifest
+        # Fail closed: never present an unfocused multi-metric dump as a "focus" answer.
+        return NumericsManifest(
+            profile=manifest.profile,
+            user_id=manifest.user_id,
+            entries=[],
+            reference_date=manifest.reference_date,
+            forbidden_dates=manifest.forbidden_dates,
+        )
     return NumericsManifest(
         profile=manifest.profile,
         user_id=manifest.user_id,

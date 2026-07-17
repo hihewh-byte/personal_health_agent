@@ -213,8 +213,11 @@ def evaluate_skip_llm_path(
             return out
         from pha.intent_gates import infer_wearable_metrics
         from pha.grounded_answer_composer import try_warehouse_metric_focus_skip
+        from pha.wearable_compare_table_v1 import infer_single_metric_focus_ids
 
-        if len(infer_wearable_metrics(raw_user_msg)) == 1:
+        if len(infer_wearable_metrics(raw_user_msg)) == 1 or infer_single_metric_focus_ids(
+            raw_user_msg,
+        ):
             manifest_focus = try_warehouse_metric_focus_skip(
                 user_id=user_id,
                 profile=plan.profile,

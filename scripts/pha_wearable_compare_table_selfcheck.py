@@ -743,6 +743,13 @@ def test_single_metric_focus() -> bool:
     }:
         print("FAIL 锻炼心率范围 workout pair", infer_single_metric_focus_ids("请报告锻炼心率范围"))
         return False
+    # Colloquial sleep duration → primary sleep_time_asleep (not asleep/deep/rem triple).
+    if infer_single_metric_focus_ids("昨晚睡多久啊") != ["sleep_time_asleep"]:
+        print("FAIL 昨晚睡多久啊", infer_single_metric_focus_ids("昨晚睡多久啊"))
+        return False
+    if infer_single_metric_focus_ids("睡多久") != ["sleep_time_asleep"]:
+        print("FAIL 睡多久", infer_single_metric_focus_ids("睡多久"))
+        return False
     table = CompareTableV1(
         rows=[
             CompareRowV1(
