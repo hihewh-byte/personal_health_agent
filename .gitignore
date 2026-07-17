@@ -24,8 +24,8 @@ reports/chb/**/gap_candidates.json
 reports/p1_golden/*
 !reports/p1_golden/README.md
 !reports/chb/README.md
-reports/e2e/*.jsonl
-reports/e2e/question_manifest_*.json
+# All live e2e / stress / harvest / semantic outputs stay local (PII risk).
+reports/e2e/
 
 # PHA local snapshots (use git tags for releases)
 .pha-versions/
